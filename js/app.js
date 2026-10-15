@@ -1,7 +1,14 @@
+/* =========================================================
+   APP — запуск, навигация, рендер разделов, модалки, toast
+   + Анимации переходов между разделами
+   ========================================================= */
 const App = (() => {
     let currentUser = null;
     let toastTimer = null;
 
+    /* =========================================================
+       НАВИГАЦИЯ ПО РОЛЯМ
+       ========================================================= */
     function navItems(role) {
         if (role === "student") {
             return [
@@ -68,6 +75,9 @@ const App = (() => {
         ];
     }
 
+    /* =========================================================
+       ХЕЛПЕРЫ
+       ========================================================= */
     function roleName(r) {
         return r === "student"
             ? "Студент"
@@ -87,6 +97,9 @@ const App = (() => {
             .toUpperCase();
     }
 
+    /* =========================================================
+       BOOT
+       ========================================================= */
     function boot(user) {
         if (!user) return;
 
@@ -117,6 +130,9 @@ const App = (() => {
         return "dashboard";
     }
 
+    /* =========================================================
+       НАВИГАЦИЯ
+       ========================================================= */
     function renderNav(role) {
         const nav = document.getElementById("mainNav");
         if (!nav) return;
@@ -163,6 +179,10 @@ const App = (() => {
         window.scrollTo(0, 0);
     }
 
+    /**
+     * Рендер раздела.
+     * ВАЖНО: оборачиваем в <div class="view active"> для анимаций.
+     */
     function renderView(viewId, params) {
         const root = document.getElementById("viewRoot");
         if (!root) return;
@@ -192,7 +212,8 @@ const App = (() => {
 
         if (fn) {
             try {
-                root.innerHTML = fn(params);
+                /* ГЛАВНОЕ ИЗМЕНЕНИЕ — оборачиваем контент в .view.active */
+                root.innerHTML = `<div class="view active">${fn(params)}</div>`;
             } catch (err) {
                 console.error("[App] Ошибка рендера раздела:", viewId, err);
                 root.innerHTML = placeholder(
@@ -212,10 +233,10 @@ const App = (() => {
                 }, 0);
             }
         } else {
-            root.innerHTML = placeholder(
+            root.innerHTML = `<div class="view active">${placeholder(
                 "Раздел в разработке",
                 `Раздел «${viewId}» ещё не реализован для вашей роли.`,
-            );
+            )}</div>`;
         }
     }
 
@@ -231,6 +252,9 @@ const App = (() => {
     `;
     }
 
+    /* =========================================================
+       МОДАЛКИ
+       ========================================================= */
     function openModal(html) {
         closeModal();
         const div = document.createElement("div");
@@ -252,6 +276,9 @@ const App = (() => {
         if (el) el.remove();
     }
 
+    /* =========================================================
+       TOAST
+       ========================================================= */
     function toast(msg) {
         const t = document.getElementById("toast");
         if (!t) return;
@@ -261,6 +288,9 @@ const App = (() => {
         toastTimer = setTimeout(() => t.classList.remove("show"), 2400);
     }
 
+    /* =========================================================
+       УВЕДОМЛЕНИЯ
+       ========================================================= */
     function refreshNotifications() {
         if (!currentUser) return;
         if (typeof Notifications === "undefined") return;
@@ -284,6 +314,9 @@ const App = (() => {
         }
     }
 
+    /* =========================================================
+       ПУБЛИЧНЫЙ API
+       ========================================================= */
     return {
         boot,
         navigate,
@@ -295,6 +328,9 @@ const App = (() => {
     };
 })();
 
+/* =========================================================
+   ЗАПУСК
+   ========================================================= */
 document.addEventListener("DOMContentLoaded", () => {
     if (typeof Auth === "undefined") {
         console.error("[App] Модуль Auth не загружен");

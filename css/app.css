@@ -1,9 +1,17 @@
+/* =========================================================
+   APP — шапка, навигация, карточки, модалки
+   + Каскадная анимация карточек с разных сторон
+   ========================================================= */
+
 .app {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
 }
 
+/* =========================================================
+   ШАПКА
+   ========================================================= */
 .app-header {
     background: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(20px);
@@ -89,6 +97,9 @@
     transform: scale(1.05);
 }
 
+/* =========================================================
+   НАВИГАЦИЯ
+   ========================================================= */
 .app-nav {
     background: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(20px);
@@ -120,7 +131,8 @@
     white-space: nowrap;
     transition:
         color var(--t-fast),
-        border-color var(--t-fast);
+        border-color var(--t-fast),
+        transform var(--t-fast);
     background: transparent;
     font-weight: 400;
     letter-spacing: -0.005em;
@@ -133,6 +145,43 @@
     color: var(--txt);
     border-bottom-color: var(--txt);
     font-weight: 500;
+    animation: navPulse 0.4s ease;
+}
+.app-nav button:active {
+    transform: scale(0.97);
+}
+
+@keyframes navPulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.app-nav button.active::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -1px;
+    width: 100%;
+    height: 2px;
+    background: var(--txt);
+    transform: translateX(-50%) scaleX(0);
+    transform-origin: center;
+    animation: navUnderline 0.4s ease forwards;
+}
+@keyframes navUnderline {
+    0% {
+        transform: translateX(-50%) scaleX(0);
+    }
+    100% {
+        transform: translateX(-50%) scaleX(1);
+    }
 }
 
 .demo-launch-btn {
@@ -178,6 +227,9 @@
     }
 }
 
+/* =========================================================
+   КОНТЕНТ
+   ========================================================= */
 .app-main {
     flex: 1;
     padding: 40px 40px;
@@ -199,14 +251,212 @@
     }
 }
 
+/* =========================================================
+   ПЕРЕХОДЫ МЕЖДУ РАЗДЕЛАМИ
+   ========================================================= */
 .view {
-    display: none;
+    display: block;
 }
 .view.active {
     display: block;
-    animation: fadeUp 0.35s ease;
+    animation: viewEnter 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+@keyframes viewEnter {
+    0% {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* =========================================================
+   КАСКАДНОЕ ПОЯВЛЕНИЕ КАРТОЧЕК — с разных сторон
+   Каждая карточка «летит» со своей стороны и собирается
+   ========================================================= */
+
+/* 1-я карточка — сверху */
+.view.active > *:nth-child(1) {
+    animation: cardEnterTop 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) backwards;
+    animation-delay: 0.03s;
+}
+
+/* 2-я карточка — слева */
+.view.active > *:nth-child(2) {
+    animation: cardEnterLeft 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) backwards;
+    animation-delay: 0.08s;
+}
+
+/* 3-я карточка — справа */
+.view.active > *:nth-child(3) {
+    animation: cardEnterRight 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) backwards;
+    animation-delay: 0.13s;
+}
+
+/* 4-я карточка — снизу */
+.view.active > *:nth-child(4) {
+    animation: cardEnterBottom 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) backwards;
+    animation-delay: 0.18s;
+}
+
+/* 5-я карточка — сверху-слева */
+.view.active > *:nth-child(5) {
+    animation: cardEnterTopLeft 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) backwards;
+    animation-delay: 0.23s;
+}
+
+/* 6-я карточка — сверху-справа */
+.view.active > *:nth-child(6) {
+    animation: cardEnterTopRight 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) backwards;
+    animation-delay: 0.28s;
+}
+
+/* 7-я карточка — снизу-слева */
+.view.active > *:nth-child(7) {
+    animation: cardEnterBottomLeft 0.5s cubic-bezier(0.34, 1.2, 0.64, 1)
+        backwards;
+    animation-delay: 0.33s;
+}
+
+/* 8-я и последующие — снизу-справа */
+.view.active > *:nth-child(n + 8) {
+    animation: cardEnterBottomRight 0.5s cubic-bezier(0.34, 1.2, 0.64, 1)
+        backwards;
+    animation-delay: 0.38s;
+}
+
+/* =========================================================
+   КЛЮЧЕВЫЕ КАДРЫ — по 8 направлений
+   ========================================================= */
+
+@keyframes cardEnterTop {
+    0% {
+        opacity: 0;
+        transform: translateY(-14px) scale(0.97);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes cardEnterLeft {
+    0% {
+        opacity: 0;
+        transform: translateX(-14px) scale(0.97);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}
+
+@keyframes cardEnterRight {
+    0% {
+        opacity: 0;
+        transform: translateX(14px) scale(0.97);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}
+
+@keyframes cardEnterBottom {
+    0% {
+        opacity: 0;
+        transform: translateY(14px) scale(0.97);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes cardEnterTopLeft {
+    0% {
+        opacity: 0;
+        transform: translate(-10px, -10px) scale(0.97);
+    }
+    100% {
+        opacity: 1;
+        transform: translate(0, 0) scale(1);
+    }
+}
+
+@keyframes cardEnterTopRight {
+    0% {
+        opacity: 0;
+        transform: translate(10px, -10px) scale(0.97);
+    }
+    100% {
+        opacity: 1;
+        transform: translate(0, 0) scale(1);
+    }
+}
+
+@keyframes cardEnterBottomLeft {
+    0% {
+        opacity: 0;
+        transform: translate(-10px, 10px) scale(0.97);
+    }
+    100% {
+        opacity: 1;
+        transform: translate(0, 0) scale(1);
+    }
+}
+
+@keyframes cardEnterBottomRight {
+    0% {
+        opacity: 0;
+        transform: translate(10px, 10px) scale(0.97);
+    }
+    100% {
+        opacity: 1;
+        transform: translate(0, 0) scale(1);
+    }
+}
+
+/* =========================================================
+   Карточки внутри .grid — тоже летят с разных сторон
+   ========================================================= */
+
+.view.active > .grid > *:nth-child(1) {
+    animation: cardEnterTop 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) backwards;
+    animation-delay: 0.05s;
+}
+.view.active > .grid > *:nth-child(2) {
+    animation: cardEnterLeft 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) backwards;
+    animation-delay: 0.1s;
+}
+.view.active > .grid > *:nth-child(3) {
+    animation: cardEnterRight 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) backwards;
+    animation-delay: 0.15s;
+}
+.view.active > .grid > *:nth-child(4) {
+    animation: cardEnterBottom 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) backwards;
+    animation-delay: 0.2s;
+}
+.view.active > .grid > *:nth-child(5) {
+    animation: cardEnterTopLeft 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) backwards;
+    animation-delay: 0.25s;
+}
+.view.active > .grid > *:nth-child(6) {
+    animation: cardEnterTopRight 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) backwards;
+    animation-delay: 0.3s;
+}
+.view.active > .grid > *:nth-child(n + 7) {
+    animation: cardEnterBottomLeft 0.5s cubic-bezier(0.34, 1.2, 0.64, 1)
+        backwards;
+    animation-delay: 0.35s;
+}
+
+/* =========================================================
+   КАРТОЧКИ
+   ========================================================= */
 .card {
     background: var(--bg-elev);
     border: 1px solid var(--line);
@@ -240,6 +490,9 @@
     margin-bottom: 0;
 }
 
+/* =========================================================
+   СЕТКИ
+   ========================================================= */
 .grid {
     display: grid;
     gap: 20px;
@@ -269,6 +522,9 @@
     }
 }
 
+/* =========================================================
+   KPI
+   ========================================================= */
 .kpi {
     text-align: left;
     padding: 24px 22px;
@@ -292,6 +548,9 @@
     letter-spacing: 0.02em;
 }
 
+/* =========================================================
+   ТАБЛИЦЫ
+   ========================================================= */
 .table {
     width: 100%;
     border-collapse: collapse;
@@ -320,6 +579,9 @@
     background: var(--bg-soft);
 }
 
+/* =========================================================
+   МОДАЛКИ
+   ========================================================= */
 .modal-back {
     position: fixed;
     inset: 0;
@@ -343,6 +605,16 @@
     overflow-y: auto;
     animation: scaleIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
     box-shadow: var(--shadow-lg);
+}
+@keyframes scaleIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.94);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
 }
 .modal-head {
     display: flex;
@@ -372,6 +644,9 @@
     color: var(--txt);
 }
 
+/* =========================================================
+   QUICK ACTIONS
+   ========================================================= */
 .quick-actions {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -427,6 +702,9 @@
     line-height: 1.5;
 }
 
+/* =========================================================
+   ФИЛЬТРЫ
+   ========================================================= */
 .filters {
     display: flex;
     gap: 12px;
@@ -453,6 +731,9 @@
     border-bottom-color: var(--txt);
 }
 
+/* =========================================================
+   ФОРМА-GRID
+   ========================================================= */
 .form-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -467,6 +748,9 @@
     }
 }
 
+/* =========================================================
+   СЧЁТЧИК
+   ========================================================= */
 .count-chip {
     display: inline-flex;
     align-items: center;
@@ -483,6 +767,9 @@
     font-variant-numeric: tabular-nums;
 }
 
+/* =========================================================
+   MISC
+   ========================================================= */
 .placeholder {
     padding: 60px 20px;
     text-align: center;
@@ -515,6 +802,9 @@
     color: var(--txt);
 }
 
+/* =========================================================
+   АДАПТИВ
+   ========================================================= */
 @media (max-width: 900px) {
     .app-header {
         padding: 0 24px;
@@ -550,5 +840,25 @@
     }
     .quick-actions {
         grid-template-columns: 1fr;
+    }
+}
+
+/* =========================================================
+   ДОСТУПНОСТЬ — отключаем анимации по запросу системы
+   ========================================================= */
+@media (prefers-reduced-motion: reduce) {
+    .view.active,
+    .view.active > *,
+    .view.active > .grid > *,
+    .app-nav button.active,
+    .app-nav button.active::after,
+    .modal,
+    .modal-back,
+    .card,
+    .quick-action,
+    .demo-launch-btn,
+    .app-avatar {
+        animation: none !important;
+        transition: none !important;
     }
 }
