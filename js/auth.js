@@ -1,16 +1,7 @@
-/* =========================================================
-   AUTH — регистрация, вход, роли
-   Обновлено: blocked: false при создании, валидация fio,
-   проверка blocked в loginAs, безопасные вызовы
-   ========================================================= */
 const Auth = (() => {
     let selectedRole = "student";
     let currentUser = null;
 
-    /* =========================================================
-       ДЕМО-ПОЛЬЗОВАТЕЛИ
-       Пароль "123456" (в открытом виде только для демо)
-       ========================================================= */
     function getDemoUsers() {
         return [
             {
@@ -56,7 +47,6 @@ const Auth = (() => {
         ];
     }
 
-    /* Добавляет демо-пользователей, не трогая существующих */
     function seedDemo() {
         const users = Storage.getUsers();
         const existingEmails = new Set(users.map((u) => u.email));
@@ -73,9 +63,6 @@ const Auth = (() => {
         if (changed) Storage.setUsers(users);
     }
 
-    /* =========================================================
-       ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК
-       ========================================================= */
     function switchTab(mode) {
         const loginTab = document.getElementById("tabLogin");
         const registerTab = document.getElementById("tabRegister");
@@ -93,9 +80,6 @@ const Auth = (() => {
         hideMsg();
     }
 
-    /* =========================================================
-       ВЫБОР РОЛИ
-       ========================================================= */
     function pickRole(role) {
         if (!["student", "teacher", "admin"].includes(role)) return;
         selectedRole = role;
@@ -110,9 +94,6 @@ const Auth = (() => {
         renderRoleFields(role);
     }
 
-    /* =========================================================
-       ПОЛЯ ПОД РОЛЬ
-       ========================================================= */
     function renderRoleFields(role) {
         const label = document.getElementById("roleSectionLabel");
         const box = document.getElementById("roleFields");
@@ -216,9 +197,6 @@ const Auth = (() => {
         }
     }
 
-    /* =========================================================
-       ВАЛИДАЦИЯ
-       ========================================================= */
     function markField(id, valid) {
         const el = document.getElementById(id);
         if (!el) return valid;
@@ -241,9 +219,6 @@ const Auth = (() => {
         m.textContent = "";
     }
 
-    /* =========================================================
-       РЕГИСТРАЦИЯ
-       ========================================================= */
     function register() {
         hideMsg();
         let ok = true;
@@ -265,7 +240,6 @@ const Auth = (() => {
         const pass2 = document.getElementById("regPass2")?.value || "";
         ok &= markField("regPass2", pass === pass2 && pass2.length >= 6);
 
-        /* Ролевые поля */
         const roleData = {};
 
         if (selectedRole === "student") {
@@ -345,9 +319,6 @@ const Auth = (() => {
         setTimeout(() => loginAs(newUser), 600);
     }
 
-    /* =========================================================
-       ВХОД
-       ========================================================= */
     function login() {
         hideMsg();
         const email =
@@ -375,9 +346,6 @@ const Auth = (() => {
         loginAs(u);
     }
 
-    /* =========================================================
-       ДЕМО-АВТОЗАПОЛНЕНИЕ
-       ========================================================= */
     function fillDemo(role) {
         const emails = {
             student: "student@demo.ru",
@@ -396,13 +364,9 @@ const Auth = (() => {
         hideMsg();
     }
 
-    /* =========================================================
-       ВХОД В ПРИЛОЖЕНИЕ
-       ========================================================= */
     function loginAs(user) {
         if (!user) return;
 
-        /* Защита: заблокированный не входит */
         if (user.blocked) {
             showMsg("Аккаунт заблокирован. Обратитесь к администратору.");
             return;
@@ -429,9 +393,6 @@ const Auth = (() => {
         }
     }
 
-    /* =========================================================
-       ВЫХОД
-       ========================================================= */
     function logout() {
         if (currentUser && typeof Audit !== "undefined") {
             Audit.log("Выход из системы", "", currentUser.role, "info");
@@ -447,9 +408,6 @@ const Auth = (() => {
         location.reload();
     }
 
-    /* =========================================================
-       ВОССТАНОВЛЕНИЕ СЕССИИ
-       ========================================================= */
     function restoreSession() {
         const sess = Storage.getSession();
         if (!sess) return false;
@@ -471,16 +429,10 @@ const Auth = (() => {
         return true;
     }
 
-    /* =========================================================
-       ГЕТТЕР
-       ========================================================= */
     function getUser() {
         return currentUser;
     }
 
-    /* =========================================================
-       ПУБЛИЧНЫЙ API
-       ========================================================= */
     return {
         seedDemo,
         switchTab,
@@ -495,9 +447,6 @@ const Auth = (() => {
     };
 })();
 
-/* =========================================================
-   ОБРАБОТЧИКИ ВКЛАДОК
-   ========================================================= */
 document.addEventListener("DOMContentLoaded", () => {
     const loginTab = document.getElementById("tabLogin");
     const registerTab = document.getElementById("tabRegister");

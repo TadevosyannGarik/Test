@@ -1,8 +1,3 @@
-/* =========================================================
-   CONSULT — заявки на консультации
-   Обновлено: проверка прав, безопасный выбор работы,
-   Utils.escapeHtml
-   ========================================================= */
 const Consult = (() => {
     const KEY = "fp_consults";
 
@@ -36,9 +31,6 @@ const Consult = (() => {
         return typeof Auth !== "undefined" ? Auth.getUser() : null;
     }
 
-    /* =========================================================
-       БАЗОВЫЕ ОПЕРАЦИИ
-       ========================================================= */
     function getAll() {
         const list = Storage.get(KEY, []);
         return Array.isArray(list) ? list : [];
@@ -67,9 +59,6 @@ const Consult = (() => {
         return getAll().sort((a, b) => b.createdAt - a.createdAt);
     }
 
-    /* =========================================================
-       ПРАВА
-       ========================================================= */
     function canModify(consult, user) {
         if (!consult || !user) return false;
         if (user.role === "admin") return true;
@@ -80,9 +69,6 @@ const Consult = (() => {
         return false;
     }
 
-    /* =========================================================
-       СОЗДАНИЕ
-       ========================================================= */
     function create({ studentId, teacherId, datetime, topic, comment }) {
         if (!studentId || !teacherId || !datetime || !topic) {
             App.toast("Не все поля заполнены");
@@ -133,9 +119,6 @@ const Consult = (() => {
         return consult;
     }
 
-    /* =========================================================
-       ДЕЙСТВИЯ
-       ========================================================= */
     function doApprove(id, response) {
         const user = getUser();
         const list = getAll();
@@ -267,9 +250,6 @@ const Consult = (() => {
         }
     }
 
-    /* =========================================================
-       РЕНДЕР
-       ========================================================= */
     function renderPage(user) {
         if (!user)
             return '<div class="card"><div class="empty">Пользователь не найден</div></div>';
@@ -439,9 +419,6 @@ const Consult = (() => {
     `;
     }
 
-    /* =========================================================
-       МОДАЛКА СОЗДАНИЯ
-       ========================================================= */
     function openCreateModal() {
         const user = getUser();
         if (!user || user.role !== "student") return;
@@ -558,9 +535,6 @@ const Consult = (() => {
         App.navigate("consultations");
     }
 
-    /* =========================================================
-       МОДАЛКА ОТКЛОНЕНИЯ
-       ========================================================= */
     function openRejectModal(id) {
         const html = `
       <div class="modal-back" onclick="if(event.target===this) App.closeModal()">
@@ -599,9 +573,6 @@ const Consult = (() => {
         App.navigate("consultations");
     }
 
-    /* =========================================================
-       ПУБЛИЧНЫЙ API
-       ========================================================= */
     return {
         create,
         approve: doApprove,

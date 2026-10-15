@@ -1,13 +1,11 @@
-/* =========================================================
-   CHARTS
-   ========================================================= */
-
 .chart-box {
     position: relative;
     background: var(--bg-elev);
     border-radius: var(--r);
-    padding: 6px;
+    padding: 4px;
+    width: 100%;
 }
+
 .chart-box.h-180 {
     height: 180px;
 }
@@ -21,9 +19,15 @@
     height: 300px;
 }
 
+.grid > .card > .chart-box {
+    flex: 1;
+    min-height: 200px;
+}
+
 .chart-wrap {
     position: relative;
     height: 260px;
+    width: 100%;
 }
 .chart-wrap.sm {
     height: 200px;
@@ -34,20 +38,43 @@
 
 .chart-legend {
     display: flex;
-    gap: 12px;
+    gap: 16px;
     flex-wrap: wrap;
-    margin-top: 10px;
+    margin-top: 12px;
     font-size: 12px;
     color: var(--txt-muted);
 }
 .chart-legend .lg-item {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
 }
 .chart-legend .lg-dot {
     width: 10px;
     height: 10px;
     border-radius: 50%;
     display: inline-block;
+    flex-shrink: 0;
+}
+
+.chart-box canvas,
+.chart-wrap canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+}
+
+@media (max-width: 700px) {
+    .chart-box.h-260 {
+        height: 220px;
+    }
+    .chart-box.h-300 {
+        height: 240px;
+    }
+    .chart-wrap {
+        height: 220px;
+    }
+    .chart-wrap.lg {
+        height: 260px;
+    }
 }

@@ -1,0 +1,204 @@
+:root {
+    --bg: #f8f8f7;
+}
+
+body {
+    position: relative;
+    overflow-x: hidden;
+    background: var(--bg);
+}
+
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+        radial-gradient(
+            700px circle at 8% 8%,
+            rgba(99, 102, 241, 0.28),
+            transparent 55%
+        ),
+        radial-gradient(
+            800px circle at 92% 88%,
+            rgba(139, 92, 246, 0.24),
+            transparent 55%
+        ),
+        radial-gradient(
+            600px circle at 88% 12%,
+            rgba(59, 130, 246, 0.2),
+            transparent 50%
+        ),
+        radial-gradient(
+            500px circle at 12% 92%,
+            rgba(168, 85, 247, 0.18),
+            transparent 50%
+        );
+    filter: blur(80px);
+}
+
+.app,
+.auth-screen {
+    position: relative;
+    z-index: 1;
+}
+
+.app-header {
+    background: rgba(255, 255, 255, 0.35) !important;
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.25) !important;
+}
+
+.app-nav {
+    background: rgba(255, 255, 255, 0.35) !important;
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.25) !important;
+}
+
+.card {
+    background: rgba(255, 255, 255, 0.45) !important;
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    border: 1px solid rgba(255, 255, 255, 0.4) !important;
+    box-shadow: none !important;
+    transition:
+        border-color var(--t-base),
+        transform var(--t-base),
+        background var(--t-base);
+}
+
+.card:hover {
+    background: rgba(255, 255, 255, 0.6) !important;
+    border-color: rgba(255, 255, 255, 0.55) !important;
+    box-shadow: none !important;
+}
+
+.kpi,
+.metric,
+.work-hero,
+.student-hero,
+.profile-hero,
+.request-card,
+.consult-card,
+.mini-project,
+.user-row,
+.work-list-row,
+.student-row,
+.version-row,
+.task-card,
+.stage-item,
+.rule-box,
+.pipeline-step,
+.algo-card,
+.mf-var-card,
+.fuzzy-out,
+.docx-score {
+    background: rgba(255, 255, 255, 0.4) !important;
+    backdrop-filter: blur(12px) saturate(140%);
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
+    border: 1px solid rgba(255, 255, 255, 0.35) !important;
+    box-shadow: none !important;
+}
+
+.kpi:hover,
+.metric:hover,
+.mini-project:hover,
+.student-row:hover,
+.request-card:hover,
+.consult-card:hover,
+.user-row:hover,
+.work-list-row:hover,
+.task-card:hover,
+.version-row:hover,
+.rule-box:hover,
+.stage-item:hover {
+    background: rgba(255, 255, 255, 0.55) !important;
+    transform: translateY(-1px);
+    box-shadow: none !important;
+}
+
+.modal-back {
+    background: rgba(17, 17, 17, 0.2) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+}
+
+.modal {
+    background: rgba(255, 255, 255, 0.75) !important;
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.5) !important;
+    box-shadow: none !important;
+}
+
+.notif-panel {
+    background: rgba(255, 255, 255, 0.75) !important;
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.5) !important;
+    box-shadow: none !important;
+}
+
+.toast {
+    background: rgba(17, 17, 17, 0.8) !important;
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    box-shadow: none !important;
+}
+
+.auth-card {
+    background: rgba(255, 255, 255, 0.5) !important;
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.5) !important;
+    box-shadow: none !important;
+}
+
+.btn-primary {
+    box-shadow: none !important;
+}
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: none !important;
+}
+
+.app-avatar,
+.demo-launch-btn,
+.quick-action,
+.role-picker button,
+.demo-btn,
+.calendar-day.today {
+    box-shadow: none !important;
+}
+
+@media (max-width: 700px) {
+    body::before {
+        filter: blur(60px);
+        opacity: 0.7;
+    }
+
+    .card,
+    .metric,
+    .mini-project,
+    .student-row,
+    .request-card,
+    .consult-card,
+    .user-row,
+    .work-list-row {
+        background: rgba(255, 255, 255, 0.7) !important;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .card:hover,
+    .mini-project:hover,
+    .metric:hover,
+    .btn-primary:hover {
+        transform: none;
+    }
+}

@@ -1,10 +1,4 @@
-/* =========================================================
-   RANKING — рейтинги студентов и работ
-   Обновлено: Utils.* вместо дублирующих функций,
-   синхронизация порогов с Fuzzy.THRESHOLDS
-   ========================================================= */
 const Ranking = (() => {
-    /* Алиасы на Utils */
     const escapeHtml = Utils.escapeHtml;
     const calcProgress = Utils.calcProgress;
     const getUser = () => Auth.getUser();
@@ -15,9 +9,6 @@ const Ranking = (() => {
         );
     }
 
-    /* =========================================================
-       ДАННЫЕ
-       ========================================================= */
     function enrichAll(works) {
         const list = Array.isArray(works) ? works : Storage.getWorks();
         return list
@@ -37,9 +28,6 @@ const Ranking = (() => {
             .filter(Boolean);
     }
 
-    /* =========================================================
-       РАБОТЫ ДЛЯ ТЕКУЩЕГО ПОЛЬЗОВАТЕЛЯ
-       ========================================================= */
     function getRelevantWorks() {
         const user = getUser();
         if (!user) return [];
@@ -49,9 +37,6 @@ const Ranking = (() => {
         return Storage.getWorks();
     }
 
-    /* =========================================================
-       TOP / BOTTOM
-       ========================================================= */
     function topByRating(enriched, limit = 5) {
         return [...enriched]
             .sort((a, b) => b.res.rating.value - a.res.rating.value)
@@ -76,9 +61,6 @@ const Ranking = (() => {
             .slice(0, limit);
     }
 
-    /* =========================================================
-       РЕНДЕР
-       ========================================================= */
     function renderRankingSection() {
         const user = getUser();
         const works = getRelevantWorks();
@@ -113,7 +95,6 @@ const Ranking = (() => {
         const top = topByRating(enriched, 5);
         const topIds = new Set(top.map((e) => e.w.id));
 
-        /* Порог «требуют внимания» синхронизирован с Fuzzy.THRESHOLDS.high */
         const threshold = Fuzzy.THRESHOLDS?.high ?? 65;
 
         const bottom = bottomByRating(enriched, enriched.length)
@@ -121,7 +102,6 @@ const Ranking = (() => {
             .filter((e) => e.res.rating.value < threshold)
             .slice(0, 5);
 
-        /* Заголовки зависят от роли */
         const topTitle =
             user?.role === "student"
                 ? "Мои показатели"
@@ -212,9 +192,6 @@ const Ranking = (() => {
     `;
     }
 
-    /* =========================================================
-       НАВИГАЦИЯ ПО РОЛИ
-       ========================================================= */
     function openWork(workId) {
         const user = getUser();
         if (!user) return;
@@ -234,9 +211,6 @@ const Ranking = (() => {
         }
     }
 
-    /* =========================================================
-       ПУБЛИЧНЫЙ API
-       ========================================================= */
     return {
         enrichAll,
         topByRating: (limit = 5) =>

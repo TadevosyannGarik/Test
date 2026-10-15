@@ -1,26 +1,23 @@
-/* =========================================================
-   STUDENT
-   ========================================================= */
-
-/* ---------- Карточка работы ---------- */
 .work-hero {
     background: var(--bg-elev);
     border: 1px solid var(--line);
     border-radius: var(--r-lg);
-    padding: 22px;
+    padding: 26px;
     margin-bottom: 16px;
-    transition: border-color var(--t-fast);
+    transition: all var(--t-base);
 }
 .work-hero:hover {
     border-color: var(--line-strong);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
 }
 
 .work-hero-title {
-    font-size: 17px;
+    font-size: 18px;
     font-weight: 600;
-    line-height: 1.4;
-    margin-bottom: 8px;
-    letter-spacing: -0.01em;
+    line-height: 1.35;
+    margin-bottom: 10px;
+    letter-spacing: -0.015em;
     color: var(--txt);
 }
 .work-hero-meta {
@@ -29,82 +26,58 @@
     flex-wrap: wrap;
     font-size: 12px;
     color: var(--txt-muted);
-    margin-bottom: 14px;
+    margin-bottom: 16px;
 }
 .work-hero-meta b {
     color: var(--txt);
     font-weight: 500;
 }
 
-/* ---------- Нет работы ---------- */
-.no-work {
-    padding: 40px 20px;
-    text-align: center;
-}
-.no-work-ico {
-    font-size: 44px;
-    margin-bottom: 14px;
-    opacity: 0.5;
-}
-.no-work h3 {
-    font-size: 16px;
-    font-weight: 600;
-    margin-bottom: 6px;
-}
-.no-work p {
-    color: var(--txt-muted);
-    font-size: 13px;
-    margin-bottom: 18px;
-    max-width: 400px;
-    margin-left: auto;
-    margin-right: auto;
-    line-height: 1.55;
-}
-
-/* ---------- Выбор типа работы ---------- */
 .work-type-picker {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-    margin-bottom: 14px;
+    gap: 10px;
+    margin-bottom: 16px;
 }
 .work-type-picker button {
-    padding: 12px;
+    padding: 16px;
     border: 1px solid var(--line);
     border-radius: var(--r);
     text-align: left;
     transition: all var(--t-fast);
     background: var(--bg-elev);
     color: var(--txt);
+    cursor: pointer;
 }
 .work-type-picker button:hover {
     border-color: var(--line-strong);
     background: var(--bg-soft);
+    transform: translateY(-1px);
 }
 .work-type-picker button.selected {
     border-color: var(--accent);
     background: var(--accent-soft);
+    box-shadow: 0 0 0 3px var(--accent-glow);
 }
 .work-type-picker .wt-title {
     font-weight: 500;
-    font-size: 13px;
-    margin-bottom: 2px;
+    font-size: 14px;
+    margin-bottom: 3px;
 }
 .work-type-picker .wt-desc {
     font-size: 11px;
     color: var(--txt-muted);
 }
 
-/* ---------- Выбор преподавателя ---------- */
 .teacher-pick {
     display: grid;
     gap: 8px;
-    max-height: 280px;
+    max-height: 320px;
     overflow-y: auto;
     padding-right: 4px;
 }
 .teacher-item {
-    padding: 12px;
+    padding: 14px 16px;
     border: 1px solid var(--line);
     border-radius: var(--r);
     cursor: pointer;
@@ -118,32 +91,33 @@
 .teacher-item.selected {
     border-color: var(--accent);
     background: var(--accent-soft);
+    box-shadow: 0 0 0 3px var(--accent-glow);
 }
 .teacher-name {
     font-weight: 500;
-    font-size: 13px;
+    font-size: 14px;
     color: var(--txt);
 }
 .teacher-meta {
     font-size: 12px;
     color: var(--txt-muted);
-    margin-top: 3px;
+    margin-top: 4px;
 }
 .teacher-load {
     display: inline-block;
     font-size: 11px;
-    padding: 2px 6px;
-    border-radius: 4px;
+    padding: 2px 8px;
+    border-radius: 100px;
     background: var(--bg-soft);
     color: var(--txt-muted);
-    margin-left: 6px;
+    margin-left: 8px;
+    font-weight: 500;
 }
 .teacher-load.full {
     background: var(--bad-soft);
     color: var(--bad);
 }
 
-/* ---------- Нечёткая панель ---------- */
 .fuzzy-panel {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
@@ -156,35 +130,41 @@
     }
 }
 .fuzzy-out {
-    padding: 16px;
+    padding: 20px 16px;
     border: 1px solid var(--line);
     border-radius: var(--r);
     text-align: center;
     background: var(--bg-elev);
+    transition: border-color var(--t-fast);
+}
+.fuzzy-out:hover {
+    border-color: var(--line-strong);
 }
 .fuzzy-out-lbl {
     font-size: 12px;
     color: var(--txt-muted);
-    margin-bottom: 6px;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 500;
 }
 .fuzzy-out-val {
-    font-size: 26px;
+    font-size: 30px;
     font-weight: 600;
     line-height: 1.1;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.025em;
     font-variant-numeric: tabular-nums;
 }
 .fuzzy-out-term {
     font-size: 12px;
-    margin-top: 4px;
+    margin-top: 6px;
     color: var(--txt-muted);
 }
 
-/* ---------- Рекомендация ---------- */
 .recommendation {
     background: var(--accent-soft);
     border-left: 3px solid var(--accent);
-    padding: 14px 16px;
+    padding: 16px 18px;
     border-radius: 0 var(--r) var(--r) 0;
     font-size: 13px;
     line-height: 1.6;
@@ -203,17 +183,16 @@
     border-color: var(--ok);
 }
 
-/* ---------- Этапы ---------- */
 .stage-item {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 12px;
+    gap: 14px;
+    padding: 14px 16px;
     border: 1px solid var(--line);
     border-radius: var(--r);
     margin-bottom: 8px;
     background: var(--bg-elev);
-    transition: border-color var(--t-fast);
+    transition: all var(--t-fast);
 }
 .stage-item:hover {
     border-color: var(--line-strong);
@@ -227,10 +206,10 @@
 }
 
 .stage-check {
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
     border: 1.5px solid var(--line-strong);
-    border-radius: 4px;
+    border-radius: 6px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -241,6 +220,7 @@
 }
 .stage-check:hover {
     border-color: var(--accent);
+    transform: scale(1.08);
 }
 .stage-check.on {
     background: var(--accent);
@@ -249,7 +229,7 @@
 }
 .stage-check.on::before {
     content: "✓";
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 700;
 }
 .stage-body {
@@ -258,24 +238,23 @@
 }
 .stage-name {
     font-weight: 500;
-    font-size: 13px;
+    font-size: 14px;
     color: var(--txt);
 }
 .stage-meta {
     font-size: 12px;
     color: var(--txt-muted);
-    margin-top: 2px;
+    margin-top: 3px;
 }
 .stage-actions {
     display: flex;
     gap: 4px;
 }
 
-/* ---------- Канбан ---------- */
 .kanban {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
+    gap: 14px;
 }
 @media (max-width: 900px) {
     .kanban {
@@ -285,43 +264,46 @@
 .kanban-col {
     background: var(--bg-soft);
     border-radius: var(--r);
-    padding: 12px;
-    min-height: 220px;
+    padding: 14px;
+    min-height: 240px;
     transition: background var(--t-fast);
 }
 .kanban-col.drag-over {
     background: var(--accent-soft);
+    box-shadow: 0 0 0 2px var(--accent);
 }
 .kanban-col h5 {
     font-size: 12px;
     color: var(--txt-muted);
-    margin-bottom: 10px;
+    margin-bottom: 12px;
     display: flex;
     justify-content: space-between;
     font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
 }
 .task-card {
     background: var(--bg-elev);
     border: 1px solid var(--line);
     border-radius: var(--r-sm);
-    padding: 10px 12px;
+    padding: 12px 14px;
     margin-bottom: 8px;
     font-size: 13px;
     cursor: grab;
-    transition:
-        border-color var(--t-fast),
-        box-shadow var(--t-fast);
+    transition: all var(--t-fast);
 }
 .task-card:hover {
     border-color: var(--line-strong);
-    box-shadow: var(--shadow-xs);
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-1px);
 }
 .task-card:active {
     cursor: grabbing;
+    transform: rotate(1deg);
 }
 .task-card .task-title {
     font-weight: 500;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
     word-break: break-word;
     color: var(--txt);
 }
@@ -334,25 +316,29 @@
     gap: 6px;
 }
 
-/* ---------- Версии ---------- */
 .version-row {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 12px 14px;
+    gap: 14px;
+    padding: 14px 16px;
     border: 1px solid var(--line);
     border-radius: var(--r);
-    margin-bottom: 6px;
+    margin-bottom: 8px;
     background: var(--bg-elev);
+    transition: border-color var(--t-fast);
+}
+.version-row:hover {
+    border-color: var(--line-strong);
 }
 .version-tag {
     background: var(--accent-soft);
     color: var(--accent);
     font-weight: 600;
     font-size: 11px;
-    padding: 3px 8px;
-    border-radius: 4px;
+    padding: 4px 10px;
+    border-radius: 100px;
     flex-shrink: 0;
+    font-family: var(--font-mono);
 }
 .version-info {
     flex: 1;
@@ -365,12 +351,11 @@
 .version-date {
     font-size: 12px;
     color: var(--txt-muted);
-    margin-top: 2px;
+    margin-top: 3px;
 }
 
-/* ---------- Комментарии ---------- */
 .comment {
-    padding: 12px 14px;
+    padding: 14px 16px;
     border-left: 3px solid var(--accent);
     background: var(--bg-soft);
     border-radius: 0 var(--r) var(--r) 0;
@@ -381,7 +366,7 @@
     justify-content: space-between;
     font-size: 12px;
     color: var(--txt-muted);
-    margin-bottom: 5px;
+    margin-bottom: 6px;
 }
 .comment-author {
     font-weight: 500;

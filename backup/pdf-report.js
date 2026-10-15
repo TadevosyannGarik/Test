@@ -149,7 +149,7 @@ const PdfReport = (() => {
       <!DOCTYPE html>
       <html lang="ru"><head>
       <meta charset="UTF-8">
-      <title>Отчёт по работам — FuzzyProject</title>
+      <title>Отчёт по работам — Meridian</title>
       <style>
         body { font-family: 'Times New Roman', serif; padding: 40px; color: #1a1f29; line-height: 1.55; }
         h1 { font-size: 22px; margin-bottom: 4px; }
@@ -175,7 +175,7 @@ const PdfReport = (() => {
       </head><body>
 
       <h1>Отчёт по работам кафедры</h1>
-      <div class="sub">Сформирован ${new Date().toLocaleString("ru-RU")} · FuzzyProject</div>
+      <div class="sub">Сформирован ${new Date().toLocaleString("ru-RU")} · Meridian</div>
 
       <div class="kpi-row">
         <div class="kpi"><div class="kpi-val">${enriched.length}</div><div class="kpi-lbl">Работ</div></div>
@@ -244,7 +244,7 @@ const PdfReport = (() => {
       </p>
 
       <footer>
-        Отчёт сгенерирован автоматически системой FuzzyProject
+        Отчёт сгенерирован автоматически системой Meridian
         на основе нечёткого логического вывода Мамдани.
       </footer>
 
@@ -375,7 +375,7 @@ const PdfReport = (() => {
       <p style="font-size:13px;">${Fuzzy.recommendation(inputs, res)}</p>
 
       <footer>
-        Отчёт сгенерирован автоматически системой FuzzyProject
+        Отчёт сгенерирован автоматически системой Meridian
         на основе нечёткого логического вывода Мамдани.
       </footer>
 

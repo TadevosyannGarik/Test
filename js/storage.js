@@ -1,8 +1,3 @@
-/* =========================================================
-   STORAGE — обёртка над localStorage + утилиты
-   Обновлено: getSizeKB в байтах, каскадное удаление,
-   комментарий про hashPass
-   ========================================================= */
 const Storage = (() => {
     const KEYS = {
         users: "fp_users",
@@ -21,9 +16,6 @@ const Storage = (() => {
         mfOverrides: "fp_mf_overrides",
     };
 
-    /* =========================================================
-       БАЗОВЫЕ ОПЕРАЦИИ
-       ========================================================= */
     function get(key, def = null) {
         try {
             const raw = localStorage.getItem(key);
@@ -53,18 +45,12 @@ const Storage = (() => {
         }
     }
 
-    /* =========================================================
-       СРАВНЕНИЕ ID
-       ========================================================= */
     function sameId(a, b) {
         if (a === null || a === undefined) return false;
         if (b === null || b === undefined) return false;
         return String(a) === String(b);
     }
 
-    /* =========================================================
-       ПОЛЬЗОВАТЕЛИ
-       ========================================================= */
     function getUsers() {
         const u = get(KEYS.users, []);
         return Array.isArray(u) ? u : [];
@@ -90,9 +76,6 @@ const Storage = (() => {
         setUsers(users);
     }
 
-    /* =========================================================
-       СЕССИЯ
-       ========================================================= */
     function getSession() {
         return get(KEYS.session, null);
     }
@@ -103,9 +86,6 @@ const Storage = (() => {
         remove(KEYS.session);
     }
 
-    /* =========================================================
-       РАБОТЫ
-       ========================================================= */
     function getWorks() {
         const w = get(KEYS.works, []);
         return Array.isArray(w) ? w : [];
@@ -131,41 +111,25 @@ const Storage = (() => {
         setWorks(works);
     }
 
-    /**
-     * Каскадное удаление работы:
-     * - stages (этапы)
-     * - tasks (задачи)
-     * - versions (версии)
-     * - comments (комментарии, включая task-review и version)
-     * - consults (консультации по этой работе)
-     * - notifications (уведомления, связанные с этой работой)
-     */
     function deleteWork(id) {
         if (id === null || id === undefined) return;
 
-        /* Работы */
         setWorks(getWorks().filter((w) => !sameId(w.id, id)));
 
-        /* Этапы */
         setStages(getStages().filter((s) => !sameId(s.workId, id)));
 
-        /* Задачи */
         setTasks(getTasks().filter((t) => !sameId(t.workId, id)));
 
-        /* Версии */
         setVersions(getVersions().filter((v) => !sameId(v.workId, id)));
 
-        /* Комментарии */
         setComments(getComments().filter((c) => !sameId(c.workId, id)));
 
-        /* Консультации по этой работе (если есть workId в consult) */
         const consults = get(KEYS.consults, []);
         if (Array.isArray(consults)) {
             const filtered = consults.filter((c) => !sameId(c.workId, id));
             set(KEYS.consults, filtered);
         }
 
-        /* Уведомления, связанные с этой работой */
         const notifs = get(KEYS.notif, []);
         if (Array.isArray(notifs)) {
             const filtered = notifs.filter((n) => {
@@ -176,9 +140,6 @@ const Storage = (() => {
         }
     }
 
-    /* =========================================================
-       ЭТАПЫ
-       ========================================================= */
     function getStages() {
         const s = get(KEYS.stages, []);
         return Array.isArray(s) ? s : [];
@@ -203,9 +164,6 @@ const Storage = (() => {
         setStages(getStages().filter((s) => !sameId(s.id, id)));
     }
 
-    /* =========================================================
-       ЗАДАЧИ
-       ========================================================= */
     function getTasks() {
         const t = get(KEYS.tasks, []);
         return Array.isArray(t) ? t : [];
@@ -228,9 +186,6 @@ const Storage = (() => {
         setTasks(getTasks().filter((t) => !sameId(t.id, id)));
     }
 
-    /* =========================================================
-       ВЕРСИИ
-       ========================================================= */
     function getVersions() {
         const v = get(KEYS.versions, []);
         return Array.isArray(v) ? v : [];
@@ -253,9 +208,6 @@ const Storage = (() => {
         setVersions(getVersions().filter((v) => !sameId(v.id, id)));
     }
 
-    /* =========================================================
-       КОММЕНТАРИИ
-       ========================================================= */
     function getComments() {
         const c = get(KEYS.comments, []);
         return Array.isArray(c) ? c : [];
@@ -283,9 +235,6 @@ const Storage = (() => {
         setComments(getComments().filter((c) => !sameId(c.id, id)));
     }
 
-    /* =========================================================
-       ПРАВИЛА
-       ========================================================= */
     function getRules() {
         const r = get(KEYS.rules, null);
         return Array.isArray(r) ? r : null;
@@ -294,34 +243,23 @@ const Storage = (() => {
         set(KEYS.rules, r);
     }
 
-    /* =========================================================
-       ОБЩИЕ МЕТОДЫ
-       ========================================================= */
     function clearAll() {
         Object.keys(localStorage).forEach((key) => {
             if (key.startsWith("fp_")) localStorage.removeItem(key);
         });
     }
 
-    /**
-     * Размер данных в КБ (по реальному размеру в байтах,
-     * а не по количеству символов)
-     */
     function getSizeKB() {
         let bytes = 0;
         Object.keys(localStorage).forEach((key) => {
             if (key.startsWith("fp_")) {
                 const value = localStorage[key] || "";
-                /* UTF-16 = 2 байта на символ */
                 bytes += value.length * 2;
             }
         });
         return Math.round(bytes / 1024);
     }
 
-    /**
-     * Размер данных в байтах (точно)
-     */
     function getSizeBytes() {
         let bytes = 0;
         Object.keys(localStorage).forEach((key) => {
@@ -392,12 +330,6 @@ const Storage = (() => {
     };
 })();
 
-/* =========================================================
-   ХЕШИРОВАНИЕ ПАРОЛЯ
-   ⚠️ ВНИМАНИЕ: это НЕ криптостойкое хеширование.
-   Используется только для демо-проекта.
-   Для продакшена — bcrypt/argon2/PBKDF2 на сервере.
-   ========================================================= */
 function hashPass(p) {
     if (!p) return "h0";
     let h = 0;
@@ -408,9 +340,6 @@ function hashPass(p) {
     return "h" + Math.abs(h).toString(36);
 }
 
-/* =========================================================
-   УТИЛИТЫ
-   ========================================================= */
 let _uidCounter = 0;
 function uid() {
     _uidCounter = (_uidCounter + 1) % 100000;

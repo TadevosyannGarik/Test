@@ -1,19 +1,8 @@
-/* =========================================================
-   DOCX CHECK — проверка .docx на соответствие ГОСТу
-   Обновлено: Utils.escapeHtml, честные пометки «эвристика»,
-   безопасный выбор активной работы
-   ========================================================= */
 const DocxCheck = (() => {
-    /* Максимальный размер файла: 20 МБ */
     const MAX_SIZE = 20 * 1024 * 1024;
 
     const escapeHtml = Utils.escapeHtml;
 
-    /* Проверки ГОСТа.
-       type:
-         "text"      — проверка по тексту (наиболее надёжная)
-         "heuristic" — эвристика (приблизительная)
-         "info"      — не проверяется автоматически */
     const CHECKS = [
         {
             id: "font",
@@ -73,9 +62,6 @@ const DocxCheck = (() => {
         },
     ];
 
-    /* =========================================================
-       РЕНДЕР СТРАНИЦЫ
-       ========================================================= */
     function render(workId) {
         const work = workId ? Storage.getWorkById(workId) : null;
         const saved = work?.docxCheck || null;
@@ -122,9 +108,6 @@ const DocxCheck = (() => {
     `;
     }
 
-    /* =========================================================
-       DRAG & DROP
-       ========================================================= */
     function initDrop(workId) {
         const drop = document.getElementById("docxDrop");
         if (!drop) return;
@@ -163,10 +146,6 @@ const DocxCheck = (() => {
         }
     }
 
-    /**
-     * Возвращает id первой АКТИВНОЙ работы студента.
-     * Для преподавателя/админа — первая работа из списка.
-     */
     function getCurrentWorkId() {
         const user = typeof Auth !== "undefined" ? Auth.getUser() : null;
         if (!user) return null;
@@ -181,9 +160,6 @@ const DocxCheck = (() => {
         return Storage.getWorks()[0]?.id || null;
     }
 
-    /* =========================================================
-       ОБРАБОТКА ФАЙЛА
-       ========================================================= */
     function processFile(file, workId) {
         if (!file.name.toLowerCase().endsWith(".docx")) {
             App.toast("Нужен файл .docx");
@@ -227,9 +203,6 @@ const DocxCheck = (() => {
         reader.readAsArrayBuffer(file);
     }
 
-    /* =========================================================
-       АНАЛИЗ ДОКУМЕНТА
-       ========================================================= */
     function analyzeDoc(html, file, workId) {
         const text = html
             .replace(/<[^>]+>/g, " ")
@@ -239,43 +212,32 @@ const DocxCheck = (() => {
 
         const checks = {};
 
-        /* --- 1. Шрифт (эвристика) --- */
         checks.font =
             /times new roman|times new|times/i.test(html) ||
             /times/i.test(text.slice(0, 10000));
 
-        /* --- 2. Размер шрифта — НЕ проверяется (info) --- */
         checks.size = null;
 
-        /* --- 3. Интервал (эвристика) --- */
         const charCount = text.length;
         const paraCount = (html.match(/<p/g) || []).length;
         const avgParaLen = paraCount > 0 ? charCount / paraCount : 0;
         checks.interval = paraCount > 0 && avgParaLen < 800;
 
-        /* --- 4. Абзацный отступ (эвристика) --- */
         checks.indent =
             /text-indent|1\.25|0\.5\s*inch|1\.25cm/i.test(html) ||
             paraCount > 10;
 
-        /* --- 5. Поля — НЕ проверяется (info) --- */
         checks.margins = null;
 
-        /* --- 6. Нумерация страниц (эвристика) --- */
         checks.pages =
             /страниц|page\s*\d+|нумерац/i.test(lower) || charCount > 3000;
 
-        /* --- 7. Заголовки (text — надёжно) --- */
         const hCount = (html.match(/<h[1-6]/g) || []).length;
         checks.headings = hCount >= 2;
 
-        /* --- 8. Список литературы (text — надёжно) --- */
         checks.literature =
             /литератур|библиограф|references|список использован/i.test(lower);
 
-        /* =========================================================
-           Подсчёт итога (null-проверки не учитываются)
-           ========================================================= */
         let totalW = 0;
         let gotW = 0;
 
@@ -299,7 +261,6 @@ const DocxCheck = (() => {
             preview: text.slice(0, 500).trim() + (text.length > 500 ? "…" : ""),
         };
 
-        /* Сохраняем в работу */
         if (workId) {
             const work = Storage.getWorkById(workId);
             if (work) {
@@ -327,9 +288,6 @@ const DocxCheck = (() => {
         App.toast(`Проверка завершена: ${pct}%`);
     }
 
-    /* =========================================================
-       РЕНДЕР РЕЗУЛЬТАТА
-       ========================================================= */
     function renderResult(r) {
         const cssColor =
             r.pct >= 80
@@ -338,7 +296,6 @@ const DocxCheck = (() => {
                   ? "var(--warn)"
                   : "var(--bad)";
 
-        /* Считаем сколько "info" — чтобы показать в подсказке */
         const infoCount = CHECKS.filter((c) => c.type === "info").length;
         const heuristicCount = CHECKS.filter(
             (c) => c.type === "heuristic",
@@ -409,7 +366,6 @@ const DocxCheck = (() => {
                     : "не соответствует";
         }
 
-        /* Пометка типа */
         const typeBadge =
             check.type === "info"
                 ? `<span class="tag" style="font-size:10px;color:var(--txt-muted);margin-left:6px;">инфо</span>`
@@ -426,9 +382,6 @@ const DocxCheck = (() => {
     `;
     }
 
-    /* =========================================================
-       ПУБЛИЧНЫЙ API
-       ========================================================= */
     return {
         render,
         initDrop,

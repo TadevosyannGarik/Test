@@ -1,22 +1,13 @@
-/* =========================================================
-   APP — шапка, навигация, карточки, модалки
-   Обновлено: расширенный контейнер, адаптивные отступы,
-   более широкая сетка для больших экранов
-   ========================================================= */
-
 .app {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
 }
 
-/* =========================================================
-   ШАПКА
-   ========================================================= */
 .app-header {
     background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     border-bottom: 1px solid var(--line);
     padding: 0 40px;
     height: 64px;
@@ -38,11 +29,11 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
+    width: 30px;
+    height: 30px;
     background: var(--txt);
     color: var(--bg);
-    border-radius: var(--r-sm);
+    border-radius: var(--r);
     font-weight: 600;
     font-size: 12px;
     letter-spacing: 0.02em;
@@ -52,7 +43,7 @@
     font-size: var(--fs-md);
     font-weight: 500;
     color: var(--txt);
-    letter-spacing: -0.01em;
+    letter-spacing: -0.015em;
 }
 
 .app-user {
@@ -77,8 +68,8 @@
 }
 
 .app-avatar {
-    width: 32px;
-    height: 32px;
+    width: 34px;
+    height: 34px;
     border-radius: 50%;
     background: var(--bg-soft);
     color: var(--txt);
@@ -95,20 +86,18 @@
     background: var(--txt);
     color: var(--bg);
     border-color: var(--txt);
+    transform: scale(1.05);
 }
 
-/* =========================================================
-   НАВИГАЦИЯ
-   ========================================================= */
 .app-nav {
     background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     border-bottom: 1px solid var(--line);
     padding: 0 40px;
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 2px;
     overflow-x: auto;
     position: sticky;
     top: 64px;
@@ -126,7 +115,7 @@
     padding: 18px 14px;
     font-size: var(--fs-sm);
     color: var(--txt-muted);
-    border-bottom: 1px solid transparent;
+    border-bottom: 2px solid transparent;
     margin-bottom: -1px;
     white-space: nowrap;
     transition:
@@ -135,6 +124,7 @@
     background: transparent;
     font-weight: 400;
     letter-spacing: -0.005em;
+    position: relative;
 }
 .app-nav button:hover {
     color: var(--txt);
@@ -142,23 +132,23 @@
 .app-nav button.active {
     color: var(--txt);
     border-bottom-color: var(--txt);
+    font-weight: 500;
 }
 
-/* Кнопка демонстрации */
 .demo-launch-btn {
     display: inline-flex;
     align-items: center;
-    gap: 7px;
-    padding: 7px 14px;
+    gap: 8px;
+    padding: 8px 16px;
     margin-left: auto;
     border-radius: 100px;
     background: var(--txt);
     color: var(--bg);
     font-size: var(--fs-xs);
     font-weight: 500;
-    transition: background var(--t-fast);
+    transition: all var(--t-fast);
     white-space: nowrap;
-    height: 30px;
+    height: 32px;
     margin-top: auto;
     margin-bottom: auto;
     border: none;
@@ -166,6 +156,8 @@
 }
 .demo-launch-btn:hover {
     background: var(--accent-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 .demo-launch-btn .pulse-dot {
     width: 6px;
@@ -178,15 +170,14 @@
     0%,
     100% {
         opacity: 1;
+        transform: scale(1);
     }
     50% {
-        opacity: 0.3;
+        opacity: 0.5;
+        transform: scale(1.2);
     }
 }
 
-/* =========================================================
-   КОНТЕНТ — РАСШИРЕННЫЙ
-   ========================================================= */
 .app-main {
     flex: 1;
     padding: 40px 40px;
@@ -195,7 +186,6 @@
     margin: 0 auto;
 }
 
-/* На очень широких экранах — ещё больше воздуха */
 @media (min-width: 1700px) {
     .app-main {
         padding: 48px 64px;
@@ -203,7 +193,6 @@
     }
 }
 
-/* На средних экранах — умеренно */
 @media (max-width: 1400px) {
     .app-main {
         padding: 36px 32px;
@@ -218,21 +207,17 @@
     animation: fadeUp 0.35s ease;
 }
 
-/* =========================================================
-   КАРТОЧКИ
-   ========================================================= */
 .card {
     background: var(--bg-elev);
     border: 1px solid var(--line);
     border-radius: var(--r-lg);
     padding: 28px;
-    transition: border-color var(--t-base);
+    transition:
+        border-color var(--t-base),
+        box-shadow var(--t-base);
 }
 .card:hover {
     border-color: var(--line-strong);
-}
-.card + .card {
-    margin-top: 20px;
 }
 
 .card-title {
@@ -255,13 +240,12 @@
     margin-bottom: 0;
 }
 
-/* =========================================================
-   СЕТКИ — обновлены
-   ========================================================= */
 .grid {
     display: grid;
     gap: 20px;
+    align-items: stretch;
 }
+
 .grid-2 {
     grid-template-columns: 1fr 1fr;
 }
@@ -271,6 +255,7 @@
 .grid-4 {
     grid-template-columns: repeat(4, 1fr);
 }
+
 @media (max-width: 900px) {
     .grid-2,
     .grid-3,
@@ -284,12 +269,13 @@
     }
 }
 
-/* =========================================================
-   KPI — крупнее
-   ========================================================= */
 .kpi {
     text-align: left;
-    padding: 8px 4px;
+    padding: 24px 22px;
+    min-height: 140px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 .kpi-num {
     font-size: var(--fs-3xl);
@@ -302,13 +288,10 @@
 .kpi-lbl {
     font-size: var(--fs-sm);
     color: var(--txt-muted);
-    margin-top: 8px;
+    margin-top: 12px;
     letter-spacing: 0.02em;
 }
 
-/* =========================================================
-   ТАБЛИЦЫ
-   ========================================================= */
 .table {
     width: 100%;
     border-collapse: collapse;
@@ -322,9 +305,9 @@
 }
 .table th {
     color: var(--txt-muted);
-    font-weight: 400;
+    font-weight: 500;
     font-size: var(--fs-sm);
-    letter-spacing: 0.02em;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
 }
 .table tr:last-child td {
@@ -337,9 +320,6 @@
     background: var(--bg-soft);
 }
 
-/* =========================================================
-   МОДАЛКИ
-   ========================================================= */
 .modal-back {
     position: fixed;
     inset: 0;
@@ -350,8 +330,8 @@
     padding: 24px;
     z-index: 1000;
     animation: fadeIn 0.2s ease;
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
 }
 .modal {
     background: var(--bg-elev);
@@ -361,7 +341,8 @@
     max-width: 520px;
     max-height: 90vh;
     overflow-y: auto;
-    animation: scaleIn 0.25s ease;
+    animation: scaleIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: var(--shadow-lg);
 }
 .modal-head {
     display: flex;
@@ -373,11 +354,11 @@
     font-size: var(--fs-lg);
     font-weight: 500;
     color: var(--txt);
-    letter-spacing: -0.01em;
+    letter-spacing: -0.015em;
 }
 .modal-close {
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -391,9 +372,6 @@
     color: var(--txt);
 }
 
-/* =========================================================
-   QUICK ACTIONS — крупнее
-   ========================================================= */
 .quick-actions {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -414,7 +392,8 @@
 }
 .quick-action:hover {
     border-color: var(--txt);
-    transform: translateY(-2px);
+    transform: translateY(-3px);
+    box-shadow: var(--shadow);
 }
 .quick-action .qa-ico {
     display: inline-flex;
@@ -422,9 +401,14 @@
     justify-content: center;
     width: 36px;
     height: 36px;
-    border-radius: var(--r-sm);
+    border-radius: var(--r);
     background: var(--bg-soft);
     color: var(--txt);
+    transition: all var(--t-fast);
+}
+.quick-action:hover .qa-ico {
+    background: var(--txt);
+    color: var(--bg);
 }
 .quick-action .qa-ico .icon {
     width: 20px;
@@ -443,9 +427,6 @@
     line-height: 1.5;
 }
 
-/* =========================================================
-   ФИЛЬТРЫ
-   ========================================================= */
 .filters {
     display: flex;
     gap: 12px;
@@ -472,9 +453,6 @@
     border-bottom-color: var(--txt);
 }
 
-/* =========================================================
-   ФОРМА-GRID
-   ========================================================= */
 .form-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -489,9 +467,6 @@
     }
 }
 
-/* =========================================================
-   СЧЁТЧИК
-   ========================================================= */
 .count-chip {
     display: inline-flex;
     align-items: center;
@@ -508,9 +483,38 @@
     font-variant-numeric: tabular-nums;
 }
 
-/* =========================================================
-   АДАПТИВ
-   ========================================================= */
+.placeholder {
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--txt-muted);
+    font-size: 13px;
+}
+.placeholder-ico {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--bg-soft);
+    color: var(--txt-muted);
+    margin-bottom: 14px;
+}
+
+.back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--txt-muted);
+    margin-bottom: 14px;
+    cursor: pointer;
+    transition: color var(--t-fast);
+}
+.back-link:hover {
+    color: var(--txt);
+}
+
 @media (max-width: 900px) {
     .app-header {
         padding: 0 24px;

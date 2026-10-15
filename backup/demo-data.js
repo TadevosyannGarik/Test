@@ -524,7 +524,7 @@ const DemoData = (() => {
                 id: uid(),
                 userId: s.id,
                 type: "info",
-                title: "Добро пожаловать в FuzzyProject",
+                title: "Добро пожаловать в Meridian",
                 text: "Система поможет вам вести работу над курсовой или дипломной.",
                 read: false,
                 createdAt: daysAgo(randInt(1, 10)),

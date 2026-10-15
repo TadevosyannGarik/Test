@@ -1,72 +1,63 @@
-/* =========================================================
-   THEME — минимализм с крупной типографикой
-   В духе современных портфолио-сайтов
-   ========================================================= */
-
 :root {
-    /* ---------- Фон ---------- */
-    --bg: #ffffff; /* чистый белый */
-    --bg-soft: #f7f7f5; /* очень светлый тёплый серый */
-    --bg-elev: #ffffff; /* карточки */
-    --bg-hover: #f2f2f0;
+    --bg: #ffffff;
+    --bg-soft: #f7f7f5;
+    --bg-elev: #ffffff;
+    --bg-hover: #f0f0ee;
 
-    /* ---------- Границы ---------- */
-    --line: #eaeaea; /* очень тонкие */
+    --line: #ebebeb;
     --line-strong: #d4d4d4;
 
-    /* ---------- Текст ---------- */
-    --txt: #111111; /* почти чёрный */
-    --txt-muted: #6b6b6b;
-    --txt-soft: #a3a3a3;
+    --txt: #0f0f0f;
+    --txt-muted: #666666;
+    --txt-soft: #9c9c9c;
     --txt-dim: #c9c9c9;
 
-    /* ---------- Акценты ---------- */
-    --accent: #111111; /* чёрный — основной */
+    --accent: #111111;
     --accent-2: #000000;
-    --accent-soft: #f2f2f0; /* фон активных элементов */
-    --accent-hover: #333333;
+    --accent-soft: #f2f2f0;
+    --accent-hover: #2a2a2a;
+    --accent-glow: rgba(17, 17, 17, 0.15);
 
-    --pop: #e85d2c; /* тёплый оранжевый — для точек, статусов */
+    --pop: #e85d2c;
     --pop-soft: #fef3ee;
 
-    /* ---------- Статусы ---------- */
-    --ok: #2d7a4f;
+    --sage: #5c8a5a;
+    --sage-soft: #eef5ee;
+    --purple: #7c5cf0;
+    --purple-soft: #f3f0fe;
+
+    --ok: #1f8a4c;
     --ok-soft: #edf7f0;
-    --warn: #b8801f;
+    --warn: #c47f1a;
     --warn-soft: #fdf6e7;
-    --bad: #b8392e;
+    --bad: #c23a2f;
     --bad-soft: #fdeeee;
     --info: #2a5cb8;
     --info-soft: #eef3fc;
 
-    /* ---------- Скругления ---------- */
-    --r-xs: 3px;
-    --r-sm: 4px;
-    --r: 6px;
-    --r-md: 8px;
-    --r-lg: 10px;
-    --r-xl: 14px;
+    --r-xs: 4px;
+    --r-sm: 6px;
+    --r: 8px;
+    --r-md: 10px;
+    --r-lg: 14px;
+    --r-xl: 18px;
 
-    /* ---------- Тени (почти нет) ---------- */
-    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.03);
-    --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.04);
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.05);
     --shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
     --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.08);
-    --shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.12);
 
-    /* ---------- Переходы ---------- */
-    --t-fast: 0.2s ease;
-    --t-base: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    --t-slow: 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    --t-fast: 0.15s ease;
+    --t-base: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    --t-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 
-    /* ---------- Шрифты ---------- */
     --font-sans:
         "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui,
         sans-serif;
     --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Consolas, monospace;
     --font-serif: "Georgia", "Times New Roman", serif;
 
-    /* ---------- Типографическая шкала ---------- */
     --fs-xs: 11px;
     --fs-sm: 12px;
     --fs-base: 14px;
@@ -78,9 +69,6 @@
     --fs-4xl: 64px;
 }
 
-/* =========================================================
-   RESET
-   ========================================================= */
 *,
 *::before,
 *::after {
@@ -116,13 +104,20 @@ button {
     cursor: pointer;
     border: none;
     background: none;
+    transition:
+        background var(--t-fast),
+        color var(--t-fast),
+        border-color var(--t-fast),
+        transform var(--t-fast);
 }
 
 a {
     color: var(--txt);
     text-decoration: none;
     border-bottom: 1px solid transparent;
-    transition: border-color var(--t-fast);
+    transition:
+        border-color var(--t-fast),
+        color var(--t-fast);
 }
 a:hover {
     border-bottom-color: var(--txt);
@@ -140,15 +135,27 @@ pre,
     color: var(--bg);
 }
 
-/* =========================================================
-   ТИПОГРАФИКА
-   ========================================================= */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: var(--line-strong);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--txt-soft);
+}
+
 h1,
 .h1 {
     font-size: var(--fs-3xl);
     font-weight: 400;
     line-height: 1.05;
-    letter-spacing: -0.03em;
+    letter-spacing: -0.035em;
     color: var(--txt);
     margin: 0;
 }
@@ -158,7 +165,7 @@ h2,
     font-size: var(--fs-2xl);
     font-weight: 400;
     line-height: 1.1;
-    letter-spacing: -0.025em;
+    letter-spacing: -0.03em;
     color: var(--txt);
 }
 
@@ -167,7 +174,7 @@ h3,
     font-size: var(--fs-xl);
     font-weight: 400;
     line-height: 1.2;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.025em;
     color: var(--txt);
 }
 
@@ -176,15 +183,14 @@ h4,
     font-size: var(--fs-lg);
     font-weight: 500;
     line-height: 1.3;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.015em;
     color: var(--txt);
 }
 
-/* Вспомогательные подписи */
 .eyebrow {
     font-size: var(--fs-sm);
-    font-weight: 400;
-    letter-spacing: 0.08em;
+    font-weight: 500;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--txt-muted);
 }
@@ -197,9 +203,6 @@ h4,
     letter-spacing: -0.01em;
 }
 
-/* =========================================================
-   КНОПКИ
-   ========================================================= */
 .btn-primary {
     display: inline-flex;
     align-items: center;
@@ -213,16 +216,24 @@ h4,
     font-size: var(--fs-base);
     transition:
         background var(--t-fast),
-        transform var(--t-fast);
+        transform var(--t-fast),
+        box-shadow var(--t-fast);
     white-space: nowrap;
     border: none;
     letter-spacing: -0.005em;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 .btn-primary:hover {
     background: var(--accent-hover);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 .btn-primary:active {
     transform: translateY(1px);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+.btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .btn-ghost {
@@ -242,18 +253,23 @@ h4,
 }
 .btn-ghost:hover {
     border-color: var(--txt);
-    background: transparent;
+    background: var(--bg-soft);
 }
+.btn-ghost:active {
+    transform: translateY(1px);
+}
+
 .btn-ghost.btn-danger {
     color: var(--bad);
-    border-color: rgba(184, 57, 46, 0.2);
+    border-color: rgba(194, 58, 47, 0.25);
 }
 .btn-ghost.btn-danger:hover {
     background: var(--bad-soft);
     border-color: var(--bad);
 }
+
 .btn-sm {
-    padding: 7px 13px;
+    padding: 7px 14px;
     font-size: var(--fs-sm);
 }
 
@@ -261,11 +277,13 @@ h4,
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 30px;
-    height: 30px;
+    width: 32px;
+    height: 32px;
     border-radius: var(--r-sm);
     color: var(--txt-muted);
     transition: all var(--t-fast);
+    border: none;
+    background: transparent;
 }
 .btn-icon:hover {
     background: var(--bg-soft);
@@ -276,22 +294,20 @@ h4,
     color: var(--bad);
 }
 
-/* =========================================================
-   ПОЛЯ
-   ========================================================= */
 .field {
     margin-bottom: 16px;
 }
 .field label {
     display: block;
     font-size: var(--fs-sm);
-    font-weight: 400;
+    font-weight: 500;
     color: var(--txt-muted);
     margin-bottom: 8px;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.01em;
 }
 .field .req {
     color: var(--pop);
+    margin-left: 2px;
 }
 
 .field input,
@@ -306,7 +322,9 @@ h4,
     font-size: var(--fs-md);
     color: var(--txt);
     outline: none;
-    transition: border-color var(--t-fast);
+    transition:
+        border-color var(--t-fast),
+        background var(--t-fast);
     font-weight: 400;
 }
 .field input::placeholder,
@@ -319,7 +337,9 @@ h4,
     border-bottom-color: var(--txt);
 }
 .field input:read-only,
-.field textarea:read-only {
+.field textarea:read-only,
+.field input:disabled,
+.field textarea:disabled {
     color: var(--txt-muted);
     cursor: not-allowed;
 }
@@ -327,21 +347,29 @@ h4,
     resize: vertical;
     min-height: 60px;
     padding-top: 8px;
+    font-family: inherit;
+    line-height: 1.5;
 }
 
-/* Для полей, где нужна рамка (например, в модалках) */
 .field-boxed input,
 .field-boxed select,
 .field-boxed textarea {
     border: 1px solid var(--line);
     border-radius: var(--r);
-    padding: 10px 14px;
+    padding: 11px 14px;
     background: var(--bg);
+    transition: all var(--t-fast);
+}
+.field-boxed input:hover,
+.field-boxed select:hover,
+.field-boxed textarea:hover {
+    border-color: var(--line-strong);
 }
 .field-boxed input:focus,
 .field-boxed select:focus,
 .field-boxed textarea:focus {
     border-color: var(--txt);
+    box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .field-err {
@@ -370,16 +398,13 @@ h4,
     }
 }
 
-/* =========================================================
-   ИКОНКИ
-   ========================================================= */
 .icon {
     display: inline-block;
     width: 16px;
     height: 16px;
     stroke: currentColor;
     fill: none;
-    stroke-width: 1.5;
+    stroke-width: 1.75;
     stroke-linecap: round;
     stroke-linejoin: round;
     vertical-align: middle;
@@ -406,14 +431,11 @@ h4,
     height: 28px;
 }
 
-/* =========================================================
-   БЕЙДЖИ
-   ========================================================= */
 .badge {
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    padding: 3px 9px;
+    padding: 4px 10px;
     border-radius: 100px;
     font-size: var(--fs-xs);
     font-weight: 500;
@@ -421,6 +443,7 @@ h4,
     background: var(--bg-soft);
     color: var(--txt-muted);
     border: none;
+    white-space: nowrap;
 }
 .badge.draft {
     background: var(--bg-soft);
@@ -467,31 +490,27 @@ h4,
 .tag {
     display: inline-flex;
     align-items: center;
-    padding: 2px 8px;
+    padding: 3px 9px;
     border-radius: 100px;
     border: 1px solid var(--line);
     font-size: var(--fs-xs);
     color: var(--txt-muted);
+    background: var(--bg-elev);
+    white-space: nowrap;
 }
 
-/* =========================================================
-   СЕКЦИИ
-   ========================================================= */
 .section-label {
     font-size: var(--fs-sm);
     color: var(--txt-muted);
-    font-weight: 400;
+    font-weight: 500;
     margin: 24px 0 12px;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
 }
 .section-label:first-child {
     margin-top: 0;
 }
 
-/* =========================================================
-   TOAST
-   ========================================================= */
 .toast {
     position: fixed;
     bottom: 24px;
@@ -514,15 +533,13 @@ h4,
     align-items: center;
     gap: 10px;
     letter-spacing: -0.005em;
+    box-shadow: var(--shadow-lg);
 }
 .toast.show {
     opacity: 1;
     transform: none;
 }
 
-/* =========================================================
-   УТИЛИТЫ
-   ========================================================= */
 .hidden {
     display: none !important;
 }
@@ -545,9 +562,6 @@ h4,
     margin-top: 48px;
 }
 
-/* =========================================================
-   АНИМАЦИИ
-   ========================================================= */
 @keyframes fadeIn {
     from {
         opacity: 0;
@@ -559,7 +573,7 @@ h4,
 @keyframes fadeUp {
     from {
         opacity: 0;
-        transform: translateY(8px);
+        transform: translateY(10px);
     }
     to {
         opacity: 1;
@@ -569,30 +583,12 @@ h4,
 @keyframes scaleIn {
     from {
         opacity: 0;
-        transform: scale(0.98);
+        transform: scale(0.97);
     }
     to {
         opacity: 1;
         transform: scale(1);
     }
-}
-
-/* =========================================================
-   СКРОЛЛБАР
-   ========================================================= */
-::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-}
-::-webkit-scrollbar-track {
-    background: transparent;
-}
-::-webkit-scrollbar-thumb {
-    background: var(--line-strong);
-    border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-    background: var(--txt-soft);
 }
 
 @media (prefers-reduced-motion: reduce) {

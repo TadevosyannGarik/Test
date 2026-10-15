@@ -1,18 +1,8 @@
-/* =========================================================
-   STUDENT — весь функционал роли «Студент»
-   Обновлено: использует Utils для общих хелперов
-   ========================================================= */
 const Student = (() => {
-    /* =========================================================
-       КОНСТАНТЫ (алиасы на Utils)
-       ========================================================= */
-    const WORK_TYPES = Utils.WORK_TYPES_LIST; // массив для UI
+    const WORK_TYPES = Utils.WORK_TYPES_LIST;
     const WORK_STATUSES = Utils.WORK_STATUSES;
     const TASK_COLS = Utils.TASK_COLS;
 
-    /* =========================================================
-       ХЕЛПЕРЫ (алиасы на Utils)
-       ========================================================= */
     const escapeHtml = Utils.escapeHtml;
     const workTypeLabel = Utils.workTypeLabel;
     const statusBadge = Utils.statusBadge;
@@ -34,9 +24,6 @@ const Student = (() => {
         return u ? u.fio : "—";
     }
 
-    /* =========================================================
-       ВЫБОР РАБОТЫ
-       ========================================================= */
     let selectedWorkId = null;
 
     function getActiveWork() {
@@ -60,9 +47,6 @@ const Student = (() => {
         selectedWorkId = null;
     }
 
-    /* =========================================================
-       FUZZY
-       ========================================================= */
     function getFuzzyInputs(work, progressOverride) {
         return Utils.buildFuzzyInputs(work, progressOverride);
     }
@@ -73,14 +57,8 @@ const Student = (() => {
         );
     }
 
-    /* =========================================================
-       VIEWS
-       ========================================================= */
     const VIEWS = {};
 
-    /* ---------------------------------------------------------
-       ДАШБОРД
-       --------------------------------------------------------- */
     VIEWS.dashboard = function () {
         const u = getUser();
         if (!u) return "";
@@ -210,9 +188,6 @@ const Student = (() => {
     `;
     }
 
-    /* ---------------------------------------------------------
-       СОЗДАНИЕ РАБОТЫ
-       --------------------------------------------------------- */
     let draftWorkType = "course";
     let draftTeacherId = null;
 
@@ -416,9 +391,6 @@ const Student = (() => {
         App.toast("Работа создана и отправлена руководителю");
         App.navigate("my-work");
     }
-    /* ---------------------------------------------------------
-       МОЯ РАБОТА
-       --------------------------------------------------------- */
     VIEWS["my-work"] = function () {
         const work = getActiveWork();
 
@@ -643,9 +615,6 @@ const Student = (() => {
         App.navigate("my-work");
     }
 
-    /* ---------------------------------------------------------
-       ЗАВЕРШЁННЫЕ РАБОТЫ
-       --------------------------------------------------------- */
     VIEWS.archived = function () {
         const works = getArchivedWorks();
 
@@ -907,9 +876,6 @@ const Student = (() => {
         App.navigate("my-work");
     }
 
-    /* ---------------------------------------------------------
-       ЭТАПЫ
-       --------------------------------------------------------- */
     function renderStageItem(s) {
         return `
       <div class="stage-item ${s.done ? "done" : ""}">
@@ -1076,9 +1042,6 @@ const Student = (() => {
         App.navigate("my-work");
     }
 
-    /* ---------------------------------------------------------
-       КАНБАН
-       --------------------------------------------------------- */
     function renderKanban(workId) {
         const tasks = Storage.getTasksByWork(workId);
         return `
@@ -1170,21 +1133,18 @@ const Student = (() => {
             return;
         }
 
-        /* Нельзя двигать из review/done */
         if (t.col === "review" || t.col === "done") {
             App.toast("Эту задачу проверяет руководитель");
             dragTaskId = null;
             return;
         }
 
-        /* Нельзя сразу в done — только через review */
         if (col === "done") {
             App.toast("Задача попадёт в «Готово» после проверки руководителем");
             dragTaskId = null;
             return;
         }
 
-        /* Нельзя в review, если задача в todo (нужно сначала «в работу») */
         if (col === "review" && t.col === "todo") {
             App.toast("Сначала переведите задачу в «В работе»");
             dragTaskId = null;
@@ -1314,9 +1274,6 @@ const Student = (() => {
         App.navigate("my-work");
     }
 
-    /* ---------------------------------------------------------
-       ВЕРСИИ
-       --------------------------------------------------------- */
     function renderVersionRow(v) {
         const comments = Storage.getCommentsByVersion(v.id);
         return `
@@ -1404,9 +1361,6 @@ const Student = (() => {
         App.toast("Версия загружена");
     }
 
-    /* ---------------------------------------------------------
-       КОММЕНТАРИИ К ВЕРСИЯМ
-       --------------------------------------------------------- */
     function viewVersionComments(versionId) {
         const comments = Storage.getCommentsByVersion(versionId);
 
@@ -1433,9 +1387,6 @@ const Student = (() => {
     `;
         App.openModal(html);
     }
-    /* ---------------------------------------------------------
-       ПРОФИЛЬ
-       --------------------------------------------------------- */
     VIEWS.profile = function () {
         const u = getUser();
         if (!u) return "";
@@ -1603,9 +1554,6 @@ const Student = (() => {
         );
     };
 
-    /* ---------------------------------------------------------
-       КАЛЕНДАРЬ
-       --------------------------------------------------------- */
     VIEWS.calendar = function () {
         const work = getActiveWork();
         if (!work) {
@@ -1743,9 +1691,6 @@ const Student = (() => {
     `;
     };
 
-    /* ---------------------------------------------------------
-       СТАТИСТИКА
-       --------------------------------------------------------- */
     VIEWS.stats = function () {
         const work = getActiveWork();
         if (!work) {
@@ -1894,19 +1839,14 @@ const Student = (() => {
         }
     };
 
-    /* ---------------------------------------------------------
-       АКТИВНОСТЬ
-       --------------------------------------------------------- */
     VIEWS.activity = function () {
         const u = getUser();
         if (!u) return "";
 
         const events = [];
 
-        /* Все работы студента */
         const works = getMyWorks();
         works.forEach((w) => {
-            /* Создание работы */
             events.push({
                 time: w.createdAt,
                 title: `Создана работа: ${w.topic.slice(0, 60)}`,
@@ -1914,7 +1854,6 @@ const Student = (() => {
                 kind: "info",
             });
 
-            /* Одобрение заявки */
             if (w.approvedAt) {
                 events.push({
                     time: w.approvedAt,
@@ -1924,7 +1863,6 @@ const Student = (() => {
                 });
             }
 
-            /* Отклонение */
             if (w.status === "rejected" && w.rejectReason) {
                 events.push({
                     time: w.updatedAt || w.createdAt,
@@ -1934,7 +1872,6 @@ const Student = (() => {
                 });
             }
 
-            /* Защита */
             if (w.status === "done" && w.defendedAt) {
                 events.push({
                     time: w.defendedAt,
@@ -1944,7 +1881,6 @@ const Student = (() => {
                 });
             }
 
-            /* Версии */
             Storage.getVersionsByWork(w.id).forEach((v) => {
                 events.push({
                     time: v.createdAt,
@@ -1954,7 +1890,6 @@ const Student = (() => {
                 });
             });
 
-            /* Комментарии */
             Storage.getCommentsByWork(w.id).forEach((c) => {
                 const author = Storage.getUserById(c.authorId);
                 events.push({
@@ -1965,7 +1900,6 @@ const Student = (() => {
                 });
             });
 
-            /* Выполненные этапы */
             Storage.getStagesByWork(w.id)
                 .filter((s) => s.completedAt)
                 .forEach((s) => {
@@ -2010,9 +1944,6 @@ const Student = (() => {
     `;
     };
 
-    /* ---------------------------------------------------------
-       ОБЁРТКИ МОДУЛЕЙ
-       --------------------------------------------------------- */
     VIEWS.mamdani = function (params) {
         return MamdaniViz.render(params);
     };
@@ -2047,55 +1978,42 @@ const Student = (() => {
         if (work) DocxCheck.initDrop(work.id);
     };
 
-    /* ---------------------------------------------------------
-       ЗАКРЫТИЕ МОДАЛОК
-       --------------------------------------------------------- */
     function closeModal() {
         App.closeModal();
     }
 
-    /* =========================================================
-       ПУБЛИЧНЫЙ API
-       ========================================================= */
     return {
         VIEWS,
 
-        /* Стейт */
         selectWork,
         clearSelectedWork,
         getActiveWork,
         getArchivedWorks,
 
-        /* Создание */
         pickType,
         pickTeacher,
         filterTeachers,
         saveDraft,
         recreateFromRejected,
 
-        /* Работа */
         updateWork,
         withdrawWork,
 
-        /* Этапы */
         toggleStage,
         openStageModal,
         saveStage,
         deleteStage,
 
-        /* Задачи */
         dragTask,
         dropTask,
         openTaskModal,
         saveTask,
         deleteTask,
 
-        /* Версии */
         openVersionModal,
         saveVersion,
         viewVersionComments,
 
-        /* Утилиты */
         closeModal,
     };
 })();

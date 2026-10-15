@@ -1631,8 +1631,7 @@ const Admin = (() => {
     function saveSettings() {
         setSettings({
             systemName:
-                document.getElementById("set_name")?.value.trim() ||
-                "FuzzyProject",
+                document.getElementById("set_name")?.value.trim() || "Meridian",
             academicYear:
                 document.getElementById("set_year")?.value.trim() ||
                 "2024/2025",

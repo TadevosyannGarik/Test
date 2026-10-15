@@ -1,13 +1,4 @@
-/* =========================================================
-   UTILS — общие хелперы, константы, рендер-функции
-   Единый источник для student.js, teacher.js, admin.js,
-   pdf-report.js, ranking.js, mamdani-viz.js, simulate.js
-   ========================================================= */
 const Utils = (() => {
-    /* =========================================================
-       КОНСТАНТЫ — ТИПЫ РАБОТ
-       Единый формат: объект { course: { title, desc }, ... }
-       ========================================================= */
     const WORK_TYPES = {
         course: {
             title: "Курсовая работа",
@@ -27,16 +18,12 @@ const Utils = (() => {
         },
     };
 
-    /* Массив для UI-пикеров (тип работы) */
     const WORK_TYPES_LIST = Object.keys(WORK_TYPES).map((id) => ({
         id,
         title: WORK_TYPES[id].title,
         desc: WORK_TYPES[id].desc,
     }));
 
-    /* =========================================================
-       КОНСТАНТЫ — СТАТУСЫ РАБОТ
-       ========================================================= */
     const WORK_STATUSES = {
         draft: { label: "Черновик", badge: "draft" },
         pending: { label: "На утверждении", badge: "pending" },
@@ -47,9 +34,6 @@ const Utils = (() => {
         rejected: { label: "Отклонена", badge: "rejected" },
     };
 
-    /* =========================================================
-       КОНСТАНТЫ — КОЛОНКИ КАНБАНА
-       ========================================================= */
     const TASK_COLS = [
         { id: "todo", title: "К выполнению" },
         { id: "progress", title: "В работе" },
@@ -57,9 +41,6 @@ const Utils = (() => {
         { id: "done", title: "Готово" },
     ];
 
-    /* =========================================================
-       БЕЗОПАСНОСТЬ
-       ========================================================= */
     function escapeHtml(str) {
         if (str === null || str === undefined) return "";
         return String(str)
@@ -70,9 +51,6 @@ const Utils = (() => {
             .replace(/'/g, "&#039;");
     }
 
-    /* =========================================================
-       ИНИЦИАЛЫ
-       ========================================================= */
     function initials(fio) {
         if (!fio || typeof fio !== "string") return "?";
         const parts = fio.split(" ").filter(Boolean);
@@ -84,9 +62,6 @@ const Utils = (() => {
             .toUpperCase();
     }
 
-    /* =========================================================
-       ЯРЛЫКИ И БЕЙДЖИ
-       ========================================================= */
     function workTypeLabel(type) {
         return WORK_TYPES[type]?.title || type || "—";
     }
@@ -96,9 +71,6 @@ const Utils = (() => {
         return `<span class="badge ${s.badge}">${s.label}</span>`;
     }
 
-    /* =========================================================
-       ПРОГРЕСС ПО ЭТАПАМ
-       ========================================================= */
     function calcProgress(workId) {
         const stages = Storage.getStagesByWork(workId);
         if (stages.length === 0) return 0;
@@ -109,11 +81,6 @@ const Utils = (() => {
         return total === 0 ? 0 : Math.round((done / total) * 100);
     }
 
-    /* =========================================================
-       ЕДИНЫЙ СБОР ВХОДОВ ДЛЯ FUZZY
-       Если параметры работы не заданы явно (orig/supScore/gost),
-       возвращаем null — это значит «нет данных», а не «по умолчанию 65/5/70».
-       ========================================================= */
     function buildFuzzyInputs(work, progressOverride) {
         if (!work) return null;
 
@@ -131,19 +98,15 @@ const Utils = (() => {
             stages.filter((s) => s.done).length +
             tasks.filter((t) => t.col === "done").length;
 
-        /* Активность с учётом не только доли, но и абсолютного числа
-           завершённых элементов (не только 0–10 по доле) */
         let activity;
         if (totalItems === 0) {
             activity = 5;
         } else {
-            const ratio = doneItems / totalItems; // 0..1
-            const absoluteBonus = Math.min(doneItems / 10, 1); // 0..1
+            const ratio = doneItems / totalItems;
+            const absoluteBonus = Math.min(doneItems / 10, 1);
             activity = Math.round((ratio * 0.7 + absoluteBonus * 0.3) * 10);
         }
 
-        /* Дни до дедлайна. Если дедлайна нет — считаем как «средне» (30),
-           но помечаем флагом hasDeadline, чтобы Fuzzy мог это учесть */
         const hasDeadline = !!work.deadline;
         const days = hasDeadline ? Math.max(0, daysUntil(work.deadline)) : 30;
 
@@ -154,18 +117,12 @@ const Utils = (() => {
             activity,
             edits: comments.length,
             volume: progress,
-            /* Явные параметры работы. null = «не задано» */
             orig: typeof work.orig === "number" ? work.orig : null,
             supScore: typeof work.supScore === "number" ? work.supScore : null,
             gost: typeof work.gost === "number" ? work.gost : null,
         };
     }
 
-    /**
-     * Обёртка над Fuzzy.infer, которая:
-     * - подставляет нейтральные значения для отсутствующих полей,
-     * - помечает результат как «нет данных», если проверки не было.
-     */
     function safeFuzzyInfer(inputs) {
         if (!inputs) return null;
         if (typeof Fuzzy === "undefined") return null;
@@ -192,9 +149,6 @@ const Utils = (() => {
         return res;
     }
 
-    /* =========================================================
-       ПУСТЫЕ СОСТОЯНИЯ
-       ========================================================= */
     function emptyState(title, text, iconFn, actionHtml) {
         return `
       <div class="empty-state">
@@ -206,9 +160,6 @@ const Utils = (() => {
     `;
     }
 
-    /* =========================================================
-       КОММЕНТАРИЙ
-       ========================================================= */
     function renderComment(c) {
         const author = Storage.getUserById(c.authorId);
         return `
@@ -222,9 +173,6 @@ const Utils = (() => {
     `;
     }
 
-    /* =========================================================
-       МИНИ-СПИСОК ЭТАПОВ (для карточек)
-       ========================================================= */
     function renderStagesMini(workId, limit = 5) {
         const stages = Storage.getStagesByWork(workId);
         if (!stages.length) {
@@ -279,17 +227,10 @@ const Utils = (() => {
     `;
     }
 
-    /* =========================================================
-       АКТИВНАЯ РАБОТА (универсально)
-       ========================================================= */
     function isActiveStatus(status) {
         return status !== "done" && status !== "rejected";
     }
 
-    /**
-     * Возвращает активную работу студента с учётом выбранного ID.
-     * Если selectedWorkId не задан — берёт самую свежую активную.
-     */
     function getActiveWorkForStudent(studentId, selectedWorkId) {
         const works = Storage.getWorksByStudent(studentId);
         const active = works.filter((w) => isActiveStatus(w.status));
@@ -312,9 +253,6 @@ const Utils = (() => {
         );
     }
 
-    /* =========================================================
-       ФОРМАТИРОВАНИЕ И КЛАССЫ
-       ========================================================= */
     function progressClass(progress) {
         if (progress < 40) return "bad";
         if (progress < 70) return "warn";
@@ -329,9 +267,6 @@ const Utils = (() => {
         return term === "high" ? "ok" : term === "med" ? "warn" : "bad";
     }
 
-    /* =========================================================
-       ПРОВЕРКА ПРАВ ДОСТУПА
-       ========================================================= */
     function ensureOwnerWork(work, user) {
         if (!work || !user) return false;
         if (user.role === "admin") return true;
@@ -342,17 +277,12 @@ const Utils = (() => {
         return false;
     }
 
-    /* =========================================================
-       ПУБЛИЧНЫЙ API
-       ========================================================= */
     return {
-        /* Константы */
         WORK_TYPES,
         WORK_TYPES_LIST,
         WORK_STATUSES,
         TASK_COLS,
 
-        /* Безопасность и текст */
         escapeHtml,
         initials,
         workTypeLabel,
@@ -361,18 +291,15 @@ const Utils = (() => {
         riskClass,
         readyClass,
 
-        /* Расчёты */
         calcProgress,
         buildFuzzyInputs,
         safeFuzzyInfer,
 
-        /* Работа */
         isActiveStatus,
         getActiveWorkForStudent,
         getArchivedWorksForStudent,
         ensureOwnerWork,
 
-        /* Рендер */
         emptyState,
         renderComment,
         renderStagesMini,

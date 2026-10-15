@@ -1,13 +1,7 @@
-/* =========================================================
-   NOTIFICATIONS — система уведомлений
-   Обновлено: единый setAll, оптимизация unreadCount,
-   использование Utils.escapeHtml
-   ========================================================= */
 const Notifications = (() => {
     const KEY = "fp_notifications";
     const MAX_PER_USER = 200;
 
-    /* Алиас на Utils.escapeHtml (или локальная реализация) */
     const escapeHtml =
         typeof Utils !== "undefined" && Utils.escapeHtml
             ? Utils.escapeHtml
@@ -20,9 +14,6 @@ const Notifications = (() => {
                       .replace(/"/g, "&quot;");
               };
 
-    /* =========================================================
-       ЧТЕНИЕ / ЗАПИСЬ
-       ========================================================= */
     function getAll() {
         const list = Storage.get(KEY, []);
         return Array.isArray(list) ? list : [];
@@ -32,9 +23,6 @@ const Notifications = (() => {
         Storage.set(KEY, Array.isArray(list) ? list : []);
     }
 
-    /* =========================================================
-       ДОБАВЛЕНИЕ
-       ========================================================= */
     function add({ userId, type, title, text, link }) {
         if (!userId) return null;
 
@@ -52,13 +40,11 @@ const Notifications = (() => {
         };
         list.push(notif);
 
-        /* Ограничение на пользователя — оставляем последние MAX_PER_USER */
         const userNotifs = list.filter((n) => Storage.sameId(n.userId, userId));
 
         let finalList = list;
 
         if (userNotifs.length > MAX_PER_USER) {
-            /* Сортируем по дате (старые сверху) */
             const sorted = [...userNotifs].sort(
                 (a, b) => a.createdAt - b.createdAt,
             );
@@ -70,7 +56,6 @@ const Notifications = (() => {
             finalList = list.filter((n) => !toRemove.has(n.id));
         }
 
-        /* Один вызов setAll — было двойное сохранение */
         setAll(finalList);
 
         if (typeof App !== "undefined" && App.refreshNotifications) {
@@ -80,9 +65,6 @@ const Notifications = (() => {
         return notif;
     }
 
-    /* =========================================================
-       ЧТЕНИЕ ДЛЯ ПОЛЬЗОВАТЕЛЯ
-       ========================================================= */
     function getForUser(userId) {
         if (!userId) return [];
         return getAll()
@@ -104,9 +86,6 @@ const Notifications = (() => {
         return count;
     }
 
-    /* =========================================================
-       ПОМЕТКИ
-       ========================================================= */
     function markRead(id) {
         const list = getAll();
         const n = list.find((x) => Storage.sameId(x.id, id));
@@ -128,9 +107,6 @@ const Notifications = (() => {
         if (changed) setAll(list);
     }
 
-    /* =========================================================
-       УДАЛЕНИЕ
-       ========================================================= */
     function deleteNotif(id) {
         const list = getAll();
         const filtered = list.filter((n) => !Storage.sameId(n.id, id));
@@ -146,9 +122,6 @@ const Notifications = (() => {
         setAll(filtered);
     }
 
-    /* =========================================================
-       ИКОНКА
-       ========================================================= */
     function iconFor(type) {
         switch (type) {
             case "work":
@@ -166,9 +139,6 @@ const Notifications = (() => {
         }
     }
 
-    /* =========================================================
-       РЕНДЕР ПАНЕЛИ
-       ========================================================= */
     function renderPanel(userId) {
         const list = getForUser(userId);
         const unread = unreadCount(userId);
@@ -229,9 +199,6 @@ const Notifications = (() => {
     `;
     }
 
-    /* =========================================================
-       УПРАВЛЕНИЕ
-       ========================================================= */
     function closePanel() {
         const el = document.getElementById("notifPanel");
         if (el) el.remove();
@@ -290,9 +257,6 @@ const Notifications = (() => {
         host.insertAdjacentHTML("beforeend", html);
     }
 
-    /* =========================================================
-       ПУБЛИЧНЫЙ API
-       ========================================================= */
     return {
         add,
         getAll,

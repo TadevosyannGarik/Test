@@ -1,11 +1,4 @@
-/* =========================================================
-   DEMO DATA — генерация насыщенных тестовых данных
-   Армянские имена, 10 преподавателей, 40 студентов, 60+ работ
-   ========================================================= */
 const DemoData = (() => {
-    /* =========================================================
-       ПРЕПОДАВАТЕЛИ (10) — армянские имена
-       ========================================================= */
     const TEACHERS_DATA = [
         {
             fio: "Петросян Пётр Петрович",
@@ -99,9 +92,6 @@ const DemoData = (() => {
         },
     ];
 
-    /* =========================================================
-       СТУДЕНТЫ (40) — армянские имена
-       ========================================================= */
     const STUDENT_NAMES = [
         "Арутюнян Арман Ашотович",
         "Геворгян Ани Вардановна",
@@ -196,9 +186,6 @@ const DemoData = (() => {
         },
     ];
 
-    /* =========================================================
-       ТЕМЫ РАБОТ
-       ========================================================= */
     const TOPICS = [
         "Информационная система управления проектами на основе нечёткой логики",
         "Нейросетевые методы в образовании",
@@ -335,9 +322,6 @@ const DemoData = (() => {
         "Промежуточный контроль",
     ];
 
-    /* =========================================================
-       УТИЛИТЫ
-       ========================================================= */
     function pick(arr) {
         return arr[Math.floor(Math.random() * arr.length)];
     }
@@ -365,9 +349,6 @@ const DemoData = (() => {
         return shuffle(arr).slice(0, count);
     }
 
-    /* =========================================================
-       ГЕНЕРАЦИЯ
-       ========================================================= */
     function generate() {
         const existingUsers = Storage.getUsers();
 
@@ -383,9 +364,6 @@ const DemoData = (() => {
 
         App.toast("Генерация насыщенных демо-данных...");
 
-        /* =========================================================
-           1. ПОЛЬЗОВАТЕЛИ
-           ========================================================= */
         const users = [...existingUsers];
         const existingEmails = new Set(users.map((u) => u.email));
 
@@ -416,7 +394,6 @@ const DemoData = (() => {
             existingEmails.add(t.email);
         }
 
-        /* --- Студенты (40) --- */
         const students = [];
         for (let i = 0; i < STUDENT_NAMES.length; i++) {
             const fio = STUDENT_NAMES[i];
@@ -453,9 +430,6 @@ const DemoData = (() => {
 
         Storage.setUsers(users);
 
-        /* =========================================================
-           2. РАБОТЫ (60+)
-           ========================================================= */
         const works = Storage.getWorks();
         const stages = Storage.getStages();
         const tasks = Storage.getTasks();
@@ -556,7 +530,6 @@ const DemoData = (() => {
                     activeWorks.push(work);
                 }
 
-                /* ---------- ЭТАПЫ ---------- */
                 if (
                     ["active", "review", "approved", "done"].includes(
                         plan.status,
@@ -592,7 +565,6 @@ const DemoData = (() => {
                     }
                 }
 
-                /* ---------- ЗАДАЧИ ---------- */
                 if (
                     ["active", "review", "approved", "done"].includes(
                         plan.status,
@@ -651,7 +623,6 @@ const DemoData = (() => {
                     }
                 }
 
-                /* ---------- ВЕРСИИ ---------- */
                 if (
                     ["active", "review", "approved", "done"].includes(
                         plan.status,
@@ -677,7 +648,6 @@ const DemoData = (() => {
                     }
                 }
 
-                /* ---------- КОММЕНТАРИИ ---------- */
                 if (
                     ["active", "review", "approved", "done"].includes(
                         plan.status,
@@ -704,9 +674,6 @@ const DemoData = (() => {
         Storage.setVersions(versions);
         Storage.setComments(comments);
 
-        /* =========================================================
-           3. АУДИТ (100 записей)
-           ========================================================= */
         const auditLog = Storage.get("fp_audit", []);
         const auditActions = [
             "Создана работа",
@@ -750,9 +717,6 @@ const DemoData = (() => {
         }
         Storage.set("fp_audit", auditLog);
 
-        /* =========================================================
-           4. УВЕДОМЛЕНИЯ
-           ========================================================= */
         const notifs = Storage.get("fp_notifications", []);
 
         for (const s of students) {
@@ -760,7 +724,7 @@ const DemoData = (() => {
                 id: uid(),
                 userId: s.id,
                 type: "info",
-                title: "Добро пожаловать в FuzzyProject",
+                title: "Добро пожаловать в Meridian",
                 text: "Система поможет вам вести работу над курсовой или дипломной.",
                 read: Math.random() > 0.5,
                 createdAt: daysAgo(randInt(30, 200)),
@@ -772,7 +736,7 @@ const DemoData = (() => {
                 id: uid(),
                 userId: t.id,
                 type: "info",
-                title: "Добро пожаловать в FuzzyProject",
+                title: "Добро пожаловать в Meridian",
                 text: "Система поможет вам курировать студенческие работы.",
                 read: Math.random() > 0.3,
                 createdAt: daysAgo(randInt(30, 200)),
@@ -811,9 +775,6 @@ const DemoData = (() => {
 
         Storage.set("fp_notifications", notifs);
 
-        /* =========================================================
-           5. КОНСУЛЬТАЦИИ (15)
-           ========================================================= */
         const consults = Storage.get("fp_consults", []);
         const statuses = ["pending", "approved", "done", "rejected"];
 
@@ -864,9 +825,6 @@ const DemoData = (() => {
         }
         Storage.set("fp_consults", consults);
 
-        /* =========================================================
-           6. СПРАВОЧНИКИ
-           ========================================================= */
         const refs = Storage.get("fp_refs", null);
         if (!refs) {
             Storage.set("fp_refs", {
@@ -896,22 +854,16 @@ const DemoData = (() => {
             });
         }
 
-        /* =========================================================
-           7. НАСТРОЙКИ
-           ========================================================= */
         const settings = Storage.get("fp_settings", null);
         if (!settings) {
             Storage.set("fp_settings", {
-                systemName: "FuzzyProject",
+                systemName: "Meridian",
                 academicYear: "2024/2025",
                 defaultDeadlineDays: 30,
                 notifyBeforeDays: 3,
             });
         }
 
-        /* =========================================================
-           ИТОГ
-           ========================================================= */
         App.toast(
             `Готово! ${students.length} студентов, ${teachers.length} преподавателей, ${works.length} работ`,
         );
@@ -925,9 +877,6 @@ const DemoData = (() => {
         }, 800);
     }
 
-    /* =========================================================
-       ОЧИСТКА
-       ========================================================= */
     function clearAll() {
         if (
             !confirm(
@@ -944,9 +893,6 @@ const DemoData = (() => {
         location.reload();
     }
 
-    /* =========================================================
-       ПУБЛИЧНЫЙ API
-       ========================================================= */
     return {
         generate,
         clearAll,

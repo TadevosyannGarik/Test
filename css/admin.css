@@ -1,7 +1,3 @@
-/* =========================================================
-   ADMIN
-   ========================================================= */
-
 .user-row {
     display: grid;
     grid-template-columns: 36px 1fr auto auto auto;
@@ -92,7 +88,6 @@
     margin-left: 6px;
 }
 
-/* ---------- Фильтры админа ---------- */
 .admin-filters {
     display: flex;
     gap: 8px;
@@ -119,7 +114,6 @@
     box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
-/* ---------- Список работ ---------- */
 .work-list-row {
     display: grid;
     grid-template-columns: 1fr 140px 90px 90px 70px;
@@ -153,7 +147,6 @@
     margin-top: 2px;
 }
 
-/* ---------- Справочники ---------- */
 .ref-list {
     display: flex;
     flex-wrap: wrap;
@@ -181,7 +174,6 @@
     color: var(--bad);
 }
 
-/* ---------- Аудит ---------- */
 .audit-row {
     display: grid;
     grid-template-columns: 140px 160px 1fr 100px;
@@ -216,7 +208,6 @@
     color: var(--warn);
 }
 
-/* ---------- Графики ---------- */
 .chart-wrap-sm {
     position: relative;
     height: 200px;

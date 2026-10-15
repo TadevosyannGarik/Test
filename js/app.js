@@ -1,15 +1,7 @@
-/* =========================================================
-   APP — запуск, навигация, рендер разделов, модалки, toast
-   Обновлено: consultations у админа, обработка ошибок _after,
-   проверка blocked, безопасные вызовы зависимостей
-   ========================================================= */
 const App = (() => {
     let currentUser = null;
     let toastTimer = null;
 
-    /* =========================================================
-       НАВИГАЦИЯ ПО РОЛЯМ
-       ========================================================= */
     function navItems(role) {
         if (role === "student") {
             return [
@@ -53,7 +45,6 @@ const App = (() => {
             ];
         }
 
-        /* admin */
         return [
             { id: "dashboard", icon: SVG.dashboard, label: "Дашборд" },
             { id: "users", icon: SVG.users, label: "Пользователи" },
@@ -77,9 +68,6 @@ const App = (() => {
         ];
     }
 
-    /* =========================================================
-       ХЕЛПЕРЫ
-       ========================================================= */
     function roleName(r) {
         return r === "student"
             ? "Студент"
@@ -99,13 +87,9 @@ const App = (() => {
             .toUpperCase();
     }
 
-    /* =========================================================
-       BOOT
-       ========================================================= */
     function boot(user) {
         if (!user) return;
 
-        /* Проверка блокировки */
         if (user.blocked) {
             console.warn("[App] Пользователь заблокирован");
             if (typeof Auth !== "undefined" && Auth.logout) {
@@ -133,9 +117,6 @@ const App = (() => {
         return "dashboard";
     }
 
-    /* =========================================================
-       НАВИГАЦИЯ
-       ========================================================= */
     function renderNav(role) {
         const nav = document.getElementById("mainNav");
         if (!nav) return;
@@ -191,7 +172,6 @@ const App = (() => {
             return;
         }
 
-        /* Выбираем VIEWS по роли */
         let views = {};
         if (currentUser.role === "student" && typeof Student !== "undefined") {
             views = { ...Student.VIEWS };
@@ -251,9 +231,6 @@ const App = (() => {
     `;
     }
 
-    /* =========================================================
-       МОДАЛКИ
-       ========================================================= */
     function openModal(html) {
         closeModal();
         const div = document.createElement("div");
@@ -261,7 +238,6 @@ const App = (() => {
         div.innerHTML = html;
         document.body.appendChild(div);
 
-        /* Esc закрывает */
         const escHandler = (e) => {
             if (e.key === "Escape") {
                 closeModal();
@@ -276,9 +252,6 @@ const App = (() => {
         if (el) el.remove();
     }
 
-    /* =========================================================
-       TOAST
-       ========================================================= */
     function toast(msg) {
         const t = document.getElementById("toast");
         if (!t) return;
@@ -288,9 +261,6 @@ const App = (() => {
         toastTimer = setTimeout(() => t.classList.remove("show"), 2400);
     }
 
-    /* =========================================================
-       УВЕДОМЛЕНИЯ
-       ========================================================= */
     function refreshNotifications() {
         if (!currentUser) return;
         if (typeof Notifications === "undefined") return;
@@ -314,9 +284,6 @@ const App = (() => {
         }
     }
 
-    /* =========================================================
-       ПУБЛИЧНЫЙ API
-       ========================================================= */
     return {
         boot,
         navigate,
@@ -328,9 +295,6 @@ const App = (() => {
     };
 })();
 
-/* =========================================================
-   ЗАПУСК
-   ========================================================= */
 document.addEventListener("DOMContentLoaded", () => {
     if (typeof Auth === "undefined") {
         console.error("[App] Модуль Auth не загружен");

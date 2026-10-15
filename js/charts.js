@@ -1,10 +1,4 @@
-/* =========================================================
-   CHARTS — обёртка над Chart.js
-   ========================================================= */
 const Charts = (() => {
-    /* =========================================================
-       ЦВЕТА — читаем из CSS-переменных
-       ========================================================= */
     function cssVar(name, fallback) {
         try {
             const v = getComputedStyle(document.documentElement)
@@ -44,16 +38,10 @@ const Charts = (() => {
         },
     );
 
-    /* =========================================================
-       ПРОВЕРКА
-       ========================================================= */
     function hasChart() {
         return typeof Chart !== "undefined";
     }
 
-    /* =========================================================
-       ГЛУБОКОЕ СЛИЯНИЕ
-       ========================================================= */
     function deepMerge(target, source) {
         if (!source) return target;
         const out = { ...target };
@@ -76,9 +64,6 @@ const Charts = (() => {
         return out;
     }
 
-    /* =========================================================
-       БАЗОВЫЕ ОПЦИИ
-       ========================================================= */
     function baseOpts(extra = {}) {
         const C = getColors();
         const base = {
@@ -137,9 +122,6 @@ const Charts = (() => {
         }
     }
 
-    /* =========================================================
-       DOUGHNUT
-       ========================================================= */
     function doughnut(canvasId, labels, data, colors) {
         if (!hasChart()) return null;
         const ctx = document.getElementById(canvasId);
@@ -171,9 +153,6 @@ const Charts = (() => {
         return ctx._chart;
     }
 
-    /* =========================================================
-       BAR
-       ========================================================= */
     function bar(canvasId, labels, data, colors, opts = {}) {
         if (!hasChart()) return null;
         const ctx = document.getElementById(canvasId);
@@ -219,9 +198,6 @@ const Charts = (() => {
         return ctx._chart;
     }
 
-    /* =========================================================
-       LINE
-       ========================================================= */
     function line(canvasId, labels, datasets, opts = {}) {
         if (!hasChart()) return null;
         const ctx = document.getElementById(canvasId);
@@ -275,9 +251,6 @@ const Charts = (() => {
         return ctx._chart;
     }
 
-    /* =========================================================
-       POLAR
-       ========================================================= */
     function polar(canvasId, labels, data, colors, opts = {}) {
         if (!hasChart()) return null;
         const ctx = document.getElementById(canvasId);
@@ -327,9 +300,6 @@ const Charts = (() => {
         return ctx._chart;
     }
 
-    /* =========================================================
-       RADAR
-       ========================================================= */
     function radar(canvasId, labels, datasets, opts = {}) {
         if (!hasChart()) return null;
         const ctx = document.getElementById(canvasId);
@@ -382,9 +352,6 @@ const Charts = (() => {
         return ctx._chart;
     }
 
-    /* =========================================================
-       HEX → RGBA
-       ========================================================= */
     function hexToRgba(hex, alpha = 1) {
         if (!hex) return `rgba(0,0,0,${alpha})`;
         if (hex.startsWith("rgba")) return hex;
@@ -404,9 +371,6 @@ const Charts = (() => {
         _colors = null;
     }
 
-    /* =========================================================
-       ПУБЛИЧНЫЙ API
-       ========================================================= */
     return {
         doughnut,
         bar,

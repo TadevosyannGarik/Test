@@ -1,12 +1,7 @@
-/* =========================================================
-   MAMDANI VIZ — пошаговая визуализация нечёткого вывода
-   Обновлено: Utils.* для хелперов, Chart.js через Charts
-   ========================================================= */
 const MamdaniViz = (() => {
     let selectedWorkId = null;
     let currentStep = "all";
 
-    /* Алиасы на Utils */
     const escapeHtml = Utils.escapeHtml;
     const emptyState = Utils.emptyState;
 
@@ -18,12 +13,89 @@ const MamdaniViz = (() => {
         volume: "Объём",
         orig: "Оригинальность",
         supScore: "Оценка руководителя",
-        gost: "ГОСТ",
+        gost: "Соответствие ГОСТу",
     };
 
-    /* =========================================================
-       ХЕЛПЕРЫ
-       ========================================================= */
+    const TERM_LABELS = {
+        low: "низкий",
+        med: "средний",
+        high: "высокий",
+    };
+
+    const FACTOR_MEANING = {
+        progress: {
+            low: "работа идёт медленно",
+            med: "работа в нормальном темпе",
+            high: "работа идёт отлично",
+        },
+        days: {
+            low: "сроки поджимают",
+            med: "времени достаточно",
+            high: "времени много",
+        },
+        activity: {
+            low: "студент малоактивен",
+            med: "студент работает регулярно",
+            high: "студент работает активно",
+        },
+        edits: {
+            low: "правок почти нет",
+            med: "правок немного",
+            high: "правок много",
+        },
+    };
+
+    const TERM_EXPLAIN = {
+        progress: {
+            low: "Работа выполнена меньше чем на 25%",
+            med: "Работа выполнена примерно наполовину",
+            high: "Работа почти завершена",
+        },
+        days: {
+            low: "До дедлайна осталось меньше 10 дней",
+            med: "До дедлайна примерно 25 дней",
+            high: "До дедлайна больше 40 дней",
+        },
+        activity: {
+            low: "Очень мало действий за последнее время",
+            med: "Средняя частота действий",
+            high: "Много действий, студент активен",
+        },
+        edits: {
+            low: "Мало правок — текст почти не менялся",
+            med: "Среднее количество правок",
+            high: "Много правок — требуется доработка",
+        },
+        volume: {
+            low: "Маленький объём текста",
+            med: "Средний объём",
+            high: "Большой объём текста",
+        },
+        orig: {
+            low: "Низкая уникальность текста",
+            med: "Средняя оригинальность",
+            high: "Высокая уникальность",
+        },
+        supScore: {
+            low: "Руководитель оценил работу низко",
+            med: "Руководитель оценил средне",
+            high: "Руководитель доволен работой",
+        },
+        gost: {
+            low: "Оформление не соответствует ГОСТу",
+            med: "Частично соответствует",
+            high: "Полностью соответствует ГОСТу",
+        },
+    };
+
+    const RECOMMENDATION = {
+        risk: {
+            low: "Работа идёт по плану — вмешательство не требуется.",
+            med: "Есть небольшие отставания — стоит ускориться на этой неделе.",
+            high: "Высокий риск срыва — срочно нужны действия!",
+        },
+    };
+
     function safeMF(varName, term, value) {
         const mf = Fuzzy.MF[varName];
         if (!mf || typeof mf[term] !== "function") return 0;
@@ -37,14 +109,11 @@ const MamdaniViz = (() => {
         return Storage.getWorks();
     }
 
-    /* Входы — обёртка над Utils.buildFuzzyInputs */
     function buildInputs(work) {
-        if (!work) return {};
+        if (!work) return null;
         const inputs = Utils.buildFuzzyInputs(work);
-        if (!inputs) return {};
+        if (!inputs) return null;
 
-        /* Подставляем нейтральные значения для отображения
-           (чтобы не было null в фаззификации) */
         return {
             progress: inputs.progress ?? 0,
             days: inputs.days ?? 30,
@@ -57,9 +126,29 @@ const MamdaniViz = (() => {
         };
     }
 
-    /* =========================================================
-       ОСНОВНОЙ РЕНДЕР
-       ========================================================= */
+    function computeAverage(user, exceptWorkId) {
+        const works = getAvailableWorks(user).filter(
+            (w) => !Storage.sameId(w.id, exceptWorkId),
+        );
+        if (works.length === 0) return null;
+
+        const results = works
+            .map((w) => {
+                const inputs = buildInputs(w);
+                if (!inputs) return null;
+                return Utils.safeFuzzyInfer(inputs);
+            })
+            .filter(Boolean);
+
+        if (results.length === 0) return null;
+
+        return {
+            count: results.length,
+            risk:
+                results.reduce((a, r) => a + r.risk.value, 0) / results.length,
+        };
+    }
+
     function render(params) {
         const user = Auth.getUser();
         if (!user) return emptyState("Не авторизован", "", SVG.lock);
@@ -69,8 +158,8 @@ const MamdaniViz = (() => {
             return emptyState(
                 "Нет работы",
                 user.role === "student"
-                    ? "Создайте работу, чтобы увидеть визуализацию нечёткого вывода."
-                    : "Пока нет работ, по которым можно показать вывод.",
+                    ? "Создайте работу, чтобы увидеть оценку."
+                    : "Пока нет работ для анализа.",
                 SVG.folder,
             );
         }
@@ -87,30 +176,259 @@ const MamdaniViz = (() => {
         if (!work) return emptyState("Работа не найдена", "", SVG.folder);
 
         const inputs = buildInputs(work);
-        const result = Fuzzy.infer(inputs);
+        if (!inputs)
+            return emptyState(
+                "Не удалось собрать данные",
+                "",
+                SVG.alertTriangle,
+            );
+
+        const result = Utils.safeFuzzyInfer(inputs);
+        if (!result)
+            return emptyState("Не удалось посчитать", "", SVG.alertTriangle);
+
+        const avg = computeAverage(user, selectedWorkId);
 
         return `
-      <div class="card">
+      ${renderWorkSelector(works, work)}
+      ${renderHero(result, avg)}
+      ${renderActions(work)}
+      ${renderMainResult(result)}
+      ${renderTodo(inputs, result)}
+      ${renderFactors(inputs)}
+      ${renderDetailedAnalysis(inputs, result, work)}
+      ${renderHistory(work)}
+    `;
+    }
+
+    function renderWorkSelector(works, work) {
+        const student = Storage.getUserById(work.studentId);
+        return `
+      <div class="mamdani-work">
+        <div class="mamdani-work-info">
+          <div class="mamdani-work-label">Оценка работы</div>
+          <div class="mamdani-work-topic">${escapeHtml(work.topic)}</div>
+          <div class="mamdani-work-student">
+            ${escapeHtml(student?.fio || "—")}
+            ${student?.group ? `· ${escapeHtml(student.group)}` : ""}
+          </div>
+        </div>
+        <select onchange="MamdaniViz.selectWork(this.value)" class="mamdani-select">
+          ${works
+              .map(
+                  (w) => `
+            <option value="${w.id}" ${Storage.sameId(w.id, selectedWorkId) ? "selected" : ""}>
+              ${escapeHtml(w.topic.slice(0, 60))}${w.topic.length > 60 ? "…" : ""}
+            </option>
+          `,
+              )
+              .join("")}
+        </select>
+      </div>
+    `;
+    }
+
+    function renderHero(result, avg) {
+        const riskClass = Utils.riskClass(result.risk.term);
+        const icon =
+            result.risk.term === "high"
+                ? SVG.alertTriangle
+                : result.risk.term === "med"
+                  ? SVG.info
+                  : SVG.checkCircle;
+
+        let trendHtml = "";
+        if (avg) {
+            const diff = result.risk.value - avg.risk;
+            const diffText = `${diff > 0 ? "+" : ""}${diff.toFixed(1)}`;
+            const trendClass = diff > 2 ? "up" : diff < -2 ? "down" : "flat";
+            const trendArrow = diff > 2 ? "▲" : diff < -2 ? "▼" : "●";
+            const trendLabel =
+                diff > 2
+                    ? `Выше среднего на ${diffText}`
+                    : diff < -2
+                      ? `Ниже среднего на ${diffText}`
+                      : "На уровне среднего";
+
+            trendHtml = `
+        <div class="hero-trend ${trendClass}">
+          <span class="hero-trend-arrow">${trendArrow}</span>
+          <span class="hero-trend-text">${escapeHtml(trendLabel)}</span>
+        </div>
+      `;
+        }
+
+        return `
+      <div class="mamdani-hero-final ${riskClass}">
+        <div class="hero-icon">${icon({ cls: "icon icon-xl" })}</div>
+        <div class="hero-body">
+          <div class="hero-title">
+            ${escapeHtml(RECOMMENDATION.risk[result.risk.term])}
+          </div>
+          ${trendHtml}
+        </div>
+      </div>
+    `;
+    }
+
+    function renderActions(work) {
+        return `
+      <div class="mamdani-actions">
+        <button class="action-btn" onclick="MamdaniViz.contactStudent(${work.id})">
+          ${SVG.messageCircle({ cls: "icon icon-sm" })}
+          <span>Написать студенту</span>
+        </button>
+        <button class="action-btn" onclick="MamdaniViz.openCommentModal(${work.id})">
+          ${SVG.edit({ cls: "icon icon-sm" })}
+          <span>Добавить комментарий</span>
+        </button>
+        <button class="action-btn" onclick="PdfReport.exportStudent(${work.id})">
+          ${SVG.fileText({ cls: "icon icon-sm" })}
+          <span>Скачать PDF</span>
+        </button>
+      </div>
+    `;
+    }
+
+    function renderMainResult(result) {
+        const riskClass = Utils.riskClass(result.risk.term);
+        const readyClass = Utils.readyClass(result.ready.term);
+
+        return `
+      <div class="mamdani-main">
+        <div class="main-risk ${riskClass}">
+          <div class="main-risk-label">Риск срыва сроков</div>
+          <div class="main-risk-value">${result.risk.value.toFixed(0)}</div>
+          <div class="main-risk-term">${escapeHtml(Fuzzy.termLabel(result.risk.term, "risk"))}</div>
+        </div>
+
+        <div class="main-side">
+          <div class="main-side-card ${readyClass}">
+            <div class="main-side-label">Готовность</div>
+            <div class="main-side-value">${result.ready.value.toFixed(0)}</div>
+            <div class="main-side-term">${escapeHtml(Fuzzy.termLabel(result.ready.term, "ready"))}</div>
+          </div>
+          <div class="main-side-card">
+            <div class="main-side-label">Рейтинг</div>
+            <div class="main-side-value">${result.rating.value.toFixed(0)}</div>
+            <div class="main-side-term">${escapeHtml(Fuzzy.termLabel(result.rating.term, "rating"))}</div>
+          </div>
+        </div>
+      </div>
+    `;
+    }
+
+    function renderTodo(inputs, result) {
+        const todos = [];
+
+        if (result.risk.term === "high") {
+            todos.push({
+                icon: "🚨",
+                title: "Срочно связаться со студентом",
+                text: "Обсудить план и сроки",
+            });
+        }
+        if (inputs.progress < 50) {
+            todos.push({
+                icon: "📈",
+                title: "Ускорить темп работы",
+                text: `Прогресс ${inputs.progress}% — стоит подтянуть`,
+            });
+        }
+        if (inputs.gost < 70) {
+            todos.push({
+                icon: "📄",
+                title: "Обратить внимание на ГОСТ",
+                text: `Соответствие ${inputs.gost}% — нужно доработать`,
+            });
+        }
+        if (inputs.activity < 4) {
+            todos.push({
+                icon: "💬",
+                title: "Проверить активность студента",
+                text: "Давно не выходил на связь",
+            });
+        }
+
+        if (todos.length === 0) {
+            todos.push({
+                icon: "✅",
+                title: "Всё в порядке",
+                text: "Работа идёт по плану, вмешательство не требуется",
+            });
+        }
+
+        return `
+      <div class="mamdani-todo">
+        <div class="mamdani-section-title">
+          ${SVG.zap({ cls: "icon icon-sm" })}
+          Что делать прямо сейчас
+        </div>
+        <div class="todo-list">
+          ${todos
+              .slice(0, 3)
+              .map(
+                  (t) => `
+            <div class="todo-item">
+              <div class="todo-icon">${t.icon}</div>
+              <div class="todo-body">
+                <div class="todo-title">${escapeHtml(t.title)}</div>
+                <div class="todo-text">${escapeHtml(t.text)}</div>
+              </div>
+            </div>
+          `,
+              )
+              .join("")}
+        </div>
+      </div>
+    `;
+    }
+
+    function renderFactors(inputs) {
+        const vars = ["progress", "days", "activity", "edits"];
+
+        return `
+      <div class="mamdani-factors">
+        <div class="mamdani-section-title">
+          ${SVG.info({ cls: "icon icon-sm" })}
+          Почему такой результат?
+        </div>
+        <div class="factor-list">
+          ${vars
+              .map((v) => {
+                  const val = inputs[v] ?? 0;
+                  const dt = Fuzzy.dominantTerm(v, val);
+                  const meaning = FACTOR_MEANING[v]?.[dt.term] || "";
+
+                  return `
+              <div class="factor-item">
+                <div class="factor-item-head">
+                  <span class="factor-item-name">${escapeHtml(VAR_NAMES[v])}</span>
+                  <span class="factor-item-val">${val}</span>
+                  <span class="factor-item-term factor-term-${dt.term}">
+                    ${escapeHtml(TERM_LABELS[dt.term])}
+                  </span>
+                </div>
+                <div class="factor-item-meaning">→ ${escapeHtml(meaning)}</div>
+              </div>
+            `;
+              })
+              .join("")}
+        </div>
+      </div>
+    `;
+    }
+
+    function renderDetailedAnalysis(inputs, result, work) {
+        return `
+      <div class="card" style="margin-top:20px;">
         <div class="card-head">
-          <div class="card-title">Живая визуализация Мамдани</div>
-          <select onchange="MamdaniViz.selectWork(this.value)"
-            class="filters-select"
-            style="padding:8px 12px;border:1px solid var(--line);border-radius:var(--r);background:var(--bg-elev);font-size:13px;color:var(--txt);outline:none;max-width:340px;">
-            ${works
-                .map(
-                    (w) => `
-              <option value="${w.id}" ${Storage.sameId(w.id, selectedWorkId) ? "selected" : ""}>
-                ${escapeHtml(w.topic.slice(0, 60))}${w.topic.length > 60 ? "…" : ""}
-              </option>
-            `,
-                )
-                .join("")}
-          </select>
+          <div class="card-title">📊 Подробный разбор</div>
         </div>
-        <div style="font-size:12px;color:var(--txt-muted);margin-bottom:16px;">
-          ${escapeHtml(work.topic)}
-          · ${escapeHtml(Storage.getUserById(work.studentId)?.fio || "—")}
-        </div>
+        <p style="font-size:13px;color:var(--txt-muted);margin-bottom:20px;line-height:1.6;">
+          Пошагово — как система пришла к результату.
+          Нажми на любой шаг, чтобы увидеть детали.
+        </p>
 
         <div class="mamdani-tabs">
           ${renderTab("all", "Общий обзор")}
@@ -132,9 +450,6 @@ const MamdaniViz = (() => {
         <div id="vizBody">
           ${renderStep(inputs, result, work)}
         </div>
-
-        ${currentStep === "all" || currentStep === "defuzz" ? renderOutputSummary(inputs, result) : ""}
-        ${currentStep === "all" ? Fuzzy.explain(inputs, result) : ""}
       </div>
     `;
     }
@@ -159,24 +474,55 @@ const MamdaniViz = (() => {
             case "all":
                 return renderOverview(inputs, result);
             case "fuzz":
-                return renderFuzz(inputs);
+                return renderFuzzDetail(inputs);
             case "rules":
-                return renderRules(inputs, result);
+                return renderRulesDetail(inputs, result);
             case "aggr":
-                return renderAggr(result);
+                return renderAggrDetail(result);
             case "defuzz":
-                return renderDefuzz(result);
+                return renderDefuzzDetail(result);
             case "compare":
-                return renderCompare(inputs, result);
+                return renderCompareDetail(inputs, result);
             default:
                 return "";
         }
     }
 
-    /* =========================================================
-       ШАГ 1. ФАЗЗИФИКАЦИЯ
-       ========================================================= */
-    function renderFuzz(inputs) {
+    function renderOverview(inputs, result) {
+        return `
+      <div class="mamdani-explain">
+        <b>Коротко:</b> система взяла данные работы и через
+        <b>${Fuzzy.getRules().length} правил</b> посчитала риск, готовность и рейтинг.
+        Разберём по шагам.
+      </div>
+
+      <div class="grid grid-3">
+        <div class="metric">
+          <div class="metric-lbl">Риск срыва</div>
+          <div class="metric-val" style="color:var(--${Utils.riskClass(result.risk.term)})">
+            ${result.risk.value.toFixed(1)}
+          </div>
+          <div class="metric-sub">${escapeHtml(Fuzzy.termLabel(result.risk.term, "risk"))}</div>
+        </div>
+        <div class="metric">
+          <div class="metric-lbl">Готовность</div>
+          <div class="metric-val" style="color:var(--${Utils.readyClass(result.ready.term)})">
+            ${result.ready.value.toFixed(1)}
+          </div>
+          <div class="metric-sub">${escapeHtml(Fuzzy.termLabel(result.ready.term, "ready"))}</div>
+        </div>
+        <div class="metric">
+          <div class="metric-lbl">Рейтинг</div>
+          <div class="metric-val" style="color:var(--accent)">
+            ${result.rating.value.toFixed(1)}
+          </div>
+          <div class="metric-sub">${escapeHtml(Fuzzy.termLabel(result.rating.term, "rating"))}</div>
+        </div>
+      </div>
+    `;
+    }
+
+    function renderFuzzDetail(inputs) {
         const vars = [
             "progress",
             "days",
@@ -189,11 +535,13 @@ const MamdaniViz = (() => {
         ];
 
         return `
-      <p style="font-size:13px;color:var(--txt-muted);margin-bottom:12px;">
-        Каждое входное значение превращается в степень принадлежности к термам
-        <b>низкий</b>, <b>средний</b>, <b>высокий</b> (μ от 0 до 1).
-      </p>
-      <div style="display:grid;gap:8px;">
+      <div class="mamdani-explain">
+        <b>Фаззификация</b> — превращение обычных чисел в «степени уверенности».
+        Например, если прогресс 42%, система говорит:
+        <b>«на 60% это средний и на 40% низкий»</b>.
+      </div>
+
+      <div class="fuzz-table">
         ${vars
             .map((v) => {
                 const val = inputs[v] ?? 0;
@@ -201,27 +549,38 @@ const MamdaniViz = (() => {
                     t,
                     mu: safeMF(v, t, val),
                 }));
-                const maxMu = Math.max(...terms.map((t) => t.mu));
-                const activeTerms = terms.filter((t) => t.mu > 0.01);
+                const maxTerm = terms.reduce((a, b) => (a.mu > b.mu ? a : b));
+                const explanation = TERM_EXPLAIN[v]?.[maxTerm.t] || "";
 
                 return `
-            <div class="rule-fired" style="grid-template-columns: 160px 1fr 90px;">
-              <div style="font-size:13px;font-weight:500;">${escapeHtml(VAR_NAMES[v] || v)}</div>
-              <div>
-                <div style="font-size:11px;color:var(--txt-muted);margin-bottom:4px;">
-                  Значение: <b>${val}</b>
-                  ${
-                      activeTerms.length
-                          ? " · термы: " +
-                            activeTerms
-                                .map((x) => `${x.t} (μ=${x.mu.toFixed(2)})`)
-                                .join(", ")
-                          : " · нет активных термов"
-                  }
+            <div class="fuzz-row">
+              <div class="fuzz-name">
+                <div style="font-weight:500;">${escapeHtml(VAR_NAMES[v])}</div>
+                <div style="font-size:11px;color:var(--txt-muted);margin-top:2px;">
+                  ${escapeHtml(explanation)}
                 </div>
-                <div class="rule-fired-bar"><div style="width:${maxMu * 100}%"></div></div>
               </div>
-              <div class="rule-mu">${maxMu.toFixed(2)}</div>
+              <div class="fuzz-value">${val}</div>
+              <div class="fuzz-term">
+                <span class="fuzz-term-badge ${maxTerm.t}">
+                  ${escapeHtml(TERM_LABELS[maxTerm.t])} (${maxTerm.mu.toFixed(2)})
+                </span>
+              </div>
+              <div class="fuzz-bars">
+                ${terms
+                    .map(
+                        (x) => `
+                  <div class="fuzz-bar-row">
+                    <span class="fuzz-bar-lbl">${escapeHtml(TERM_LABELS[x.t])}</span>
+                    <div class="fuzz-bar-track">
+                      <div class="fuzz-bar-fill ${x.t}" style="width:${x.mu * 100}%"></div>
+                    </div>
+                    <span class="fuzz-bar-val">${x.mu.toFixed(2)}</span>
+                  </div>
+                `,
+                    )
+                    .join("")}
+              </div>
             </div>
           `;
             })
@@ -230,17 +589,11 @@ const MamdaniViz = (() => {
     `;
     }
 
-    /* =========================================================
-       ШАГ 2. ПРАВИЛА
-       ========================================================= */
-    function renderRules(inputs, result) {
+    function renderRulesDetail(inputs, result) {
         const allFired = [
-            ...(result.risk.fired || []).map((f) => ({ ...f, kind: "risk" })),
-            ...(result.ready.fired || []).map((f) => ({ ...f, kind: "ready" })),
-            ...(result.rating.fired || []).map((f) => ({
-                ...f,
-                kind: "rating",
-            })),
+            ...(result.risk.fired || []),
+            ...(result.ready.fired || []),
+            ...(result.rating.fired || []),
         ];
 
         const uniq = {};
@@ -253,190 +606,195 @@ const MamdaniViz = (() => {
             (a, b) => b.strength - a.strength,
         );
 
-        const rules = Fuzzy.getRules();
-        const borderline = rules
-            .filter(
-                (r) =>
-                    r.enabled &&
-                    !fired.find((f) => Storage.sameId(f.rule?.id, r.id)),
-            )
-            .map((r) => {
-                const strengths = r.if.map((c) => {
-                    const [v, t] = c.split("=");
-                    return safeMF(v, t, inputs[v] ?? 0);
-                });
-                return {
-                    rule: r,
-                    minStrength: strengths.length ? Math.min(...strengths) : 0,
-                };
-            })
-            .filter((x) => x.minStrength > 0.05 && x.minStrength < 0.3)
-            .sort((a, b) => b.minStrength - a.minStrength)
-            .slice(0, 5);
-
         return `
-      <p style="font-size:13px;color:var(--txt-muted);margin-bottom:12px;">
-        Каждое правило применяется к фаззифицированным входам.
-        Степень истинности — <b>минимум</b> по всем посылкам правила (оператор «И»).
-      </p>
+      <div class="mamdani-explain">
+        <b>Правила</b> — основа системы. Каждое правило —
+        «ЕСЛИ что-то ТО результат». Система берёт только те правила,
+        у которых <b>посылка истинна</b>.
+      </div>
 
       <div class="section-label">Сработавшие правила (${fired.length})</div>
       ${
           fired.length === 0
-              ? '<div class="empty" style="padding:20px;font-size:13px;">Ни одно правило не сработало с μ &gt; 0</div>'
-              : fired.map((f) => renderFiredRule(f)).join("")
-      }
-
-      ${
-          borderline.length > 0
-              ? `
-        <div class="section-label" style="margin-top:20px;">Пограничные (почти сработали)</div>
-        <p style="font-size:12px;color:var(--txt-muted);margin-bottom:8px;">
-          Эти правила были близки к срабатыванию. Изменение входов может их активировать.
-        </p>
-        ${borderline.map((b) => renderBorderlineRule(b)).join("")}
-      `
-              : ""
+              ? '<div class="empty" style="padding:20px;">Ни одно правило не сработало</div>'
+              : fired.map((f) => renderRuleClear(f)).join("")
       }
     `;
     }
 
-    function renderFiredRule(f) {
+    function renderRuleClear(f) {
         const mu = f.strength;
-        const cls = mu > 0.7 ? "high" : mu > 0.4 ? "med" : "low";
-        const muCls = mu > 0.7 ? "mu-high" : mu > 0.4 ? "mu-med" : "mu-low";
+        const strengthLevel = mu > 0.7 ? "high" : mu > 0.4 ? "med" : "low";
+        const strengthWord =
+            mu > 0.7 ? "сильно" : mu > 0.4 ? "умеренно" : "слабо";
+
+        const ifStr = f.rule.if
+            .map((c) => {
+                const [v, t] = c.split("=");
+                return `${VAR_NAMES[v] || v} — ${TERM_LABELS[t] || t}`;
+            })
+            .join(" И ");
+        const [rv, rt] = f.rule.then.split("=");
+        const thenStr = `${VAR_NAMES[rv] || rv} — ${TERM_LABELS[rt] || rt}`;
 
         return `
-      <div class="rule-fired ${cls} ${muCls}">
-        <div class="rule-fired-id">#${f.rule.id}</div>
-        <div class="rule-fired-body">
-          <div class="rule-fired-title">${escapeHtml(f.rule.desc)}</div>
-          <div class="rule-fired-if">ЕСЛИ ${escapeHtml(f.rule.if.join(" И "))} → ТО ${escapeHtml(f.rule.then)}</div>
-          <div class="rule-fired-bar"><div style="width:${mu * 100}%"></div></div>
+      <div class="rule-clear">
+        <div class="rule-clear-strength ${strengthLevel}">
+          ${mu.toFixed(2)}
         </div>
-        <div class="rule-mu">μ = ${mu.toFixed(3)}</div>
+        <div class="rule-clear-body">
+          <div class="rule-clear-if">
+            <span class="rule-clear-label">ЕСЛИ</span>
+            ${escapeHtml(ifStr)}
+          </div>
+          <div class="rule-clear-then">
+            <span class="rule-clear-label">ТО</span>
+            <b>${escapeHtml(thenStr)}</b>
+          </div>
+          <div class="rule-clear-desc">
+            Сработало <b>${strengthWord}</b> · ${escapeHtml(f.rule.desc || "")}
+          </div>
+        </div>
       </div>
     `;
     }
 
-    function renderBorderlineRule(b) {
-        return `
-      <div class="rule-fired borderline">
-        <div class="rule-fired-id">#${b.rule.id}</div>
-        <div class="rule-fired-body">
-          <div class="rule-fired-title">${escapeHtml(b.rule.desc)}</div>
-          <div class="rule-fired-if">ЕСЛИ ${escapeHtml(b.rule.if.join(" И "))} → ТО ${escapeHtml(b.rule.then)}</div>
-          <div class="rule-fired-bar"><div style="width:${b.minStrength * 100}%"></div></div>
-        </div>
-        <div class="rule-mu" style="color:var(--txt-muted)">μ = ${b.minStrength.toFixed(3)}</div>
-      </div>
-    `;
-    }
-
-    /* =========================================================
-       ШАГ 3. АГРЕГАЦИЯ
-       ========================================================= */
-    function renderAggr(result) {
+    function renderAggrDetail(result) {
         const acc = result.risk.acc;
+
         return `
-      <p style="font-size:13px;color:var(--txt-muted);margin-bottom:12px;">
-        Сработавшие правила для одного и того же выхода объединяются через оператор <b>max</b>.
-      </p>
+      <div class="mamdani-explain">
+        <b>Агрегация</b> — объединение сработавших правил для одного выхода.
+        Система берёт <b>максимум</b> по каждому терму — то, во что верит сильнее всего.
+      </div>
 
       <div class="grid grid-3">
-        ${["low", "med", "high"]
-            .map(
-                (t) => `
-          <div class="metric">
-            <div class="metric-lbl">Терм «${t}»</div>
-            <div class="metric-val">${(acc[t] || 0).toFixed(3)}</div>
-            <div class="metric-sub">агрегированная μ</div>
+        <div class="aggr-card low ${acc.low > 0 ? "active" : ""}">
+          <div class="aggr-card-lbl">Терм «низкий»</div>
+          <div class="aggr-card-val">${(acc.low || 0).toFixed(2)}</div>
+          <div class="aggr-card-sub">
+            ${acc.low > 0.5 ? "Сработало сильно" : acc.low > 0 ? "Сработало слабо" : "Не сработало"}
           </div>
-        `,
-            )
-            .join("")}
+        </div>
+        <div class="aggr-card med ${acc.med > 0 ? "active" : ""}">
+          <div class="aggr-card-lbl">Терм «средний»</div>
+          <div class="aggr-card-val">${(acc.med || 0).toFixed(2)}</div>
+          <div class="aggr-card-sub">
+            ${acc.med > 0.5 ? "Сработало сильно" : acc.med > 0 ? "Сработало слабо" : "Не сработало"}
+          </div>
+        </div>
+        <div class="aggr-card high ${acc.high > 0 ? "active" : ""}">
+          <div class="aggr-card-lbl">Терм «высокий»</div>
+          <div class="aggr-card-val">${(acc.high || 0).toFixed(2)}</div>
+          <div class="aggr-card-sub">
+            ${acc.high > 0.5 ? "Сработало сильно" : acc.high > 0 ? "Сработало слабо" : "Не сработало"}
+          </div>
+        </div>
       </div>
 
-      <div class="section-label" style="margin-top:16px;">Агрегированная функция риска</div>
-      <div class="chart-box h-260">
+      <div class="section-label" style="margin-top:20px;">График агрегации</div>
+      <div class="mamdani-explain-sub">
+        Три тонкие линии — исходные термы. <b>Жирная линия</b> —
+        итоговая функция, объединяющая все сработавшие правила.
+      </div>
+      <div class="chart-box h-260" style="margin-top:12px;">
         <canvas id="vizAggrChart"></canvas>
       </div>
     `;
     }
 
-    /* =========================================================
-       ШАГ 4. ДЕФАЗЗИФИКАЦИЯ
-       ========================================================= */
-    function renderDefuzz(result) {
+    function renderDefuzzDetail(result) {
         return `
-      <p style="font-size:13px;color:var(--txt-muted);margin-bottom:12px;">
-        Из агрегированной функции принадлежности вычисляется <b>центр тяжести</b> —
-        это и есть итоговое число риска.
-      </p>
+      <div class="mamdani-explain">
+        <b>Дефаззификация</b> — превращение нечёткого результата
+        обратно в <b>обычное число</b>. Система берёт «центр тяжести» —
+        где уверенность максимальна.
+      </div>
 
-      <div class="grid grid-3">
-        <div class="metric">
-          <div class="metric-lbl">Итоговый риск</div>
-          <div class="metric-val" style="color:var(--${Utils.riskClass(result.risk.term)})">
+      <div class="defuzz-grid">
+        <div class="defuzz-card">
+          <div class="defuzz-card-lbl">Риск срыва</div>
+          <div class="defuzz-card-val" style="color:var(--${Utils.riskClass(result.risk.term)})">
             ${result.risk.value.toFixed(1)}
           </div>
-          <div class="metric-sub">${Fuzzy.termLabel(result.risk.term, "risk")}</div>
+          <div class="defuzz-card-term">
+            ${escapeHtml(Fuzzy.termLabel(result.risk.term, "risk"))}
+          </div>
         </div>
-        <div class="metric">
-          <div class="metric-lbl">Готовность</div>
-          <div class="metric-val" style="color:var(--${Utils.readyClass(result.ready.term)})">
+        <div class="defuzz-card">
+          <div class="defuzz-card-lbl">Готовность</div>
+          <div class="defuzz-card-val" style="color:var(--${Utils.readyClass(result.ready.term)})">
             ${result.ready.value.toFixed(1)}
           </div>
-          <div class="metric-sub">${Fuzzy.termLabel(result.ready.term, "ready")}</div>
+          <div class="defuzz-card-term">
+            ${escapeHtml(Fuzzy.termLabel(result.ready.term, "ready"))}
+          </div>
         </div>
-        <div class="metric">
-          <div class="metric-lbl">Рейтинг</div>
-          <div class="metric-val" style="color:var(--accent)">
+        <div class="defuzz-card">
+          <div class="defuzz-card-lbl">Рейтинг</div>
+          <div class="defuzz-card-val" style="color:var(--accent)">
             ${result.rating.value.toFixed(1)}
           </div>
-          <div class="metric-sub">${Fuzzy.termLabel(result.rating.term, "rating")}</div>
+          <div class="defuzz-card-term">
+            ${escapeHtml(Fuzzy.termLabel(result.rating.term, "rating"))}
+          </div>
         </div>
       </div>
 
-      <div class="section-label" style="margin-top:16px;">Центр тяжести</div>
-      <div class="chart-box h-260">
+      <div class="section-label" style="margin-top:20px;">График дефаззификации</div>
+      <div class="mamdani-explain-sub">
+        Красная вертикальная линия — <b>итоговый риск = ${result.risk.value.toFixed(1)}</b>.
+        Это центр тяжести итоговой функции.
+      </div>
+      <div class="chart-box h-260" style="margin-top:12px;">
         <canvas id="vizDefuzzChart"></canvas>
       </div>
     `;
     }
 
-    /* =========================================================
-       ШАГ 5. СРАВНЕНИЕ АЛГОРИТМОВ
-       ========================================================= */
-    function renderCompare(inputs, mamdani) {
+    function renderCompareDetail(inputs, mamdani) {
         const sugeno = Fuzzy.sugenoInfer(inputs);
         const crisp = Fuzzy.crispInfer(inputs);
 
         return `
-      <p style="font-size:13px;color:var(--txt-muted);margin-bottom:16px;">
-        Одна и та же работа, три разных метода оценки. Демонстрирует разницу в подходах.
-      </p>
+      <div class="mamdani-explain">
+        Одну работу можно оценить <b>тремя способами</b>.
+        Meridian использует <b>Мамдани</b> — самый прозрачный метод.
+        Сравни с другими подходами ниже.
+      </div>
 
       <div class="algo-compare">
         <div class="algo-card selected">
           <div class="algo-card-badge">Наш выбор</div>
           <div class="algo-card-title">Мамдани</div>
-          <div class="algo-card-value" style="color:var(--accent)">${mamdani.risk.value.toFixed(0)}</div>
-          <div class="algo-card-sub">центр тяжести ФП</div>
+          <div class="algo-card-value" style="color:var(--accent)">
+            ${mamdani.risk.value.toFixed(0)}
+          </div>
+          <div class="algo-card-sub">
+            Прозрачно: каждое правило можно прочитать.
+          </div>
         </div>
         <div class="algo-card">
           <div class="algo-card-title">Сугено</div>
-          <div class="algo-card-value" style="color:var(--warn)">${sugeno.risk.value.toFixed(0)}</div>
-          <div class="algo-card-sub">взвешенное среднее</div>
+          <div class="algo-card-value" style="color:var(--warn)">
+            ${sugeno.risk.value.toFixed(0)}
+          </div>
+          <div class="algo-card-sub">
+            Упрощение: вместо функций — точки.
+          </div>
         </div>
         <div class="algo-card">
           <div class="algo-card-title">Чёткая формула</div>
-          <div class="algo-card-value" style="color:var(--txt-muted)">${crisp.risk.value.toFixed(0)}</div>
-          <div class="algo-card-sub">линейная комбинация</div>
+          <div class="algo-card-value" style="color:var(--txt-muted)">
+            ${crisp.risk.value.toFixed(0)}
+          </div>
+          <div class="algo-card-sub">
+            Линейная формула без правил.
+          </div>
         </div>
       </div>
 
-      <div class="section-label" style="margin-top:20px;">Детальные значения</div>
+      <div class="section-label" style="margin-top:24px;">Детальные значения</div>
       <div style="overflow-x:auto;">
         <table class="table">
           <thead>
@@ -455,13 +813,13 @@ const MamdaniViz = (() => {
         </table>
       </div>
 
-      <div class="explain" style="margin-top:16px;">
-        <b>Почему Мамдани:</b>
-        <ul>
-          <li><b>Прозрачность.</b> Каждое правило читается как «ЕСЛИ... ТО...».</li>
-          <li><b>Интерпретируемость.</b> Нечёткие правила учитывают нелинейные комбинации факторов.</li>
-          <li><b>Устойчивость к шуму.</b> Небольшое изменение входов плавно меняет вывод.</li>
-          <li><b>Гибкость.</b> Правила можно включать, выключать, добавлять без изменения кода.</li>
+      <div class="mamdani-explain" style="margin-top:20px;">
+        <b>Почему Мамдани?</b>
+        <ul style="margin:10px 0 0 20px;line-height:1.7;">
+          <li><b>Прозрачность.</b> Каждое правило понятно человеку.</li>
+          <li><b>Объяснимость.</b> Видно, какие правила сработали и почему.</li>
+          <li><b>Устойчивость.</b> Небольшие изменения входов плавно меняют вывод.</li>
+          <li><b>Гибкость.</b> Правила можно добавлять без изменения кода.</li>
         </ul>
       </div>
     `;
@@ -477,116 +835,52 @@ const MamdaniViz = (() => {
       </tr>
     `;
     }
-    /* =========================================================
-       ИТОГОВЫЙ БЛОК
-       ========================================================= */
-    function renderOutputSummary(inputs, result) {
+
+    function renderHistory(work) {
+        const comments = Storage.getCommentsByWork(work.id);
+        const stages = Storage.getStagesByWork(work.id);
+
+        const events = [
+            { time: work.createdAt, label: "Создана" },
+            ...stages
+                .filter((s) => s.completedAt)
+                .map((s) => ({
+                    time: s.completedAt,
+                    label: `Этап: ${s.name}`,
+                })),
+            ...comments.map((c) => ({
+                time: c.createdAt,
+                label: "Комментарий",
+            })),
+        ].sort((a, b) => a.time - b.time);
+
+        if (events.length < 2) return "";
+
         return `
-      <div class="output-summary">
-        <h4>Итоговый вывод системы</h4>
-        <div class="output-summary-line">
-          <span>Риск срыва сроков</span>
-          <b>${result.risk.value.toFixed(1)} / 100 · ${Fuzzy.termLabel(result.risk.term, "risk")}</b>
+      <div class="mamdani-history">
+        <div class="mamdani-section-title">
+          ${SVG.activity({ cls: "icon icon-sm" })}
+          История работы (${events.length} событий)
         </div>
-        <div class="output-summary-line">
-          <span>Готовность работы</span>
-          <b>${result.ready.value.toFixed(1)} / 100 · ${Fuzzy.termLabel(result.ready.term, "ready")}</b>
-        </div>
-        <div class="output-summary-line">
-          <span>Нечёткий рейтинг</span>
-          <b>${result.rating.value.toFixed(1)} / 100 · ${Fuzzy.termLabel(result.rating.term, "rating")}</b>
-        </div>
-      </div>
-    `;
-    }
-
-    /* =========================================================
-       ОБЗОР
-       ========================================================= */
-    function renderOverview(inputs, result) {
-        return `
-      <div class="grid grid-3">
-        <div class="metric">
-          <div class="metric-lbl">Риск срыва сроков</div>
-          <div class="metric-val" style="color:var(--${Utils.riskClass(result.risk.term)})">
-            ${result.risk.value.toFixed(1)}
-          </div>
-          <div class="metric-sub">${Fuzzy.termLabel(result.risk.term, "risk")}</div>
-        </div>
-        <div class="metric">
-          <div class="metric-lbl">Готовность</div>
-          <div class="metric-val" style="color:var(--${Utils.readyClass(result.ready.term)})">
-            ${result.ready.value.toFixed(1)}
-          </div>
-          <div class="metric-sub">${Fuzzy.termLabel(result.ready.term, "ready")}</div>
-        </div>
-        <div class="metric">
-          <div class="metric-lbl">Рейтинг</div>
-          <div class="metric-val" style="color:var(--accent)">
-            ${result.rating.value.toFixed(1)}
-          </div>
-          <div class="metric-sub">${Fuzzy.termLabel(result.rating.term, "rating")}</div>
-        </div>
-      </div>
-
-      <div class="section-label" style="margin-top:16px;">Ключевые факторы</div>
-      <div style="display:grid;gap:6px;">
-        ${["progress", "days", "activity", "edits"]
-            .map((v) => {
-                const val = inputs[v] ?? 0;
-                const dt = Fuzzy.dominantTerm(v, val);
-                const terms = ["low", "med", "high"].map((t) => ({
-                    t,
-                    mu: safeMF(v, t, val),
-                }));
-                const maxMu = Math.max(...terms.map((t) => t.mu));
-
-                return `
-            <div style="display:flex;align-items:center;gap:10px;padding:6px 0;font-size:13px;">
-              <span style="width:150px;color:var(--txt-muted);">${escapeHtml(VAR_NAMES[v] || v)}</span>
-              <span style="font-weight:500;width:50px;">${val}</span>
-              <span style="color:var(--accent);width:80px;font-size:12px;">${escapeHtml(dt.term)}</span>
-              <div class="rule-fired-bar" style="flex:1;">
-                <div style="width:${maxMu * 100}%"></div>
-              </div>
+        <div class="history-list">
+          ${events
+              .slice(-5)
+              .reverse()
+              .map(
+                  (e) => `
+            <div class="history-item">
+              <div class="history-dot"></div>
+              <div class="history-time">${fmtDateTime(e.time)}</div>
+              <div class="history-label">${escapeHtml(e.label)}</div>
             </div>
-          `;
-            })
-            .join("")}
+          `,
+              )
+              .join("")}
+        </div>
       </div>
     `;
     }
 
-    /* =========================================================
-       ОБРАБОТЧИКИ
-       ========================================================= */
-    function step(s) {
-        currentStep = s;
-        renderView();
-    }
-
-    function selectWork(id) {
-        const num = +id;
-        if (isNaN(num)) return;
-        selectedWorkId = num;
-        renderView();
-    }
-
-    function renderView() {
-        const work = Storage.getWorkById(selectedWorkId);
-        if (!work) return;
-
-        const root = document.getElementById("viewRoot");
-        if (!root) return;
-
-        root.innerHTML = `<div class="view active">${render()}</div>`;
-
-        setTimeout(() => drawCharts(), 0);
-    }
-
-    /* =========================================================
-       ГРАФИКИ (через Chart.js напрямую, цвета из Charts.COLORS)
-       ========================================================= */
     function drawCharts() {
         if (typeof Charts === "undefined") return;
         if (!Charts.hasChart()) return;
@@ -595,7 +889,9 @@ const MamdaniViz = (() => {
         if (!work) return;
 
         const inputs = buildInputs(work);
-        const result = Fuzzy.infer(inputs);
+        if (!inputs) return;
+        const result = Utils.safeFuzzyInfer(inputs);
+        if (!result) return;
 
         const C = {
             ok: Charts.COLORS.ok,
@@ -606,7 +902,6 @@ const MamdaniViz = (() => {
             line: Charts.COLORS.line,
         };
 
-        /* --- Агрегация --- */
         const aggrCanvas = document.getElementById("vizAggrChart");
         if (aggrCanvas) {
             if (aggrCanvas._chart) {
@@ -661,20 +956,20 @@ const MamdaniViz = (() => {
                             fill: false,
                         },
                         {
-                            label: "Агрегат",
+                            label: "Итоговая функция",
                             data: dataMax,
                             borderColor: C.accent,
-                            borderWidth: 2.5,
+                            borderWidth: 3,
                             pointRadius: 0,
                             fill: true,
-                            backgroundColor: "rgba(47, 107, 255, 0.12)",
+                            backgroundColor: "rgba(99, 102, 241, 0.12)",
                         },
                     ],
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    animation: { duration: 400 },
+                    animation: { duration: 300 },
                     plugins: {
                         legend: {
                             labels: {
@@ -683,13 +978,6 @@ const MamdaniViz = (() => {
                                 boxWidth: 12,
                                 usePointStyle: true,
                             },
-                        },
-                        tooltip: {
-                            backgroundColor: "#fff",
-                            titleColor: C.txt,
-                            bodyColor: C.txt,
-                            borderColor: C.line,
-                            borderWidth: 1,
                         },
                     },
                     scales: {
@@ -700,19 +988,30 @@ const MamdaniViz = (() => {
                                 maxTicksLimit: 11,
                             },
                             grid: { color: C.line, drawBorder: false },
+                            title: {
+                                display: true,
+                                text: "Риск (0 — низкий, 100 — высокий)",
+                                color: C.txt,
+                                font: { size: 11 },
+                            },
                         },
                         y: {
                             min: 0,
                             max: 1,
                             ticks: { color: C.txt, font: { size: 10 } },
                             grid: { color: C.line, drawBorder: false },
+                            title: {
+                                display: true,
+                                text: "Уверенность (μ)",
+                                color: C.txt,
+                                font: { size: 11 },
+                            },
                         },
                     },
                 },
             });
         }
 
-        /* --- Дефаззификация (центр тяжести) --- */
         const defuzzCanvas = document.getElementById("vizDefuzzChart");
         if (defuzzCanvas) {
             if (defuzzCanvas._chart) {
@@ -725,7 +1024,6 @@ const MamdaniViz = (() => {
             const x = Array.from({ length: 101 }, (_, i) => i);
             const acc = result.risk.acc;
 
-            /* Агрегат */
             const dataLow = x.map((v) =>
                 Math.min(acc.low, Fuzzy.OUT.risk.low(v)),
             );
@@ -739,10 +1037,7 @@ const MamdaniViz = (() => {
                 Math.max(dataLow[i], dataMed[i], dataHigh[i]),
             );
 
-            /* Вертикальная линия центра тяжести */
-            const centerLine = x.map((v) =>
-                v === Math.round(result.risk.value) ? 1 : null,
-            );
+            const centerValue = result.risk.value;
 
             defuzzCanvas._chart = new Chart(defuzzCanvas, {
                 type: "line",
@@ -750,21 +1045,24 @@ const MamdaniViz = (() => {
                     labels: x,
                     datasets: [
                         {
-                            label: "Агрегат",
+                            label: "Итоговая функция",
                             data: dataMax,
                             borderColor: C.accent,
-                            backgroundColor: "rgba(47, 107, 255, 0.15)",
-                            borderWidth: 2,
+                            backgroundColor: "rgba(99, 102, 241, 0.18)",
+                            borderWidth: 2.5,
                             pointRadius: 0,
                             fill: true,
                         },
                         {
-                            label: `Центр тяжести (${result.risk.value.toFixed(1)})`,
-                            data: centerLine,
+                            label: `Центр тяжести = ${centerValue.toFixed(1)}`,
+                            data: x.map((v) =>
+                                Math.abs(v - centerValue) < 0.5
+                                    ? dataMax[Math.round(v)] || 0.5
+                                    : null,
+                            ),
                             borderColor: C.bad,
-                            borderWidth: 2,
+                            borderWidth: 3,
                             pointRadius: 0,
-                            borderDash: [4, 4],
                             fill: false,
                         },
                     ],
@@ -772,7 +1070,7 @@ const MamdaniViz = (() => {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    animation: { duration: 400 },
+                    animation: { duration: 300 },
                     plugins: {
                         legend: {
                             labels: {
@@ -791,6 +1089,12 @@ const MamdaniViz = (() => {
                                 maxTicksLimit: 11,
                             },
                             grid: { color: C.line, drawBorder: false },
+                            title: {
+                                display: true,
+                                text: "Риск (0 — низкий, 100 — высокий)",
+                                color: C.txt,
+                                font: { size: 11 },
+                            },
                         },
                         y: {
                             min: 0,
@@ -804,13 +1108,102 @@ const MamdaniViz = (() => {
         }
     }
 
-    /* =========================================================
-       ПУБЛИЧНЫЙ API
-       ========================================================= */
+    function step(s) {
+        currentStep = s;
+        renderView();
+    }
+
+    function selectWork(id) {
+        const num = +id;
+        if (isNaN(num)) return;
+        selectedWorkId = num;
+        currentStep = "all";
+        renderView();
+    }
+
+    function contactStudent(workId) {
+        const work = Storage.getWorkById(workId);
+        if (!work) return;
+        const student = Storage.getUserById(work.studentId);
+        if (!student) return;
+        App.toast(`Написать студенту: ${student.fio} (${student.email})`);
+    }
+
+    function openCommentModal(workId) {
+        const html = `
+      <div class="modal-back" onclick="if(event.target===this) App.closeModal()">
+        <div class="modal">
+          <div class="modal-head">
+            <h3>Добавить комментарий</h3>
+            <button class="modal-close" onclick="App.closeModal()">
+              ${SVG.x({ cls: "icon icon-sm" })}
+            </button>
+          </div>
+          <div class="field">
+            <label>Текст комментария</label>
+            <textarea id="mamdani_comment" rows="4" placeholder="Что нужно доработать..."></textarea>
+          </div>
+          <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+            <button class="btn-ghost" onclick="App.closeModal()">Отмена</button>
+            <button class="btn-primary" onclick="MamdaniViz.saveComment(${workId})">Отправить</button>
+          </div>
+        </div>
+      </div>
+    `;
+        App.openModal(html);
+    }
+
+    function saveComment(workId) {
+        const text = document.getElementById("mamdani_comment")?.value.trim();
+        if (!text) {
+            App.toast("Введите текст");
+            return;
+        }
+
+        const work = Storage.getWorkById(workId);
+        if (!work) return;
+        const user = Auth.getUser();
+        if (!user) return;
+
+        Storage.saveComment({
+            id: uid(),
+            workId,
+            authorId: user.id,
+            text,
+            createdAt: Date.now(),
+            kind: "review",
+        });
+
+        if (typeof Notifications !== "undefined") {
+            Notifications.add({
+                userId: work.studentId,
+                type: "comment",
+                title: "Новое замечание руководителя",
+                text: text.slice(0, 100),
+                link: { view: "my-work" },
+            });
+        }
+
+        App.closeModal();
+        App.toast("Комментарий добавлен");
+        renderView();
+    }
+
+    function renderView() {
+        const root = document.getElementById("viewRoot");
+        if (!root) return;
+        root.innerHTML = `<div class="view active">${render()}</div>`;
+
+        setTimeout(() => drawCharts(), 50);
+    }
+
     return {
         render,
         step,
         selectWork,
+        contactStudent,
+        openCommentModal,
+        saveComment,
         renderView,
     };
 })();

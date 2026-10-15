@@ -1,24 +1,26 @@
-/* =========================================================
-   SIMULATE — «Что если» симулятор
-   Обновлено: Utils.buildFuzzyInputs и safeFuzzyInfer,
-   безопасные проверки DOM, все id сохранены
-   ========================================================= */
 const Simulate = (() => {
     let workId = null;
     let currentWork = null;
     let baseCache = null;
 
-    /* Алиасы на Utils */
     const escapeHtml = Utils.escapeHtml;
     const emptyState = Utils.emptyState;
+
+    const SLIDER_ICONS = {
+        s_progress: SVG.trending,
+        s_days: SVG.calendar,
+        s_activity: SVG.activity,
+        s_edits: SVG.edit,
+        s_volume: SVG.book,
+        s_orig: SVG.search,
+        s_supScore: SVG.graduation,
+        s_gost: SVG.fileText,
+    };
 
     function getUser() {
         return Auth.getUser();
     }
 
-    /* =========================================================
-       РАБОТЫ ПО РОЛИ
-       ========================================================= */
     function getAvailableWorks(user) {
         if (!user) return [];
         if (user.role === "student") return Storage.getWorksByStudent(user.id);
@@ -26,17 +28,12 @@ const Simulate = (() => {
         return Storage.getWorks();
     }
 
-    /* =========================================================
-       ВХОДЫ (обёртка над Utils.buildFuzzyInputs)
-       ========================================================= */
     function getBaseInputs(work) {
         if (!work) return null;
 
         const inputs = Utils.buildFuzzyInputs(work);
         if (!inputs) return null;
 
-        /* Подставляем нейтральные значения для отсутствующих полей,
-           чтобы ползунки не были null */
         return {
             progress: inputs.progress ?? 0,
             days: inputs.days ?? 30,
@@ -49,9 +46,6 @@ const Simulate = (() => {
         };
     }
 
-    /* =========================================================
-       РЕНДЕР
-       ========================================================= */
     function render(params) {
         const user = getUser();
         if (!user) return emptyState("Не авторизован", "", SVG.lock);
@@ -84,82 +78,270 @@ const Simulate = (() => {
                 SVG.alertTriangle,
             );
 
-        const currentResult = Utils.safeFuzzyInfer(base);
-
         baseCache = { ...base };
+        const baseResult = Utils.safeFuzzyInfer(base);
+        const currentResult = baseResult;
 
         return `
-      <div class="card">
-        <div class="card-head">
-          <div class="card-title">Симулятор «Что если»</div>
-          <select onchange="Simulate.selectWork(this.value)"
-            class="filters-select"
-            style="padding:8px 12px;border:1px solid var(--line);border-radius:var(--r);background:var(--bg-elev);font-size:13px;color:var(--txt);outline:none;max-width:340px;">
-            ${works
-                .map(
-                    (w) => `
-              <option value="${w.id}" ${Storage.sameId(w.id, workId) ? "selected" : ""}>
-                ${escapeHtml(w.topic.slice(0, 60))}${w.topic.length > 60 ? "…" : ""}
-              </option>
-            `,
-                )
-                .join("")}
-          </select>
+      <div class="sim-hero">
+        <div class="sim-hero-icon">${SVG.sliders({ cls: "icon icon-xl" })}</div>
+        <div class="sim-hero-body">
+          <div class="sim-hero-title">Симулятор «Что если»</div>
+          <div class="sim-hero-text">
+            Двигайте ползунки — результат <b>пересчитывается мгновенно</b>.
+            Можно понять, что будет, если студент ускорится или пропустит неделю.
+          </div>
+        </div>
+      </div>
+
+      <div class="sim-work">
+        <div class="sim-work-info">
+          <div class="sim-work-label">Работа</div>
+          <div class="sim-work-topic">${escapeHtml(currentWork.topic)}</div>
+        </div>
+        <select onchange="Simulate.selectWork(this.value)" class="sim-select">
+          ${works
+              .map(
+                  (w) => `
+            <option value="${w.id}" ${Storage.sameId(w.id, workId) ? "selected" : ""}>
+              ${escapeHtml(w.topic.slice(0, 60))}${w.topic.length > 60 ? "…" : ""}
+            </option>
+          `,
+              )
+              .join("")}
+        </select>
+      </div>
+
+      <div class="sim-scenarios">
+        <div class="sim-scenarios-label">
+          ${SVG.zap({ cls: "icon icon-sm" })}
+          Быстрые сценарии
+        </div>
+        <div class="sim-scenarios-grid">
+          <button class="sim-scenario" onclick="Simulate.applyScenario('faster')">
+            <div class="sim-scenario-icon">${SVG.trending({ cls: "icon" })}</div>
+            <div class="sim-scenario-body">
+              <div class="sim-scenario-title">Студент ускорится</div>
+              <div class="sim-scenario-desc">Прогресс +20%, активность +3</div>
+            </div>
+          </button>
+          <button class="sim-scenario" onclick="Simulate.applyScenario('miss')">
+            <div class="sim-scenario-icon">${SVG.clock({ cls: "icon" })}</div>
+            <div class="sim-scenario-body">
+              <div class="sim-scenario-title">Пропустит неделю</div>
+              <div class="sim-scenario-desc">Дней −7, активность −2</div>
+            </div>
+          </button>
+          <button class="sim-scenario" onclick="Simulate.applyScenario('better')">
+            <div class="sim-scenario-icon">${SVG.star({ cls: "icon" })}</div>
+            <div class="sim-scenario-body">
+              <div class="sim-scenario-title">Лучше оформит</div>
+              <div class="sim-scenario-desc">ГОСТ +20%, оригинальность +10%</div>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <div class="sim-grid">
+        <div class="sim-controls">
+          <div class="sim-controls-title">
+            ${SVG.sliders({ cls: "icon icon-sm" })}
+            Входные параметры
+          </div>
+          ${slider("s_progress", "Прогресс", 0, 100, base.progress, "%")}
+          ${slider("s_days", "Дней до дедлайна", 0, 60, base.days, "")}
+          ${slider("s_activity", "Активность", 0, 10, base.activity, "")}
+          ${slider("s_edits", "Число правок", 0, 20, base.edits, "")}
+          ${slider("s_volume", "Объём", 0, 100, base.volume, "%")}
+          ${slider("s_orig", "Оригинальность", 0, 100, base.orig, "%")}
+          ${slider("s_supScore", "Оценка руководителя", 0, 10, base.supScore, "")}
+          ${slider("s_gost", "Соответствие ГОСТу", 0, 100, base.gost, "%")}
+
+          <button class="btn-ghost sim-reset" onclick="Simulate.reset()">
+            ${SVG.refresh({ cls: "icon icon-sm" })}
+            <span>Сбросить к исходным</span>
+          </button>
         </div>
 
-        <p style="font-size:13px;color:var(--txt-muted);margin-bottom:20px;line-height:1.6;">
-          Двигайте ползунки — система мгновенно пересчитает риск, готовность и рейтинг.
-          Сравнение «до / после» покажет, как изменение входов повлияло на результат.
-        </p>
-
-        <div class="sim-grid">
-          <div>
-            <div class="section-label">Входные параметры</div>
-            ${slider("s_progress", "Прогресс", 0, 100, base.progress, "%")}
-            ${slider("s_days", "Дней до дедлайна", 0, 60, base.days, "")}
-            ${slider("s_activity", "Активность", 0, 10, base.activity, "")}
-            ${slider("s_edits", "Число правок", 0, 20, base.edits, "")}
-            ${slider("s_volume", "Объём", 0, 100, base.volume, "%")}
-            ${slider("s_orig", "Оригинальность", 0, 100, base.orig, "%")}
-            ${slider("s_supScore", "Оценка руководителя", 0, 10, base.supScore, "")}
-            ${slider("s_gost", "Соответствие ГОСТу", 0, 100, base.gost, "%")}
-
-            <button class="btn-ghost btn-sm mt-8" onclick="Simulate.reset()">
-              ${SVG.refresh({ cls: "icon icon-sm" })}
-              <span>Сбросить к исходным</span>
-            </button>
+        <div class="sim-result-panel">
+          <div class="sim-result-title">
+            ${SVG.target({ cls: "icon icon-sm" })}
+            Результат
           </div>
-
-          <div>
-            <div class="section-label">Результат</div>
-            <div id="simResult">
-              ${renderResult(base, currentResult, currentResult)}
-            </div>
+          <div id="simResult">
+            ${renderResult(base, baseResult, currentResult)}
           </div>
         </div>
       </div>
     `;
     }
 
-    /* =========================================================
-       ПОЛЗУНОК
-       ========================================================= */
     function slider(id, label, min, max, val, unit) {
+        const IconFn = SLIDER_ICONS[id];
         return `
-      <div class="slider-row">
-        <label>
-          <span>${escapeHtml(label)}</span>
-          <span class="val" id="v_${id}">${val}${unit}</span>
-        </label>
+      <div class="sim-slider">
+        <div class="sim-slider-head">
+          <span class="sim-slider-label">
+            ${IconFn ? IconFn({ cls: "icon icon-sm" }) : ""}
+            ${escapeHtml(label)}
+          </span>
+          <span class="sim-slider-val" id="v_${id}">${val}${unit}</span>
+        </div>
         <input type="range" id="${id}" min="${min}" max="${max}" value="${val}"
           oninput="Simulate.onChange()">
       </div>
     `;
     }
 
-    /* =========================================================
-       ИЗМЕНЕНИЕ
-       ========================================================= */
+    function renderResult(inputs, baseResult, result) {
+        if (!baseResult || !result) return "";
+
+        const riskDiff = result.risk.value - baseResult.risk.value;
+        const readyDiff = result.ready.value - baseResult.ready.value;
+        const ratingDiff = result.rating.value - baseResult.rating.value;
+
+        return `
+      <div class="sim-metrics">
+        ${renderMetricCard("Риск", result.risk, riskDiff, false)}
+        ${renderMetricCard("Готовность", result.ready, readyDiff, true)}
+        ${renderMetricCard("Рейтинг", result.rating, ratingDiff, true)}
+      </div>
+
+      <div class="sim-compare">
+        <div class="sim-compare-title">
+          ${SVG.barChart({ cls: "icon icon-sm" })}
+          Сравнение «до / после»
+        </div>
+        ${diffRow("Риск", baseResult.risk.value, result.risk.value, riskDiff, false)}
+        ${diffRow("Готовность", baseResult.ready.value, result.ready.value, readyDiff, true)}
+        ${diffRow("Рейтинг", baseResult.rating.value, result.rating.value, ratingDiff, true)}
+      </div>
+
+      <div class="sim-comment ${getCommentClass(riskDiff)}">
+        <div class="sim-comment-icon">
+            ${getCommentIcon(riskDiff)}
+        </div>
+        <div class="sim-comment-text">
+            ${escapeHtml(describeChange(inputs, riskDiff))}
+        </div>
+      </div>
+    `;
+    }
+
+    function renderMetricCard(label, data, diff, higherIsBetter) {
+        const term = data.term;
+        const valueColor =
+            label === "Риск"
+                ? Utils.riskClass(term)
+                : label === "Готовность"
+                  ? Utils.readyClass(term)
+                  : "accent";
+
+        const diffArrow = diff > 2 ? "up" : diff < -2 ? "down" : "";
+        const diffClass =
+            diffArrow === "up"
+                ? higherIsBetter
+                    ? "good"
+                    : "bad"
+                : diffArrow === "down"
+                  ? higherIsBetter
+                      ? "bad"
+                      : "good"
+                  : "";
+
+        return `
+      <div class="sim-metric">
+        <div class="sim-metric-label">${escapeHtml(label)}</div>
+        <div class="sim-metric-value" style="color:var(--${valueColor})">
+          ${data.value.toFixed(0)}
+        </div>
+        <div class="sim-metric-term">${escapeHtml(Fuzzy.termLabel(term, label === "Риск" ? "risk" : label === "Готовность" ? "ready" : "rating"))}</div>
+        ${
+            diffArrow
+                ? `
+            <div class="sim-metric-diff ${diffClass}">
+                ${diffArrow === "up" ? "▲" : "▼"} ${Math.abs(diff).toFixed(0)}
+            </div>
+        `
+                : ""
+        }
+      </div>
+    `;
+    }
+
+    function diffRow(label, before, after, diff, higherIsBetter) {
+        const improved = higherIsBetter ? diff > 5 : diff < -5;
+        const worsened = higherIsBetter ? diff < -5 : diff > 5;
+
+        let cls = "";
+        if (improved) cls = "better";
+        else if (worsened) cls = "worse";
+
+        const diffColor = improved ? "ok" : worsened ? "bad" : "txt-muted";
+        const arrow = diff > 0 ? "▲" : diff < 0 ? "▼" : "—";
+        const arrowColor = improved ? "ok" : worsened ? "bad" : "txt-muted";
+
+        return `
+      <div class="sim-diff">
+        <div class="sim-diff-label">${escapeHtml(label)}</div>
+        <div class="sim-diff-before">${before.toFixed(0)}</div>
+        <div class="sim-diff-arrow">${SVG.arrowRight({ cls: "icon icon-xs" })}</div>
+        <div class="sim-diff-after ${cls}">${after.toFixed(0)}</div>
+        <div class="sim-diff-delta" style="color:var(--${diffColor})">
+          <span class="sim-diff-delta-arrow" style="color:var(--${arrowColor})">${arrow}</span>
+          <span>${diff > 0 ? "+" : ""}${diff.toFixed(0)}</span>
+        </div>
+      </div>
+    `;
+    }
+
+    function getCommentClass(riskDiff) {
+        if (riskDiff > 5) return "worse";
+        if (riskDiff < -5) return "better";
+        return "neutral";
+    }
+
+    function getCommentIcon(riskDiff) {
+        if (riskDiff > 5) return SVG.alertTriangle({ cls: "icon" });
+        if (riskDiff < -5) return SVG.checkCircle({ cls: "icon" });
+        return SVG.info({ cls: "icon" });
+    }
+
+    function describeChange(inputs, riskDiff) {
+        if (!baseCache) return "—";
+
+        const changes = [];
+        const labels = {
+            progress: "прогресс",
+            days: "дни до дедлайна",
+            activity: "активность",
+            edits: "правки",
+            volume: "объём",
+            orig: "оригинальность",
+            supScore: "оценка руководителя",
+            gost: "соответствие ГОСТу",
+        };
+
+        for (const k of Object.keys(inputs)) {
+            const diff = inputs[k] - (baseCache[k] ?? 0);
+            if (Math.abs(diff) >= 1) {
+                const sign = diff > 0 ? "+" : "";
+                changes.push(`${labels[k] || k}: ${sign}${diff.toFixed(0)}`);
+            }
+        }
+
+        if (changes.length === 0) {
+            return "Изменений нет — значения совпадают с исходными.";
+        }
+
+        let verdict = "";
+        if (riskDiff > 5) verdict = "Риск вырос — стало хуже.";
+        else if (riskDiff < -5) verdict = "Риск снизился — стало лучше.";
+        else verdict = "Риск почти не изменился.";
+
+        return `${verdict} Изменения: ${changes.join(", ")}.`;
+    }
+
     function onChange() {
         const sliderIds = [
             "s_progress",
@@ -206,117 +388,62 @@ const Simulate = (() => {
         }
     }
 
-    /* =========================================================
-       РЕЗУЛЬТАТ
-       ========================================================= */
-    function renderResult(inputs, baseResult, result) {
-        if (!baseResult || !result) return "";
+    function applyScenario(type) {
+        if (!baseCache) return;
 
-        const riskDiff = result.risk.value - baseResult.risk.value;
-        const readyDiff = result.ready.value - baseResult.ready.value;
-        const ratingDiff = result.rating.value - baseResult.rating.value;
+        const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+        const s = { ...baseCache };
 
-        return `
-      <div class="metric-grid" style="margin-bottom:16px;">
-        <div class="metric">
-          <div class="metric-lbl">Риск</div>
-          <div class="metric-val" style="color:var(--${Utils.riskClass(result.risk.term)})">
-            ${result.risk.value.toFixed(0)}
-          </div>
-        </div>
-        <div class="metric">
-          <div class="metric-lbl">Готовность</div>
-          <div class="metric-val" style="color:var(--${Utils.readyClass(result.ready.term)})">
-            ${result.ready.value.toFixed(0)}
-          </div>
-        </div>
-        <div class="metric">
-          <div class="metric-lbl">Рейтинг</div>
-          <div class="metric-val" style="color:var(--accent)">
-            ${result.rating.value.toFixed(0)}
-          </div>
-        </div>
-      </div>
-
-      <div style="font-size:12px;color:var(--txt-muted);margin-bottom:8px;">
-        Изменение относительно исходных значений:
-      </div>
-
-      ${diffRow("Риск", baseResult.risk.value, result.risk.value, riskDiff, false)}
-      ${diffRow("Готовность", baseResult.ready.value, result.ready.value, readyDiff, true)}
-      ${diffRow("Рейтинг", baseResult.rating.value, result.rating.value, ratingDiff, true)}
-
-      <div class="explain" style="margin-top:14px;font-size:12px;">
-        <b>Сценарий:</b> ${escapeHtml(describeChange(inputs))}
-      </div>
-    `;
-    }
-
-    function diffRow(label, before, after, diff, higherIsBetter) {
-        const improved = higherIsBetter ? diff > 5 : diff < -5;
-        const worsened = higherIsBetter ? diff < -5 : diff > 5;
-
-        let cls = "";
-        if (improved) cls = "better";
-        else if (worsened) cls = "worse";
-
-        const diffColor = improved ? "ok" : worsened ? "bad" : "txt-muted";
-
-        return `
-      <div class="sim-diff">
-        <div>
-          <div style="font-size:11px;color:var(--txt-muted);">${escapeHtml(label)}</div>
-          <div class="sim-diff-val">${before.toFixed(0)}</div>
-        </div>
-        <div class="sim-diff-arrow">→</div>
-        <div>
-          <div style="font-size:11px;color:var(--txt-muted);">Стало</div>
-          <div class="sim-diff-val ${cls}">${after.toFixed(0)}</div>
-        </div>
-        <div style="margin-left:auto;text-align:right;">
-          <div style="font-size:11px;color:var(--txt-muted);">Δ</div>
-          <div style="font-weight:600;color:var(--${diffColor})">
-            ${diff > 0 ? "+" : ""}${diff.toFixed(0)}
-          </div>
-        </div>
-      </div>
-    `;
-    }
-
-    /* =========================================================
-       ОПИСАНИЕ
-       ========================================================= */
-    function describeChange(inputs) {
-        if (!baseCache) return "—";
-
-        const changes = [];
-        const labels = {
-            progress: "прогресс",
-            days: "дни до дедлайна",
-            activity: "активность",
-            edits: "правки",
-            volume: "объём",
-            orig: "оригинальность",
-            supScore: "оценка руководителя",
-            gost: "соответствие ГОСТу",
-        };
-
-        for (const k of Object.keys(inputs)) {
-            const diff = inputs[k] - (baseCache[k] ?? 0);
-            if (Math.abs(diff) >= 1) {
-                const sign = diff > 0 ? "+" : "";
-                changes.push(`${labels[k] || k}: ${sign}${diff.toFixed(0)}`);
-            }
+        if (type === "faster") {
+            s.progress = clamp(s.progress + 20, 0, 100);
+            s.volume = clamp(s.volume + 20, 0, 100);
+            s.activity = clamp(s.activity + 3, 0, 10);
+        } else if (type === "miss") {
+            s.days = clamp(s.days - 7, 0, 60);
+            s.activity = clamp(s.activity - 2, 0, 10);
+        } else if (type === "better") {
+            s.gost = clamp(s.gost + 20, 0, 100);
+            s.orig = clamp(s.orig + 10, 0, 100);
         }
 
-        return changes.length === 0
-            ? "Изменений нет — значения совпадают с исходными."
-            : changes.join(", ");
+        const sliderIds = [
+            "s_progress",
+            "s_days",
+            "s_activity",
+            "s_edits",
+            "s_volume",
+            "s_orig",
+            "s_supScore",
+            "s_gost",
+        ];
+        const units = {
+            s_progress: "%",
+            s_volume: "%",
+            s_orig: "%",
+            s_gost: "%",
+        };
+
+        sliderIds.forEach((id) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const key = id.replace("s_", "");
+            el.value = s[key];
+            const lbl = document.getElementById("v_" + id);
+            if (lbl) lbl.textContent = s[key] + (units[id] || "");
+        });
+
+        onChange();
+
+        const labels = {
+            faster: "Сценарий применён: студент ускорился",
+            miss: "Сценарий применён: пропуск недели",
+            better: "Сценарий применён: лучшее оформление",
+        };
+        if (typeof App !== "undefined" && App.toast) {
+            App.toast(labels[type] || "Сценарий применён");
+        }
     }
 
-    /* =========================================================
-       УПРАВЛЕНИЕ
-       ========================================================= */
     function reset() {
         if (!currentWork) return;
         baseCache = getBaseInputs(currentWork);
@@ -332,7 +459,6 @@ const Simulate = (() => {
             "s_supScore",
             "s_gost",
         ];
-
         const units = {
             s_progress: "%",
             s_volume: "%",
@@ -346,9 +472,7 @@ const Simulate = (() => {
             const key = id.replace("s_", "");
             el.value = baseCache[key];
             const lbl = document.getElementById("v_" + id);
-            if (lbl) {
-                lbl.textContent = el.value + (units[id] || "");
-            }
+            if (lbl) lbl.textContent = baseCache[key] + (units[id] || "");
         });
 
         onChange();
@@ -371,14 +495,12 @@ const Simulate = (() => {
         root.innerHTML = `<div class="view active">${render()}</div>`;
     }
 
-    /* =========================================================
-       ПУБЛИЧНЫЙ API
-       ========================================================= */
     return {
         render,
         onChange,
         reset,
         selectWork,
+        applyScenario,
         renderView,
     };
 })();

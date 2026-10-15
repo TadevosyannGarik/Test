@@ -1,11 +1,4 @@
-/* =========================================================
-   TEACHER — весь функционал роли «Преподаватель»
-   Обновлено: использует Utils для общих хелперов
-   ========================================================= */
 const Teacher = (() => {
-    /* =========================================================
-       КОНСТАНТЫ (алиасы на Utils)
-       ========================================================= */
     const WORK_STATUSES = Utils.WORK_STATUSES;
     const WORK_TYPES = Utils.WORK_TYPES;
 
@@ -20,9 +13,6 @@ const Teacher = (() => {
         "Список литературы по ГОСТ Р 7.0.5–2008",
     ];
 
-    /* =========================================================
-       ХЕЛПЕРЫ (алиасы на Utils)
-       ========================================================= */
     const escapeHtml = Utils.escapeHtml;
     const statusBadge = Utils.statusBadge;
     const calcProgress = Utils.calcProgress;
@@ -50,23 +40,14 @@ const Teacher = (() => {
         );
     }
 
-    /* =========================================================
-       FUZZY
-       ========================================================= */
     function getFuzzyResult(work, progressOverride) {
         return Utils.safeFuzzyInfer(
             Utils.buildFuzzyInputs(work, progressOverride),
         );
     }
 
-    /* =========================================================
-       VIEWS
-       ========================================================= */
     const VIEWS = {};
 
-    /* ---------------------------------------------------------
-       ДАШБОРД
-       --------------------------------------------------------- */
     VIEWS.dashboard = function () {
         const u = getUser();
         if (!u) return "";
@@ -259,9 +240,6 @@ const Teacher = (() => {
     `;
     }
 
-    /* ---------------------------------------------------------
-       ЗАЯВКИ
-       --------------------------------------------------------- */
     VIEWS.requests = function () {
         const students = getMyStudents();
         const requests = students.filter((x) => x.work.status === "pending");
@@ -320,9 +298,6 @@ const Teacher = (() => {
     `;
     }
 
-    /* ---------------------------------------------------------
-       ДЕТАЛЬ ЗАЯВКИ
-       --------------------------------------------------------- */
     VIEWS["request-detail"] = function (params) {
         const w = Storage.getWorkById(params?.id);
         if (!w)
@@ -392,7 +367,6 @@ const Teacher = (() => {
         const w = Storage.getWorkById(workId);
         if (!w) return;
 
-        /* Проверка прав */
         if (!Storage.sameId(w.teacherId, getUser().id)) {
             App.toast("Это не ваша заявка");
             return;
@@ -507,9 +481,6 @@ const Teacher = (() => {
         App.toast("Заявка отклонена");
         App.navigate("requests");
     }
-    /* ---------------------------------------------------------
-       МОИ СТУДЕНТЫ
-       --------------------------------------------------------- */
     VIEWS.students = function () {
         const students = getMyStudents();
         const active = students.filter((x) =>
@@ -572,9 +543,6 @@ const Teacher = (() => {
     `;
     }
 
-    /* ---------------------------------------------------------
-       ДЕТАЛЬ СТУДЕНТА
-       --------------------------------------------------------- */
     VIEWS["student-detail"] = function (params) {
         const workId = params?.workId;
         const studentId = params?.id;
@@ -583,7 +551,6 @@ const Teacher = (() => {
         if (!w || !s)
             return '<div class="card"><div class="empty">Студент не найден</div></div>';
 
-        /* Проверка прав: работа должна быть у этого преподавателя */
         if (!Storage.sameId(w.teacherId, getUser().id)) {
             return `
         <div class="card">
@@ -789,9 +756,6 @@ const Teacher = (() => {
     `;
     };
 
-    /* ---------------------------------------------------------
-       ПРОФИЛЬ СТУДЕНТА
-       --------------------------------------------------------- */
     VIEWS["student-profile"] = function (params) {
         const studentId = params?.id;
         const s = Storage.getUserById(studentId);
@@ -980,9 +944,6 @@ const Teacher = (() => {
         );
     };
 
-    /* ---------------------------------------------------------
-       ЗАМЕЧАНИЯ К ВЕРСИЯМ
-       --------------------------------------------------------- */
     function openVersionCommentModal(versionId) {
         const version = Storage.getVersions().find((v) =>
             Storage.sameId(v.id, versionId),
@@ -1074,9 +1035,6 @@ const Teacher = (() => {
         App.toast("Замечание добавлено");
     }
 
-    /* ---------------------------------------------------------
-       ПРОВЕРКА РАБОТЫ
-       --------------------------------------------------------- */
     VIEWS.review = function () {
         const students = getMyStudents();
         const inReview = students.filter(
@@ -1145,9 +1103,6 @@ const Teacher = (() => {
     `;
     };
 
-    /* =========================================================
-       МОДАЛКА ПРОВЕРКИ РАБОТЫ
-       ========================================================= */
     let reviewGostState = {};
     let reviewWorkId = null;
 
@@ -1469,9 +1424,6 @@ const Teacher = (() => {
         App.toast("Работа допущена к защите");
         App.navigate("students");
     }
-    /* ---------------------------------------------------------
-       РЕДАКТОР ПРАВИЛ
-       --------------------------------------------------------- */
     VIEWS.rules = function () {
         const rules = Fuzzy.getRules();
 
@@ -1534,9 +1486,6 @@ const Teacher = (() => {
         App.navigate("rules");
     }
 
-    /* ---------------------------------------------------------
-       ПРОФИЛЬ
-       --------------------------------------------------------- */
     VIEWS.profile = function () {
         const u = getUser();
         if (!u) return "";
@@ -1593,9 +1542,6 @@ const Teacher = (() => {
     `;
     };
 
-    /* ---------------------------------------------------------
-       СТАТИСТИКА
-       --------------------------------------------------------- */
     VIEWS.stats = function () {
         const students = getMyStudents();
         const active = getMyActiveStudents();
@@ -1737,9 +1683,6 @@ const Teacher = (() => {
         }
     };
 
-    /* ---------------------------------------------------------
-       КАЛЕНДАРЬ ПРЕПОДАВАТЕЛЯ
-       --------------------------------------------------------- */
     VIEWS.calendar = function () {
         const students = getMyStudents();
         const events = [];
@@ -1853,9 +1796,6 @@ const Teacher = (() => {
     `;
     };
 
-    /* ---------------------------------------------------------
-       ПРОВЕРКА ЗАДАЧ (tasks-review)
-       --------------------------------------------------------- */
     VIEWS["tasks-review"] = function () {
         const u = getUser();
         if (!u) return "";
@@ -1999,21 +1939,16 @@ const Teacher = (() => {
     `;
     }
 
-    /* =========================================================
-       ДЕЙСТВИЯ С ЗАДАЧАМИ
-       ========================================================= */
     function taskApprove(taskId) {
         const tasks = Storage.getTasks();
         const t = tasks.find((x) => Storage.sameId(x.id, taskId));
         if (!t) return;
 
-        /* Проверка: задача должна быть в review */
         if (t.col !== "review") {
             App.toast("Задача не на проверке");
             return;
         }
 
-        /* Проверка прав */
         const work = Storage.getWorkById(t.workId);
         if (!work || !Storage.sameId(work.teacherId, getUser().id)) {
             App.toast("Это не ваша задача");
@@ -2190,16 +2125,12 @@ const Teacher = (() => {
         App.navigate("tasks-review");
     }
 
-    /* =========================================================
-       ФИНАЛЬНАЯ ОЦЕНКА ЗА ЗАЩИТУ
-       ========================================================= */
     let pickedGrade = 5;
 
     function markAsDone(workId) {
         const w = Storage.getWorkById(workId);
         if (!w) return;
 
-        /* Проверка прав и статуса */
         if (!Storage.sameId(w.teacherId, getUser().id)) {
             App.toast("Это не ваша работа");
             return;
@@ -2367,9 +2298,6 @@ const Teacher = (() => {
         App.navigate("students");
     }
 
-    /* ---------------------------------------------------------
-       ОБЁРТКИ МОДУЛЕЙ
-       --------------------------------------------------------- */
     VIEWS.mamdani = function (params) {
         return MamdaniViz.render(params);
     };
@@ -2389,29 +2317,19 @@ const Teacher = (() => {
         return Ranking.renderRankingSection();
     };
 
-    /* ---------------------------------------------------------
-       ЗАКРЫТИЕ МОДАЛОК
-       --------------------------------------------------------- */
     function closeModal() {
         App.closeModal();
     }
 
-    /* =========================================================
-       ПУБЛИЧНЫЙ API
-       ========================================================= */
     return {
         VIEWS,
-
-        /* Заявки */
         approveWork,
         openRejectModal,
         rejectWork,
 
-        /* Замечания к версиям */
         openVersionCommentModal,
         saveVersionComment,
 
-        /* Проверка работы */
         openReviewModal,
         toggleGost2,
         updateFuzzyPreview,
@@ -2420,24 +2338,20 @@ const Teacher = (() => {
         markActive,
         approveFinal,
 
-        /* Задачи */
         taskApprove,
         taskReject,
         taskRejectWithComment,
         saveTaskReject,
 
-        /* Финал */
         markAsDone,
         pickGrade,
         saveFinalGrade,
         returnFromApproved,
 
-        /* Правила */
         toggleRule,
         updateRuleDesc,
         resetRules,
 
-        /* Модалки */
         closeModal,
     };
 })();

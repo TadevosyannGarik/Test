@@ -1,10 +1,4 @@
-/* =========================================================
-   PDF REPORT — экспорт отчёта в PDF (через печать)
-   Обновлено: Utils.* вместо дублирующих функций,
-   проверка прав при экспорте работы студента
-   ========================================================= */
 const PdfReport = (() => {
-    /* Алиасы на Utils */
     const escapeHtml = Utils.escapeHtml;
     const calcProgress = Utils.calcProgress;
     const workTypeLabel = Utils.workTypeLabel;
@@ -13,9 +7,6 @@ const PdfReport = (() => {
         return typeof Auth !== "undefined" ? Auth.getUser() : null;
     }
 
-    /* =========================================================
-       ВХОДЫ (через Utils)
-       ========================================================= */
     function getInputs(work) {
         return Utils.buildFuzzyInputs(work);
     }
@@ -24,9 +15,6 @@ const PdfReport = (() => {
         return Utils.safeFuzzyInfer(Utils.buildFuzzyInputs(work));
     }
 
-    /* =========================================================
-       ЭКСПОРТ КАФЕДРЫ
-       ========================================================= */
     function exportDepartment() {
         const user = getUser();
         if (!user) {
@@ -34,7 +22,6 @@ const PdfReport = (() => {
             return;
         }
 
-        /* Только преподаватель или админ */
         if (user.role !== "teacher" && user.role !== "admin") {
             App.toast(
                 "Экспорт отчёта кафедры доступен только преподавателям и администраторам",
@@ -48,7 +35,6 @@ const PdfReport = (() => {
             return;
         }
 
-        /* Если преподаватель — только его работы */
         const filtered =
             user.role === "teacher"
                 ? works.filter((w) => Storage.sameId(w.teacherId, user.id))
@@ -79,9 +65,6 @@ const PdfReport = (() => {
         openPrintWindow(html, "Отчёт по работам кафедры");
     }
 
-    /* =========================================================
-       ЭКСПОРТ СТУДЕНТА
-       ========================================================= */
     function exportStudent(workId) {
         const user = getUser();
         if (!user) {
@@ -95,7 +78,6 @@ const PdfReport = (() => {
             return;
         }
 
-        /* Проверка прав: владелец, преподаватель или админ */
         const allowed = Utils.ensureOwnerWork(w, user);
         if (!allowed) {
             App.toast("Нет доступа к этой работе");
@@ -121,9 +103,6 @@ const PdfReport = (() => {
         openPrintWindow(html, `Отчёт по работе — ${student?.fio || ""}`);
     }
 
-    /* =========================================================
-       HTML — ОТЧЁТ КАФЕДРЫ
-       ========================================================= */
     function buildReportHTML(enriched) {
         const high = enriched.filter((e) => e.res.risk.term === "high").length;
         const med = enriched.filter((e) => e.res.risk.term === "med").length;
@@ -145,7 +124,7 @@ const PdfReport = (() => {
       <!DOCTYPE html>
       <html lang="ru"><head>
       <meta charset="UTF-8">
-      <title>Отчёт по работам — FuzzyProject</title>
+      <title>Отчёт по работам — Meridian</title>
       <style>
         body { font-family: 'Times New Roman', serif; padding: 40px; color: #1a1f29; line-height: 1.55; }
         h1 { font-size: 22px; margin-bottom: 4px; }
@@ -171,7 +150,7 @@ const PdfReport = (() => {
       </head><body>
 
       <h1>Отчёт по работам кафедры</h1>
-      <div class="sub">Сформирован ${new Date().toLocaleString("ru-RU")} · FuzzyProject</div>
+      <div class="sub">Сформирован ${new Date().toLocaleString("ru-RU")} · Meridian</div>
 
       <div class="kpi-row">
         <div class="kpi"><div class="kpi-val">${enriched.length}</div><div class="kpi-lbl">Работ</div></div>
@@ -240,7 +219,7 @@ const PdfReport = (() => {
       </p>
 
       <footer>
-        Отчёт сгенерирован автоматически системой FuzzyProject
+        Отчёт сгенерирован автоматически системой Meridian
         на основе нечёткого логического вывода Мамдани.
       </footer>
 
@@ -248,9 +227,6 @@ const PdfReport = (() => {
     `;
     }
 
-    /* =========================================================
-       HTML — ОТЧЁТ СТУДЕНТА
-       ========================================================= */
     function buildStudentReport(
         w,
         student,
@@ -371,7 +347,7 @@ const PdfReport = (() => {
       <p style="font-size:13px;">${escapeHtml(Fuzzy.recommendation(inputs, res))}</p>
 
       <footer>
-        Отчёт сгенерирован автоматически системой FuzzyProject
+        Отчёт сгенерирован автоматически системой Meridian
         на основе нечёткого логического вывода Мамдани.
       </footer>
 
@@ -379,9 +355,6 @@ const PdfReport = (() => {
     `;
     }
 
-    /* =========================================================
-       ОКНО ПЕЧАТИ
-       ========================================================= */
     function openPrintWindow(html, title) {
         try {
             const blob = new Blob([html], { type: "text/html;charset=utf-8" });
@@ -439,9 +412,6 @@ const PdfReport = (() => {
         }
     }
 
-    /* =========================================================
-       ПУБЛИЧНЫЙ API
-       ========================================================= */
     return {
         exportDepartment,
         exportStudent,

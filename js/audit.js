@@ -1,8 +1,3 @@
-/* =========================================================
-   AUDIT — журнал действий пользователей
-   Обновлено: фильтр по дате и роли, экспорт CSV,
-   использование Utils.escapeHtml
-   ========================================================= */
 const Audit = (() => {
     const KEY = "fp_audit";
     const MAX_ENTRIES = 500;
@@ -33,9 +28,6 @@ const Audit = (() => {
                       .replace(/"/g, "&quot;");
               };
 
-    /* =========================================================
-       ЛОГИРОВАНИЕ
-       ========================================================= */
     function log(action, target, details, type) {
         if (typeof Auth === "undefined") return;
         const user = Auth.getUser();
@@ -62,9 +54,6 @@ const Audit = (() => {
         Storage.set(KEY, arr);
     }
 
-    /* =========================================================
-       ЧТЕНИЕ
-       ========================================================= */
     function getAll() {
         const list = Storage.get(KEY, []);
         return (Array.isArray(list) ? list : []).sort(
@@ -88,9 +77,6 @@ const Audit = (() => {
         };
     }
 
-    /* =========================================================
-       ФИЛЬТРАЦИЯ
-       ========================================================= */
     function filter(list, opts = {}) {
         let res = list;
 
@@ -130,9 +116,6 @@ const Audit = (() => {
         return res;
     }
 
-    /* =========================================================
-       ОТРИСОВКА
-       ========================================================= */
     function renderAuditPage() {
         const all = getAll();
         const list = filter(all, currentFilter);
@@ -239,9 +222,6 @@ const Audit = (() => {
     `;
     }
 
-    /* =========================================================
-       УПРАВЛЕНИЕ
-       ========================================================= */
     function filterBy(val, key) {
         currentFilter[key] = val;
         const list = filter(getAll(), currentFilter);
@@ -264,9 +244,6 @@ const Audit = (() => {
         App.toast("Журнал очищен");
     }
 
-    /* =========================================================
-       ЭКСПОРТ В CSV
-       ========================================================= */
     function exportCSV() {
         const list = filter(getAll(), currentFilter);
         if (list.length === 0) {
@@ -308,7 +285,6 @@ const Audit = (() => {
 
         const csv = rows.map((r) => r.map(escapeCSV).join(",")).join("\r\n");
 
-        /* BOM для корректной кодировки в Excel */
         const blob = new Blob(["\uFEFF" + csv], {
             type: "text/csv;charset=utf-8;",
         });
@@ -328,9 +304,6 @@ const Audit = (() => {
         }
     }
 
-    /* =========================================================
-       ПУБЛИЧНЫЙ API
-       ========================================================= */
     return {
         log,
         getAll,

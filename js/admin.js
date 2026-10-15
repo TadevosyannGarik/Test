@@ -1,12 +1,4 @@
-/* =========================================================
-   ADMIN — весь функционал роли «Администратор»
-   Обновлено: Utils.* для хелперов, safeFuzzyInfer,
-   blocked: false при создании
-   ========================================================= */
 const Admin = (() => {
-    /* =========================================================
-       КОНСТАНТЫ (алиасы на Utils)
-       ========================================================= */
     const WORK_STATUSES = Utils.WORK_STATUSES;
     const WORK_TYPES = Utils.WORK_TYPES;
 
@@ -16,20 +8,15 @@ const Admin = (() => {
         admin: "Администратор",
     };
 
-    /* Алиасы на Utils */
     const escapeHtml = Utils.escapeHtml;
     const initials = Utils.initials;
     const statusBadge = Utils.statusBadge;
     const calcProgress = Utils.calcProgress;
     const emptyState = Utils.emptyState;
 
-    /* Состояние фильтров */
     let userFilter = { role: "", q: "" };
     let workFilter = { status: "", type: "", q: "" };
 
-    /* =========================================================
-       ХЕЛПЕРЫ
-       ========================================================= */
     function getUser() {
         return Auth.getUser();
     }
@@ -43,14 +30,8 @@ const Admin = (() => {
         return Utils.safeFuzzyInfer(Utils.buildFuzzyInputs(work));
     }
 
-    /* =========================================================
-       VIEWS
-       ========================================================= */
     const VIEWS = {};
 
-    /* ---------------------------------------------------------
-       ДЕМО-ДАННЫЕ
-       --------------------------------------------------------- */
     VIEWS.demo = function () {
         const users = Storage.getUsers();
         const works = Storage.getWorks();
@@ -149,9 +130,6 @@ const Admin = (() => {
     `;
     };
 
-    /* ---------------------------------------------------------
-       ДАШБОРД КАФЕДРЫ
-       --------------------------------------------------------- */
     VIEWS.dashboard = function () {
         const users = Storage.getUsers();
         const works = Storage.getWorks();
@@ -366,9 +344,6 @@ const Admin = (() => {
         );
     };
 
-    /* ---------------------------------------------------------
-       ПОЛЬЗОВАТЕЛИ
-       --------------------------------------------------------- */
     VIEWS.users = function () {
         let users = Storage.getUsers();
 
@@ -527,12 +502,10 @@ const Admin = (() => {
         )
             return;
 
-        /* Удаляем пользователя */
         Storage.setUsers(
             Storage.getUsers().filter((x) => !Storage.sameId(x.id, id)),
         );
 
-        /* Каскадно удаляем работы */
         const works = Storage.getWorks();
         works
             .filter(
@@ -564,9 +537,6 @@ const Admin = (() => {
         else App.navigate("profile");
     }
 
-    /* ---------------------------------------------------------
-       СОЗДАНИЕ / РЕДАКТИРОВАНИЕ ПОЛЬЗОВАТЕЛЯ
-       --------------------------------------------------------- */
     let createRole = "student";
 
     function openCreateUserModal() {
@@ -920,9 +890,6 @@ const Admin = (() => {
         App.navigate("users");
     }
 
-    /* ---------------------------------------------------------
-       ВСЕ РАБОТЫ
-       --------------------------------------------------------- */
     VIEWS.works = function () {
         let works = Storage.getWorks();
 
@@ -1032,9 +999,6 @@ const Admin = (() => {
         App.navigate("works");
     }
 
-    /* ---------------------------------------------------------
-       ДЕТАЛЬ РАБОТЫ
-       --------------------------------------------------------- */
     VIEWS["work-detail"] = function (params) {
         const w = Storage.getWorkById(params?.id);
         if (!w)
@@ -1160,9 +1124,6 @@ const Admin = (() => {
       </div>
     `;
     };
-    /* ---------------------------------------------------------
-       ПРАВИЛА
-       --------------------------------------------------------- */
     VIEWS.rules = function () {
         const rules = Fuzzy.getRules();
         return `
@@ -1235,9 +1196,6 @@ const Admin = (() => {
         App.navigate("rules");
     }
 
-    /* ---------------------------------------------------------
-       АНАЛИТИКА
-       --------------------------------------------------------- */
     VIEWS.analytics = function () {
         return `
       <div class="grid grid-2">
@@ -1418,9 +1376,6 @@ const Admin = (() => {
         App.toast(`CSV экспортирован (${works.length} работ)`);
     }
 
-    /* ---------------------------------------------------------
-       РЕЗЕРВНАЯ КОПИЯ
-       --------------------------------------------------------- */
     function exportBackup() {
         const backup = {};
         Object.values(Storage.KEYS).forEach((key) => {
@@ -1490,9 +1445,6 @@ const Admin = (() => {
         reader.readAsText(file);
     }
 
-    /* ---------------------------------------------------------
-       СПРАВОЧНИКИ
-       --------------------------------------------------------- */
     const REF_KEY = "fp_refs";
 
     function getRefs() {
@@ -1576,14 +1528,11 @@ const Admin = (() => {
         App.navigate("refs");
     }
 
-    /* ---------------------------------------------------------
-       НАСТРОЙКИ
-       --------------------------------------------------------- */
     const SETTINGS_KEY = "fp_settings";
 
     function getSettings() {
         return Storage.get(SETTINGS_KEY, {
-            systemName: "FuzzyProject",
+            systemName: "Meridian",
             academicYear: "2024/2025",
             defaultDeadlineDays: 30,
             notifyBeforeDays: 3,
@@ -1635,8 +1584,7 @@ const Admin = (() => {
     function saveSettings() {
         setSettings({
             systemName:
-                document.getElementById("set_name")?.value.trim() ||
-                "FuzzyProject",
+                document.getElementById("set_name")?.value.trim() || "Meridian",
             academicYear:
                 document.getElementById("set_year")?.value.trim() ||
                 "2024/2025",
@@ -1664,9 +1612,6 @@ const Admin = (() => {
         location.reload();
     }
 
-    /* ---------------------------------------------------------
-       ПРОФИЛЬ
-       --------------------------------------------------------- */
     VIEWS.profile = function () {
         const u = getUser();
         if (!u) return "";
@@ -1685,9 +1630,6 @@ const Admin = (() => {
     `;
     };
 
-    /* ---------------------------------------------------------
-       ПРОФИЛЬ ПРЕПОДАВАТЕЛЯ
-       --------------------------------------------------------- */
     VIEWS["teacher-profile"] = function (params) {
         const t = Storage.getUserById(params?.id);
         if (!t)
@@ -1859,9 +1801,6 @@ const Admin = (() => {
         );
     };
 
-    /* ---------------------------------------------------------
-       ПРОФИЛЬ СТУДЕНТА
-       --------------------------------------------------------- */
     VIEWS["student-profile"] = function (params) {
         const s = Storage.getUserById(params?.id);
         if (!s)
@@ -1962,9 +1901,6 @@ const Admin = (() => {
     `;
     };
 
-    /* ---------------------------------------------------------
-       ОБЁРТКИ МОДУЛЕЙ
-       --------------------------------------------------------- */
     VIEWS.mamdani = function (params) {
         return MamdaniViz.render(params);
     };
@@ -1987,20 +1923,13 @@ const Admin = (() => {
         return Consult.renderPage(getUser());
     };
 
-    /* ---------------------------------------------------------
-       ЗАКРЫТИЕ МОДАЛОК
-       --------------------------------------------------------- */
     function closeModal() {
         App.closeModal();
     }
 
-    /* =========================================================
-       ПУБЛИЧНЫЙ API
-       ========================================================= */
     return {
         VIEWS,
 
-        /* Пользователи */
         setUserFilter,
         toggleBlock,
         deleteUser,
@@ -2011,31 +1940,25 @@ const Admin = (() => {
         saveUser,
         openUserProfile,
 
-        /* Работы */
         setWorkFilter,
         deleteWork,
 
-        /* Правила */
         toggleRule,
         updateRuleDesc,
         deleteRule,
         resetRules,
 
-        /* Отчёты */
         generateReport,
         exportWorksCSV,
         exportBackup,
         importBackup,
 
-        /* Справочники */
         addRef,
         deleteRef,
 
-        /* Настройки */
         saveSettings,
         fullReset,
 
-        /* Модалки */
         closeModal,
     };
 })();
