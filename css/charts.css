@@ -1,0 +1,53 @@
+/* =========================================================
+   CHARTS
+   ========================================================= */
+
+.chart-box {
+    position: relative;
+    background: var(--bg-elev);
+    border-radius: var(--r);
+    padding: 6px;
+}
+.chart-box.h-180 {
+    height: 180px;
+}
+.chart-box.h-220 {
+    height: 220px;
+}
+.chart-box.h-260 {
+    height: 260px;
+}
+.chart-box.h-300 {
+    height: 300px;
+}
+
+.chart-wrap {
+    position: relative;
+    height: 260px;
+}
+.chart-wrap.sm {
+    height: 200px;
+}
+.chart-wrap.lg {
+    height: 320px;
+}
+
+.chart-legend {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--txt-muted);
+}
+.chart-legend .lg-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.chart-legend .lg-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+}

@@ -1,0 +1,227 @@
+/* =========================================================
+   ADMIN
+   ========================================================= */
+
+.user-row {
+    display: grid;
+    grid-template-columns: 36px 1fr auto auto auto;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    margin-bottom: 6px;
+    background: var(--bg-elev);
+    transition: all var(--t-fast);
+}
+.user-row:hover {
+    border-color: var(--line-strong);
+    background: var(--bg-soft);
+}
+.user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 12px;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+.user-avatar.teacher {
+    background: rgba(138, 155, 125, 0.15);
+    color: var(--sage);
+}
+.user-avatar.admin {
+    background: var(--bad-soft);
+    color: var(--bad);
+}
+
+.user-name {
+    font-weight: 500;
+    font-size: 13px;
+    color: var(--txt);
+}
+.user-email {
+    font-size: 12px;
+    color: var(--txt-muted);
+    margin-top: 2px;
+}
+.user-extra {
+    font-size: 12px;
+    color: var(--txt-muted);
+    margin-top: 2px;
+}
+
+.role-chip {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    border: 1px solid transparent;
+}
+.role-chip.student {
+    background: var(--info-soft);
+    color: var(--info);
+    border-color: rgba(107, 124, 155, 0.25);
+}
+.role-chip.teacher {
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-color: rgba(181, 113, 74, 0.25);
+}
+.role-chip.admin {
+    background: var(--bad-soft);
+    color: var(--bad);
+    border-color: rgba(184, 90, 74, 0.25);
+}
+
+.blocked-chip {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    background: var(--bad-soft);
+    color: var(--bad);
+    margin-left: 6px;
+}
+
+/* ---------- Фильтры админа ---------- */
+.admin-filters {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+.admin-filters input,
+.admin-filters select {
+    padding: 8px 12px;
+    font-size: 13px;
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    background: var(--bg-elev);
+    color: var(--txt);
+    outline: none;
+    min-width: 140px;
+    transition:
+        border-color var(--t-fast),
+        box-shadow var(--t-fast);
+}
+.admin-filters input:focus,
+.admin-filters select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* ---------- Список работ ---------- */
+.work-list-row {
+    display: grid;
+    grid-template-columns: 1fr 140px 90px 90px 70px;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    margin-bottom: 6px;
+    background: var(--bg-elev);
+    transition: all var(--t-fast);
+}
+.work-list-row:hover {
+    border-color: var(--line-strong);
+    background: var(--bg-soft);
+}
+@media (max-width: 900px) {
+    .work-list-row {
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
+}
+.work-list-topic {
+    font-weight: 500;
+    font-size: 13px;
+    color: var(--txt);
+}
+.work-list-sub {
+    font-size: 12px;
+    color: var(--txt-muted);
+    margin-top: 2px;
+}
+
+/* ---------- Справочники ---------- */
+.ref-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+.ref-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    background: var(--bg-soft);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    font-size: 12px;
+    color: var(--txt-muted);
+}
+.ref-chip button {
+    color: var(--txt-muted);
+    font-size: 12px;
+    padding: 0 2px;
+    transition: color var(--t-fast);
+}
+.ref-chip button:hover {
+    color: var(--bad);
+}
+
+/* ---------- Аудит ---------- */
+.audit-row {
+    display: grid;
+    grid-template-columns: 140px 160px 1fr 100px;
+    gap: 12px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    font-size: 12px;
+    align-items: center;
+}
+.audit-row:last-child {
+    border-bottom: none;
+}
+.audit-time {
+    color: var(--txt-soft);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+}
+.audit-user {
+    color: var(--txt-muted);
+}
+.audit-action {
+    font-weight: 500;
+    color: var(--txt);
+}
+.audit-action.positive {
+    color: var(--ok);
+}
+.audit-action.negative {
+    color: var(--bad);
+}
+.audit-action.warning {
+    color: var(--warn);
+}
+
+/* ---------- Графики ---------- */
+.chart-wrap-sm {
+    position: relative;
+    height: 200px;
+}
+.chart-wrap-lg {
+    position: relative;
+    height: 280px;
+}

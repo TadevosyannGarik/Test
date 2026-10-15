@@ -1,0 +1,379 @@
+/* =========================================================
+   EXTRAS — прогресс-бары, метрики, пустые состояния
+   ========================================================= */
+
+/* ---------- Прогресс ---------- */
+.pbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+}
+.pbar-track {
+    flex: 1;
+    height: 6px;
+    background: var(--bg-soft);
+    border-radius: 3px;
+    overflow: hidden;
+}
+.pbar-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 3px;
+    transition: width var(--t-slow);
+}
+.pbar-fill.ok {
+    background: var(--ok);
+}
+.pbar-fill.warn {
+    background: var(--warn);
+}
+.pbar-fill.bad {
+    background: var(--bad);
+}
+.pbar-val {
+    font-weight: 500;
+    min-width: 40px;
+    text-align: right;
+    color: var(--txt-muted);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+.progress {
+    height: 6px;
+    background: var(--bg-soft);
+    border-radius: 3px;
+    overflow: hidden;
+}
+.progress > div {
+    height: 100%;
+    background: var(--accent);
+    transition: width var(--t-slow);
+}
+.progress.low > div {
+    background: var(--bad);
+}
+.progress.med > div {
+    background: var(--warn);
+}
+.progress.high > div {
+    background: var(--ok);
+}
+
+/* ---------- Метрики ---------- */
+.metric-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+}
+.metric {
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    background: var(--bg-elev);
+}
+.metric-lbl {
+    font-size: 12px;
+    color: var(--txt-muted);
+    margin-bottom: 6px;
+}
+.metric-val {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--txt);
+    font-variant-numeric: tabular-nums;
+}
+.metric-sub {
+    font-size: 11px;
+    color: var(--txt-soft);
+    margin-top: 3px;
+}
+
+/* ---------- Пустые состояния ---------- */
+.empty {
+    padding: 30px 20px;
+    text-align: center;
+    color: var(--txt-muted);
+    font-size: 13px;
+}
+.empty-ico {
+    font-size: 32px;
+    margin-bottom: 8px;
+    opacity: 0.5;
+}
+.empty-state {
+    padding: 44px 24px;
+    text-align: center;
+}
+.empty-state svg {
+    width: 100px;
+    height: 100px;
+    margin-bottom: 16px;
+    opacity: 0.6;
+}
+.empty-state h3 {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: var(--txt);
+}
+.empty-state p {
+    color: var(--txt-muted);
+    font-size: 13px;
+    max-width: 380px;
+    margin: 0 auto 18px;
+    line-height: 1.55;
+}
+
+/* ---------- Статус-стрип ---------- */
+.status-strip {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: var(--r);
+    margin-bottom: 16px;
+    font-size: 13px;
+    border: 1px solid transparent;
+}
+.status-strip.info {
+    background: var(--info-soft);
+    border-color: rgba(107, 124, 155, 0.25);
+    color: var(--info);
+}
+.status-strip.warn {
+    background: var(--warn-soft);
+    border-color: rgba(201, 146, 46, 0.25);
+    color: var(--warn);
+}
+.status-strip.ok {
+    background: var(--ok-soft);
+    border-color: rgba(92, 138, 90, 0.25);
+    color: var(--ok);
+}
+.status-strip.bad {
+    background: var(--bad-soft);
+    border-color: rgba(184, 90, 74, 0.25);
+    color: var(--bad);
+}
+.status-strip .strip-ico {
+    flex-shrink: 0;
+    display: inline-flex;
+}
+.status-strip .strip-ico .icon {
+    width: 18px;
+    height: 18px;
+}
+
+/* ---------- Notice ---------- */
+.notice {
+    background: var(--accent-soft);
+    border-left: 3px solid var(--accent);
+    padding: 12px 14px;
+    border-radius: 0 var(--r) var(--r) 0;
+    font-size: 13px;
+    line-height: 1.55;
+    margin-bottom: 14px;
+    color: var(--txt);
+}
+
+/* ---------- Мини-проект ---------- */
+.mini-project {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all var(--t-fast);
+    background: var(--bg-elev);
+}
+.mini-project:hover {
+    border-color: var(--line-strong);
+    background: var(--bg-soft);
+}
+.mini-project-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--txt);
+}
+.mini-project-sub {
+    font-size: 12px;
+    color: var(--txt-muted);
+    margin-top: 2px;
+}
+
+/* ---------- Опасная зона ---------- */
+.danger-zone {
+    border: 1px solid rgba(184, 90, 74, 0.25);
+    background: var(--bad-soft);
+    border-radius: var(--r-md);
+    padding: 18px;
+}
+.danger-zone .card-title {
+    color: var(--bad);
+}
+.danger-zone .card-title::before {
+    background: var(--bad);
+}
+
+/* =========================================================
+   КАЛЕНДАРЬ — сетка, дни, легенда
+   ========================================================= */
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.calendar-head {
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--txt-muted);
+    padding: 6px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.calendar-day {
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--txt);
+    border-radius: var(--r-sm);
+    cursor: pointer;
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    position: relative;
+    transition: all var(--t-fast);
+    user-select: none;
+}
+
+.calendar-day:hover {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent);
+}
+
+.calendar-day.today {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+    font-weight: 600;
+}
+
+.calendar-day.today:hover {
+    background: var(--accent-2);
+    color: #fff;
+}
+
+.calendar-day.has-deadline {
+    border-color: rgba(245, 158, 11, 0.4);
+    background: var(--warn-soft);
+}
+
+.calendar-day.has-deadline:hover {
+    border-color: var(--warn);
+    background: var(--warn-soft);
+    color: var(--warn);
+}
+
+.calendar-day.urgent {
+    border-color: rgba(239, 68, 68, 0.4);
+    background: var(--bad-soft);
+}
+
+.calendar-day.urgent:hover {
+    border-color: var(--bad);
+    background: var(--bad-soft);
+    color: var(--bad);
+}
+
+.calendar-day.has-deadline::after,
+.calendar-day.urgent::after {
+    content: "";
+    position: absolute;
+    bottom: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--warn);
+}
+
+.calendar-day.urgent::after {
+    background: var(--bad);
+}
+
+.calendar-day.empty {
+    background: transparent;
+    border-color: transparent;
+    cursor: default;
+    pointer-events: none;
+    visibility: hidden;
+}
+
+/* ---------- Легенда календаря ---------- */
+.calendar-legend {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--txt-muted);
+}
+
+.calendar-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.calendar-legend-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.calendar-legend-dot.warn {
+    background: var(--warn);
+}
+.calendar-legend-dot.bad {
+    background: var(--bad);
+}
+
+/* ---------- Мобильная версия ---------- */
+@media (max-width: 640px) {
+    .calendar-grid {
+        gap: 4px;
+    }
+    .calendar-day {
+        font-size: 12px;
+        border-radius: 4px;
+    }
+    .calendar-head {
+        font-size: 10px;
+        padding: 4px 0;
+    }
+    .calendar-day.has-deadline::after,
+    .calendar-day.urgent::after {
+        width: 3px;
+        height: 3px;
+        bottom: 3px;
+    }
+}

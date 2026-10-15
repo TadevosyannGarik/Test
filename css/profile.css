@@ -1,0 +1,135 @@
+/* =========================================================
+   PROFILE
+   ========================================================= */
+
+.profile-hero {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    padding: 24px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+.profile-hero-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 22px;
+    flex-shrink: 0;
+    border: 2px solid var(--bg-soft);
+}
+.profile-hero-body {
+    flex: 1;
+    min-width: 220px;
+}
+.profile-hero-name {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: var(--txt);
+}
+.profile-hero-sub {
+    font-size: 13px;
+    color: var(--txt-muted);
+    margin-bottom: 10px;
+}
+.profile-hero-chips {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+.profile-hero-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    min-width: 260px;
+}
+@media (max-width: 700px) {
+    .profile-hero-stats {
+        grid-template-columns: 1fr 1fr;
+        min-width: 100%;
+    }
+}
+
+/* ---------- Информационная сетка ---------- */
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px;
+}
+.info-item .info-lbl {
+    font-size: 12px;
+    color: var(--txt-muted);
+    margin-bottom: 3px;
+}
+.info-item .info-val {
+    font-size: 14px;
+    color: var(--txt);
+}
+
+/* ---------- Timeline ---------- */
+.timeline {
+    position: relative;
+    padding-left: 22px;
+}
+.timeline::before {
+    content: "";
+    position: absolute;
+    left: 6px;
+    top: 6px;
+    bottom: 6px;
+    width: 1px;
+    background: var(--line);
+}
+.timeline-item {
+    position: relative;
+    padding-bottom: 16px;
+}
+.timeline-item::before {
+    content: "";
+    position: absolute;
+    left: -21px;
+    top: 5px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--bg-elev);
+    border: 2px solid var(--accent);
+}
+.timeline-item.done::before {
+    border-color: var(--ok);
+    background: var(--ok);
+}
+.timeline-item.warn::before {
+    border-color: var(--warn);
+    background: var(--warn);
+}
+.timeline-item.bad::before {
+    border-color: var(--bad);
+    background: var(--bad);
+}
+.timeline-time {
+    font-size: 11px;
+    color: var(--txt-soft);
+}
+.timeline-title {
+    font-size: 13px;
+    font-weight: 500;
+    margin-top: 2px;
+    color: var(--txt);
+}
+.timeline-text {
+    font-size: 12px;
+    color: var(--txt-muted);
+    margin-top: 3px;
+    line-height: 1.5;
+}

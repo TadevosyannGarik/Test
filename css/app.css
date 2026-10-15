@@ -1,0 +1,513 @@
+/* =========================================================
+   APP — шапка, навигация, карточки, модалки
+   ========================================================= */
+
+.app {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* =========================================================
+   ШАПКА
+   ========================================================= */
+.app-header {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--line);
+    padding: 0 32px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.app-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.brand-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: var(--txt);
+    color: var(--bg);
+    border-radius: var(--r-sm);
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.02em;
+}
+
+.brand-name {
+    font-size: var(--fs-md);
+    font-weight: 500;
+    color: var(--txt);
+    letter-spacing: -0.01em;
+}
+
+.app-user {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+.app-user-info {
+    text-align: right;
+}
+.app-user-name {
+    font-size: var(--fs-sm);
+    font-weight: 500;
+    line-height: 1.2;
+    color: var(--txt);
+}
+.app-user-role {
+    font-size: var(--fs-xs);
+    color: var(--txt-muted);
+    margin-top: 1px;
+    letter-spacing: 0.02em;
+}
+
+.app-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--bg-soft);
+    color: var(--txt);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 500;
+    font-size: var(--fs-xs);
+    cursor: pointer;
+    transition: all var(--t-fast);
+    border: 1px solid var(--line);
+}
+.app-avatar:hover {
+    background: var(--txt);
+    color: var(--bg);
+    border-color: var(--txt);
+}
+
+/* =========================================================
+   НАВИГАЦИЯ
+   ========================================================= */
+.app-nav {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--line);
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    overflow-x: auto;
+    position: sticky;
+    top: 64px;
+    z-index: 99;
+    scrollbar-width: none;
+}
+.app-nav::-webkit-scrollbar {
+    display: none;
+}
+
+.app-nav button {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 18px 14px;
+    font-size: var(--fs-sm);
+    color: var(--txt-muted);
+    border-bottom: 1px solid transparent;
+    margin-bottom: -1px;
+    white-space: nowrap;
+    transition:
+        color var(--t-fast),
+        border-color var(--t-fast);
+    background: transparent;
+    font-weight: 400;
+    letter-spacing: -0.005em;
+}
+.app-nav button:hover {
+    color: var(--txt);
+}
+.app-nav button.active {
+    color: var(--txt);
+    border-bottom-color: var(--txt);
+}
+
+/* Кнопка демонстрации */
+.demo-launch-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 14px;
+    margin-left: auto;
+    border-radius: 100px;
+    background: var(--txt);
+    color: var(--bg);
+    font-size: var(--fs-xs);
+    font-weight: 500;
+    transition: background var(--t-fast);
+    white-space: nowrap;
+    height: 30px;
+    margin-top: auto;
+    margin-bottom: auto;
+    border: none;
+    letter-spacing: 0.02em;
+}
+.demo-launch-btn:hover {
+    background: var(--accent-hover);
+}
+.demo-launch-btn .pulse-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--pop);
+    animation: pulseDot 1.8s ease-in-out infinite;
+}
+@keyframes pulseDot {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.3;
+    }
+}
+
+/* =========================================================
+   КОНТЕНТ
+   ========================================================= */
+.app-main {
+    flex: 1;
+    padding: 48px 32px;
+    max-width: 1200px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+.view {
+    display: none;
+}
+.view.active {
+    display: block;
+    animation: fadeUp 0.35s ease;
+}
+
+/* =========================================================
+   КАРТОЧКИ
+   ========================================================= */
+.card {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    padding: 28px;
+    transition: border-color var(--t-base);
+}
+.card:hover {
+    border-color: var(--line-strong);
+}
+.card + .card {
+    margin-top: 20px;
+}
+
+.card-title {
+    font-size: var(--fs-md);
+    font-weight: 500;
+    margin-bottom: 20px;
+    color: var(--txt);
+    letter-spacing: -0.01em;
+    display: block;
+}
+.card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+.card-head .card-title {
+    margin-bottom: 0;
+}
+
+/* =========================================================
+   СЕТКИ
+   ========================================================= */
+.grid {
+    display: grid;
+    gap: 20px;
+}
+.grid-2 {
+    grid-template-columns: 1fr 1fr;
+}
+.grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+}
+.grid-4 {
+    grid-template-columns: repeat(4, 1fr);
+}
+@media (max-width: 900px) {
+    .grid-2,
+    .grid-3,
+    .grid-4 {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* =========================================================
+   KPI
+   ========================================================= */
+.kpi {
+    text-align: left;
+    padding: 4px;
+}
+.kpi-num {
+    font-size: var(--fs-3xl);
+    font-weight: 300;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    color: var(--txt);
+    font-variant-numeric: tabular-nums;
+}
+.kpi-lbl {
+    font-size: var(--fs-sm);
+    color: var(--txt-muted);
+    margin-top: 8px;
+    letter-spacing: 0.02em;
+}
+
+/* =========================================================
+   ТАБЛИЦЫ
+   ========================================================= */
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--fs-base);
+}
+.table th,
+.table td {
+    padding: 16px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--line);
+}
+.table th {
+    color: var(--txt-muted);
+    font-weight: 400;
+    font-size: var(--fs-sm);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+.table tr:last-child td {
+    border-bottom: none;
+}
+.table tbody tr {
+    transition: background var(--t-fast);
+}
+.table tbody tr:hover td {
+    background: var(--bg-soft);
+}
+
+/* =========================================================
+   МОДАЛКИ
+   ========================================================= */
+.modal-back {
+    position: fixed;
+    inset: 0;
+    background: rgba(17, 17, 17, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    z-index: 1000;
+    animation: fadeIn 0.2s ease;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+}
+.modal {
+    background: var(--bg-elev);
+    border-radius: var(--r-xl);
+    padding: 32px;
+    width: 100%;
+    max-width: 520px;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: scaleIn 0.25s ease;
+}
+.modal-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+.modal-head h3 {
+    font-size: var(--fs-lg);
+    font-weight: 500;
+    color: var(--txt);
+    letter-spacing: -0.01em;
+}
+.modal-close {
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--r-sm);
+    color: var(--txt-muted);
+    font-size: 18px;
+    transition: all var(--t-fast);
+}
+.modal-close:hover {
+    background: var(--bg-soft);
+    color: var(--txt);
+}
+
+/* =========================================================
+   QUICK ACTIONS
+   ========================================================= */
+.quick-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+}
+.quick-action {
+    padding: 20px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    cursor: pointer;
+    transition: all var(--t-base);
+    text-align: left;
+    background: var(--bg-elev);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.quick-action:hover {
+    border-color: var(--txt);
+    transform: translateY(-2px);
+}
+.quick-action .qa-ico {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--r-sm);
+    background: var(--bg-soft);
+    color: var(--txt);
+}
+.quick-action .qa-ico .icon {
+    width: 18px;
+    height: 18px;
+}
+.quick-action .qa-lbl {
+    font-size: var(--fs-base);
+    font-weight: 500;
+    color: var(--txt);
+    letter-spacing: -0.01em;
+}
+.quick-action .qa-desc {
+    font-size: var(--fs-sm);
+    color: var(--txt-muted);
+    margin-top: -8px;
+    line-height: 1.5;
+}
+
+/* =========================================================
+   ФИЛЬТРЫ
+   ========================================================= */
+.filters {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--line);
+}
+.filters input,
+.filters select {
+    padding: 8px 0;
+    font-size: var(--fs-base);
+    border: none;
+    border-bottom: 1px solid var(--line);
+    border-radius: 0;
+    background: transparent;
+    color: var(--txt);
+    outline: none;
+    min-width: 140px;
+    transition: border-color var(--t-fast);
+}
+.filters input:focus,
+.filters select:focus {
+    border-bottom-color: var(--txt);
+}
+
+/* =========================================================
+   ФОРМА-GRID
+   ========================================================= */
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+.form-grid .full {
+    grid-column: 1 / -1;
+}
+@media (max-width: 700px) {
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* =========================================================
+   СЧЁТЧИК
+   ========================================================= */
+.count-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 7px;
+    border-radius: 100px;
+    background: var(--bg-soft);
+    color: var(--txt);
+    font-size: var(--fs-xs);
+    font-weight: 500;
+    margin-left: 8px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* =========================================================
+   АДАПТИВ
+   ========================================================= */
+@media (max-width: 700px) {
+    .app-header {
+        padding: 0 20px;
+        height: 56px;
+    }
+    .app-nav {
+        padding: 0 20px;
+        top: 56px;
+    }
+    .app-main {
+        padding: 28px 20px;
+    }
+    .app-user-info {
+        display: none;
+    }
+    .modal {
+        padding: 24px 20px;
+    }
+    .card {
+        padding: 20px;
+    }
+}

@@ -1,0 +1,313 @@
+/* =========================================================
+   DEMO LIVE — живая демонстрация, минимализм
+   ========================================================= */
+
+/* ---------- Курсор ---------- */
+#demoCursor {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 24px;
+    height: 24px;
+    z-index: 9999;
+    pointer-events: none;
+    transition: transform 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
+    will-change: transform;
+}
+#demoCursor svg {
+    width: 100%;
+    height: 100%;
+    fill: var(--txt);
+    stroke: var(--bg);
+    stroke-width: 1;
+    stroke-linejoin: round;
+    transition: transform 0.12s ease;
+}
+#demoCursor.clicking svg {
+    transform: scale(0.7);
+}
+
+/* ---------- Клик-волна ---------- */
+.demo-click-ripple {
+    position: fixed;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 1.5px solid var(--txt);
+    pointer-events: none;
+    z-index: 9998;
+    animation: clickRipple 0.5s ease-out forwards;
+}
+@keyframes clickRipple {
+    0% {
+        transform: scale(0.5);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(4);
+        opacity: 0;
+    }
+}
+
+/* ---------- Подсветка ---------- */
+.demo-target-highlight {
+    position: relative;
+    z-index: 9997 !important;
+    box-shadow:
+        0 0 0 2px var(--txt),
+        0 0 0 6px rgba(17, 17, 17, 0.08) !important;
+    border-radius: var(--r) !important;
+    transition: box-shadow 0.25s ease;
+}
+
+body.demo-active
+    .app-nav
+    button:not(.demo-target-highlight):not(.demo-launch-btn),
+body.demo-active .app-header .btn-ghost,
+body.demo-active .app-header .notif-bell {
+    opacity: 0.35;
+    transition: opacity 0.35s ease;
+}
+body.demo-active .demo-target-highlight,
+body.demo-active .demo-target-highlight * {
+    opacity: 1 !important;
+}
+
+/* ---------- Панель ---------- */
+.demo-live-panel {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 360px;
+    max-width: calc(100% - 48px);
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    padding: 20px;
+    box-shadow: var(--shadow-md);
+    z-index: 9990;
+    animation: panelSlideIn 0.4s ease;
+}
+@keyframes panelSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.demo-live-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    gap: 10px;
+}
+
+.demo-live-step {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: var(--fs-xs);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--txt-muted);
+}
+.demo-live-step .live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--pop);
+    animation: pulseDot 1.6s ease-in-out infinite;
+}
+@keyframes pulseDot {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.3;
+    }
+}
+
+.demo-live-controls {
+    display: flex;
+    gap: 2px;
+}
+.demo-live-ctrl {
+    width: 28px;
+    height: 28px;
+    border-radius: var(--r-sm);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--txt-muted);
+    transition: all var(--t-fast);
+    cursor: pointer;
+}
+.demo-live-ctrl:hover {
+    color: var(--txt);
+    background: var(--bg-soft);
+}
+.demo-live-ctrl.danger:hover {
+    color: var(--bad);
+    background: var(--bad-soft);
+}
+.demo-live-ctrl svg {
+    width: 12px;
+    height: 12px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.demo-live-title {
+    font-size: var(--fs-lg);
+    font-weight: 400;
+    color: var(--txt);
+    margin-bottom: 8px;
+    line-height: 1.25;
+    letter-spacing: -0.015em;
+}
+
+.demo-live-text {
+    font-size: var(--fs-base);
+    line-height: 1.55;
+    color: var(--txt-muted);
+    min-height: 40px;
+    letter-spacing: -0.005em;
+}
+.demo-live-text .cursor {
+    display: inline-block;
+    width: 1.5px;
+    height: 1em;
+    background: var(--txt);
+    margin-left: 1px;
+    vertical-align: text-bottom;
+    animation: blinkCursor 0.9s steps(2) infinite;
+}
+@keyframes blinkCursor {
+    0%,
+    50% {
+        opacity: 1;
+    }
+    51%,
+    100% {
+        opacity: 0;
+    }
+}
+
+.demo-live-progress {
+    margin-top: 16px;
+    height: 1px;
+    background: var(--line);
+    overflow: hidden;
+}
+.demo-live-progress-fill {
+    height: 100%;
+    background: var(--txt);
+    transition: width 0.5s ease;
+}
+
+.demo-live-counter {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    font-size: var(--fs-xs);
+    color: var(--txt-soft);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+/* ---------- Финал ---------- */
+.demo-live-finish {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    background: rgba(17, 17, 17, 0.35);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    animation: fadeIn 0.3s;
+}
+.demo-live-finish-card {
+    max-width: 440px;
+    width: calc(100% - 48px);
+    background: var(--bg-elev);
+    border-radius: var(--r-xl);
+    padding: 40px 32px;
+    text-align: center;
+    animation: scaleIn 0.35s ease;
+}
+.demo-live-finish-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--bg-soft);
+    color: var(--txt);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+.demo-live-finish-icon svg {
+    width: 26px;
+    height: 26px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.demo-live-finish-title {
+    font-size: var(--fs-xl);
+    font-weight: 400;
+    color: var(--txt);
+    margin-bottom: 8px;
+    letter-spacing: -0.02em;
+}
+.demo-live-finish-text {
+    font-size: var(--fs-base);
+    color: var(--txt-muted);
+    line-height: 1.55;
+    margin-bottom: 28px;
+}
+.demo-live-finish-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+/* ---------- Адаптив ---------- */
+@media (max-width: 640px) {
+    .demo-live-panel {
+        left: 16px;
+        right: 16px;
+        bottom: 16px;
+        width: auto;
+        max-width: none;
+    }
+    .demo-live-title {
+        font-size: var(--fs-md);
+    }
+    .demo-live-text {
+        font-size: var(--fs-sm);
+    }
+    #demoCursor {
+        width: 22px;
+        height: 22px;
+    }
+}
