@@ -1,32 +1,27 @@
 /* =========================================================
    ADMIN — весь функционал роли «Администратор»
+   Обновлено: Utils.* для хелперов, safeFuzzyInfer,
+   blocked: false при создании
    ========================================================= */
 const Admin = (() => {
     /* =========================================================
-       КОНСТАНТЫ
+       КОНСТАНТЫ (алиасы на Utils)
        ========================================================= */
-    const WORK_STATUSES = {
-        draft: { label: "Черновик", badge: "draft" },
-        pending: { label: "На утверждении", badge: "pending" },
-        active: { label: "В работе", badge: "active" },
-        review: { label: "На проверке", badge: "review" },
-        approved: { label: "Допущена", badge: "approved" },
-        done: { label: "Защищена", badge: "done" },
-        rejected: { label: "Отклонена", badge: "rejected" },
-    };
-
-    const WORK_TYPES = {
-        course: "Курсовая работа",
-        diploma: "Дипломная работа",
-        vkr: "ВКР (бакалавриат)",
-        master: "Магистерская диссертация",
-    };
+    const WORK_STATUSES = Utils.WORK_STATUSES;
+    const WORK_TYPES = Utils.WORK_TYPES;
 
     const ROLE_LABELS = {
         student: "Студент",
         teacher: "Преподаватель",
         admin: "Администратор",
     };
+
+    /* Алиасы на Utils */
+    const escapeHtml = Utils.escapeHtml;
+    const initials = Utils.initials;
+    const statusBadge = Utils.statusBadge;
+    const calcProgress = Utils.calcProgress;
+    const emptyState = Utils.emptyState;
 
     /* Состояние фильтров */
     let userFilter = { role: "", q: "" };
@@ -39,82 +34,13 @@ const Admin = (() => {
         return Auth.getUser();
     }
 
-    function escapeHtml(str) {
-        if (!str) return "";
-        return String(str)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;");
-    }
-
-    function initials(fio) {
-        if (!fio) return "?";
-        return fio
-            .split(" ")
-            .filter(Boolean)
-            .map((w) => w[0])
-            .slice(0, 2)
-            .join("")
-            .toUpperCase();
-    }
-
-    function statusBadge(status) {
-        const s = WORK_STATUSES[status] || WORK_STATUSES.draft;
-        return `<span class="badge ${s.badge}">${s.label}</span>`;
-    }
-
     function userName(id) {
         const u = Storage.getUserById(id);
         return u ? u.fio : "—";
     }
 
-    function calcProgress(workId) {
-        const stages = Storage.getStagesByWork(workId);
-        if (stages.length === 0) return 0;
-        const total = stages.reduce((s, x) => s + (x.weight || 1), 0);
-        const done = stages
-            .filter((s) => s.done)
-            .reduce((s, x) => s + (x.weight || 1), 0);
-        return total === 0 ? 0 : Math.round((done / total) * 100);
-    }
-
-    function buildFuzzyInputs(work) {
-        const progress = calcProgress(work.id);
-        const stages = Storage.getStagesByWork(work.id);
-        const tasks = Storage.getTasksByWork(work.id);
-        const comments = Storage.getCommentsByWork(work.id);
-
-        const totalItems = stages.length + tasks.length;
-        const doneItems =
-            stages.filter((s) => s.done).length +
-            tasks.filter((t) => t.col === "done").length;
-        const activity =
-            totalItems === 0 ? 5 : Math.round((doneItems / totalItems) * 10);
-
-        const days = work.deadline ? Math.max(0, daysUntil(work.deadline)) : 30;
-
-        return {
-            progress,
-            days,
-            activity,
-            edits: comments.length,
-            volume: progress,
-            orig: work.orig || 65,
-            supScore: work.supScore || 5,
-            gost: work.gost || 70,
-        };
-    }
-
-    function emptyState(title, text, iconFn, actionHtml) {
-        return `
-      <div class="empty-state">
-        ${iconFn ? iconFn({ cls: "icon icon-2xl" }) : SVG.folder({ cls: "icon icon-2xl" })}
-        <h3>${escapeHtml(title)}</h3>
-        ${text ? `<p>${text}</p>` : ""}
-        ${actionHtml || ""}
-      </div>
-    `;
+    function getFuzzyResult(work) {
+        return Utils.safeFuzzyInfer(Utils.buildFuzzyInputs(work));
     }
 
     /* =========================================================
@@ -186,15 +112,16 @@ const Admin = (() => {
         </button>
 
         <div class="notice" style="margin-top:20px;">
-          <b>Что будет создано:</b>
-          <ul style="margin:8px 0 0 20px;line-height:1.7;">
-            <li>3 преподавателя с разными кафедрами</li>
-            <li>10 студентов на разных курсах и группах</li>
-            <li>15 работ на всех стадиях (от заявки до защиты)</li>
-            <li>Этапы, задачи, версии, комментарии для каждой работы</li>
-            <li>Уведомления, консультации, журнал аудита</li>
-          </ul>
-        </div>
+    <b>Что будет создано:</b>
+    <ul style="margin:8px 0 0 20px;line-height:1.7;">
+        <li>10 преподавателей с разными кафедрами и должностями</li>
+        <li>40 студентов на разных курсах и группах</li>
+        <li>60+ работ на всех стадиях (от заявки до защиты)</li>
+        <li>Этапы, задачи, версии, комментарии для каждой работы</li>
+        <li>15 консультаций, 100+ уведомлений, журнал аудита</li>
+        <li>Справочники и настройки системы</li>
+    </ul>
+</div>
       </div>
 
       <div class="card danger-zone" style="margin-top:20px;">
@@ -232,10 +159,13 @@ const Admin = (() => {
         const students = users.filter((u) => u.role === "student");
         const teachers = users.filter((u) => u.role === "teacher");
 
-        const enriched = works.map((w) => {
-            const res = Fuzzy.infer(buildFuzzyInputs(w));
-            return { w, res, progress: calcProgress(w.id) };
-        });
+        const enriched = works
+            .map((w) => {
+                const res = getFuzzyResult(w);
+                if (!res) return null;
+                return { w, res, progress: calcProgress(w.id) };
+            })
+            .filter(Boolean);
 
         const active = enriched.filter(
             (e) => e.w.status !== "rejected" && e.w.status !== "done",
@@ -377,10 +307,13 @@ const Admin = (() => {
     VIEWS.dashboard_after = function () {
         if (!Charts.hasChart()) return;
 
-        const works = Storage.getWorks().map((w) => ({
-            w,
-            res: Fuzzy.infer(buildFuzzyInputs(w)),
-        }));
+        const works = Storage.getWorks()
+            .map((w) => ({
+                w,
+                res: getFuzzyResult(w),
+            }))
+            .filter((e) => e.res);
+
         const low = works.filter((e) => e.res.risk.term === "low").length;
         const med = works.filter((e) => e.res.risk.term === "med").length;
         const high = works.filter((e) => e.res.risk.term === "high").length;
@@ -452,7 +385,10 @@ const Admin = (() => {
 
         users.sort((a, b) => {
             const order = { student: 0, teacher: 1, admin: 2 };
-            return order[a.role] - order[b.role] || a.fio.localeCompare(b.fio);
+            return (
+                (order[a.role] || 0) - (order[b.role] || 0) ||
+                a.fio.localeCompare(b.fio)
+            );
         });
 
         return `
@@ -509,7 +445,7 @@ const Admin = (() => {
           <div class="user-email">${escapeHtml(u.email)}</div>
           <div class="user-extra">${extra}</div>
         </div>
-        <div><span class="role-chip ${u.role}">${ROLE_LABELS[u.role]}</span></div>
+        <div><span class="role-chip ${u.role}">${ROLE_LABELS[u.role] || u.role}</span></div>
         <div>
           ${
               isMe
@@ -544,6 +480,12 @@ const Admin = (() => {
     }
 
     function toggleBlock(id) {
+        const me = getUser();
+        if (Storage.sameId(me.id, id)) {
+            App.toast("Нельзя заблокировать себя");
+            return;
+        }
+
         const users = Storage.getUsers();
         const u = users.find((x) => Storage.sameId(x.id, id));
         if (!u) return;
@@ -570,6 +512,12 @@ const Admin = (() => {
     }
 
     function deleteUser(id) {
+        const me = getUser();
+        if (Storage.sameId(me.id, id)) {
+            App.toast("Нельзя удалить себя");
+            return;
+        }
+
         const u = Storage.getUserById(id);
         if (!u) return;
         if (
@@ -579,10 +527,12 @@ const Admin = (() => {
         )
             return;
 
+        /* Удаляем пользователя */
         Storage.setUsers(
             Storage.getUsers().filter((x) => !Storage.sameId(x.id, id)),
         );
 
+        /* Каскадно удаляем работы */
         const works = Storage.getWorks();
         works
             .filter(
@@ -801,6 +751,7 @@ const Admin = (() => {
             fio,
             email,
             pass: hashPass(pass),
+            blocked: false,
             ...roleData,
             createdAt: Date.now(),
         });
@@ -915,10 +866,18 @@ const Admin = (() => {
         const u = users.find((x) => Storage.sameId(x.id, id));
         if (!u) return;
 
-        u.fio = document.getElementById("eu_fio")?.value.trim() || "";
-        u.email =
+        const newEmail =
             document.getElementById("eu_email")?.value.trim().toLowerCase() ||
             "";
+        if (
+            users.some((x) => !Storage.sameId(x.id, id) && x.email === newEmail)
+        ) {
+            App.toast("Email уже занят");
+            return;
+        }
+
+        u.fio = document.getElementById("eu_fio")?.value.trim() || "";
+        u.email = newEmail;
         u.role = document.getElementById("eu_role")?.value || "student";
         const pass = document.getElementById("eu_pass")?.value;
         if (pass) u.pass = hashPass(pass);
@@ -981,7 +940,7 @@ const Admin = (() => {
             );
         }
 
-        works.sort((a, b) => b.updatedAt - a.updatedAt);
+        works.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
 
         return `
       <div class="card">
@@ -1008,7 +967,7 @@ const Admin = (() => {
             ${Object.entries(WORK_TYPES)
                 .map(
                     ([k, v]) =>
-                        `<option value="${k}" ${workFilter.type === k ? "selected" : ""}>${v}</option>`,
+                        `<option value="${k}" ${workFilter.type === k ? "selected" : ""}>${v.title || v}</option>`,
                 )
                 .join("")}
           </select>
@@ -1028,19 +987,21 @@ const Admin = (() => {
 
     function renderWorkRow(w) {
         const progress = calcProgress(w.id);
-        const res = Fuzzy.infer(buildFuzzyInputs(w));
+        const res = getFuzzyResult(w);
+        const riskTerm = res ? res.risk.term : "low";
+        const riskValue = res ? res.risk.value.toFixed(0) : "—";
         return `
       <div class="work-list-row">
         <div>
           <div class="work-list-topic">${escapeHtml(w.topic)}</div>
           <div class="work-list-sub">
             ${escapeHtml(userName(w.studentId))} · рук. ${escapeHtml(userName(w.teacherId))}
-            · ${escapeHtml(WORK_TYPES[w.type] || "")}
+            · ${escapeHtml(Utils.workTypeLabel(w.type))}
           </div>
         </div>
         <div>${statusBadge(w.status)}</div>
         <div style="font-size:12px;">${progress}%</div>
-        <div><span class="badge risk-${res.risk.term}">риск ${res.risk.value.toFixed(0)}</span></div>
+        <div><span class="badge risk-${riskTerm}">риск ${riskValue}</span></div>
         <div style="display:flex;gap:4px;">
           <button class="btn-icon" onclick="App.navigate('work-detail', {id: ${w.id}})">
             ${SVG.eye({ cls: "icon icon-sm" })}
@@ -1086,8 +1047,7 @@ const Admin = (() => {
         const tasks = Storage.getTasksByWork(w.id);
         const versions = Storage.getVersionsByWork(w.id);
         const comments = Storage.getCommentsByWork(w.id);
-        const inputs = buildFuzzyInputs(w);
-        const res = Fuzzy.infer(inputs);
+        const res = getFuzzyResult(w);
 
         return `
       <div class="back-link" onclick="App.navigate('works')">← Назад к работам</div>
@@ -1097,7 +1057,7 @@ const Admin = (() => {
           <div style="flex:1;min-width:240px;">
             <div class="student-hero-name">${escapeHtml(w.topic)}</div>
             <div class="student-hero-meta">
-              ${escapeHtml(WORK_TYPES[w.type] || "")} · создана ${fmtDate(w.createdAt)}
+              ${escapeHtml(Utils.workTypeLabel(w.type))} · создана ${fmtDate(w.createdAt)}
               · обновлена ${fmtDate(w.updatedAt)}
             </div>
           </div>
@@ -1118,8 +1078,8 @@ const Admin = (() => {
             <div class="lbl">Прогресс</div>
           </div>
           <div class="stat-mini">
-            <div class="num" style="color:var(--${res.risk.term === "high" ? "bad" : res.risk.term === "med" ? "warn" : "ok"})">
-              ${res.risk.value.toFixed(0)}
+            <div class="num" style="color:var(--${res ? Utils.riskClass(res.risk.term) : "txt-muted"})">
+              ${res ? res.risk.value.toFixed(0) : "—"}
             </div>
             <div class="lbl">Риск</div>
           </div>
@@ -1134,9 +1094,9 @@ const Admin = (() => {
                   ? '<div class="empty">—</div>'
                   : stages
                         .map(
-                            (s) => `
+                            (st) => `
             <div style="font-size:13px;padding:6px 0;border-bottom:1px solid var(--line);">
-              ${s.done ? SVG.check({ cls: "icon icon-xs" }) : "○"} ${escapeHtml(s.name)}
+              ${st.done ? SVG.check({ cls: "icon icon-xs" }) : "○"} ${escapeHtml(st.name)}
             </div>
           `,
                         )
@@ -1150,9 +1110,9 @@ const Admin = (() => {
                   ? '<div class="empty">—</div>'
                   : tasks
                         .map(
-                            (t) => `
+                            (tk) => `
             <div style="font-size:13px;padding:6px 0;border-bottom:1px solid var(--line);">
-              • ${escapeHtml(t.title)}
+              • ${escapeHtml(tk.title)}
             </div>
           `,
                         )
@@ -1200,7 +1160,6 @@ const Admin = (() => {
       </div>
     `;
     };
-
     /* ---------------------------------------------------------
        ПРАВИЛА
        --------------------------------------------------------- */
@@ -1226,8 +1185,8 @@ const Admin = (() => {
             <input type="checkbox" ${r.enabled ? "checked" : ""}
               onchange="Admin.toggleRule(${r.id}, this.checked)">
             <div style="flex:1;">
-              <div class="rule-if">ЕСЛИ ${r.if.join(" И ")}</div>
-              <div class="rule-then">ТО ${r.then}</div>
+              <div class="rule-if">ЕСЛИ ${escapeHtml(r.if.join(" И "))}</div>
+              <div class="rule-then">ТО ${escapeHtml(r.then)}</div>
               <input type="text" class="rule-desc" value="${escapeHtml(r.desc)}"
                 onchange="Admin.updateRuleDesc(${r.id}, this.value)">
             </div>
@@ -1316,10 +1275,12 @@ const Admin = (() => {
     VIEWS.analytics_after = function () {
         if (!Charts.hasChart()) return;
 
-        const works = Storage.getWorks().map((w) => ({
-            w,
-            res: Fuzzy.infer(buildFuzzyInputs(w)),
-        }));
+        const works = Storage.getWorks()
+            .map((w) => ({
+                w,
+                res: getFuzzyResult(w),
+            }))
+            .filter((e) => e.res);
 
         Charts.bar(
             "adminChartDept",
@@ -1353,10 +1314,9 @@ const Admin = (() => {
 
     function generateReport() {
         const works = Storage.getWorks();
-        const enriched = works.map((w) => ({
-            w,
-            res: Fuzzy.infer(buildFuzzyInputs(w)),
-        }));
+        const enriched = works
+            .map((w) => ({ w, res: getFuzzyResult(w) }))
+            .filter((e) => e.res);
         const high = enriched.filter((e) => e.res.risk.term === "high");
 
         const box = document.getElementById("reportBox");
@@ -1400,6 +1360,15 @@ const Admin = (() => {
             App.toast("Нет данных для экспорта");
             return;
         }
+
+        const escapeCSV = (v) => {
+            const s = String(v === null || v === undefined ? "" : v);
+            if (s.includes('"') || s.includes(",") || s.includes("\n")) {
+                return '"' + s.replace(/"/g, '""') + '"';
+            }
+            return s;
+        };
+
         const rows = [
             [
                 "ID",
@@ -1414,35 +1383,39 @@ const Admin = (() => {
                 "Рейтинг",
             ],
         ];
+
         works.forEach((w) => {
-            const inputs = buildFuzzyInputs(w);
-            const res = Fuzzy.infer(inputs);
+            const inputs = Utils.buildFuzzyInputs(w);
+            const res = Utils.safeFuzzyInfer(inputs);
+            if (!res) return;
             rows.push([
                 w.id,
                 userName(w.studentId),
                 userName(w.teacherId),
                 w.topic,
-                WORK_TYPES[w.type] || w.type,
+                Utils.workTypeLabel(w.type),
                 WORK_STATUSES[w.status]?.label || w.status,
-                inputs.progress,
+                inputs.progress ?? 0,
                 res.risk.value.toFixed(1),
                 res.ready.value.toFixed(1),
                 res.rating.value.toFixed(1),
             ]);
         });
-        const csv = rows
-            .map((r) =>
-                r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","),
-            )
-            .join("\n");
-        const blob = new Blob(["\ufeff" + csv], {
+
+        const csv = rows.map((r) => r.map(escapeCSV).join(",")).join("\r\n");
+
+        const blob = new Blob(["\uFEFF" + csv], {
             type: "text/csv;charset=utf-8",
         });
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
-        a.download = "fuzzyproject_works.csv";
+        a.download = `fuzzyproject_works_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
         a.click();
-        App.toast("CSV экспортирован");
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(a.href), 500);
+
+        App.toast(`CSV экспортирован (${works.length} работ)`);
     }
 
     /* ---------------------------------------------------------
@@ -1452,9 +1425,14 @@ const Admin = (() => {
         const backup = {};
         Object.values(Storage.KEYS).forEach((key) => {
             const val = localStorage.getItem(key);
-            if (val) backup[key] = JSON.parse(val);
+            if (val) {
+                try {
+                    backup[key] = JSON.parse(val);
+                } catch (e) {
+                    backup[key] = val;
+                }
+            }
         });
-        backup.fp_mf_overrides = Storage.get("fp_mf_overrides", null);
 
         const blob = new Blob([JSON.stringify(backup, null, 2)], {
             type: "application/json",
@@ -1462,7 +1440,14 @@ const Admin = (() => {
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
         a.download = `fuzzyproject_backup_${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
         a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(a.href), 500);
+
+        if (typeof Audit !== "undefined") {
+            Audit.log("Экспорт резервной копии", "", "", "info");
+        }
 
         App.toast("Резервная копия скачана");
     }
@@ -1471,15 +1456,30 @@ const Admin = (() => {
         const file = event.target.files?.[0];
         if (!file) return;
 
+        if (
+            !confirm(
+                "Восстановить из резервной копии? Текущие данные будут перезаписаны.",
+            )
+        ) {
+            event.target.value = "";
+            return;
+        }
+
         const reader = new FileReader();
         reader.onload = function (e) {
             try {
                 const backup = JSON.parse(e.target.result);
+
                 Object.keys(backup).forEach((key) => {
                     if (key.startsWith("fp_")) {
-                        localStorage.setItem(key, JSON.stringify(backup[key]));
+                        const val = backup[key];
+                        localStorage.setItem(
+                            key,
+                            typeof val === "string" ? val : JSON.stringify(val),
+                        );
                     }
                 });
+
                 App.toast("Данные восстановлены. Перезагрузка...");
                 setTimeout(() => location.reload(), 800);
             } catch (err) {
@@ -1531,12 +1531,12 @@ const Admin = (() => {
           <div style="margin-bottom:18px;">
             <div class="section-label">${titles[key]}</div>
             <div class="ref-list">
-              ${refs[key]
+              ${(refs[key] || [])
                   .map(
                       (item, i) => `
                 <span class="ref-chip">
                   ${escapeHtml(item)}
-                  <button onclick="Admin.deleteRef('${key}', ${i})">✕</button>
+                  <button onclick="Admin.deleteRef('${key}', ${i})" title="Удалить">✕</button>
                 </span>
               `,
                   )
@@ -1544,7 +1544,8 @@ const Admin = (() => {
             </div>
             <div style="display:flex;gap:8px;margin-top:8px;">
               <input type="text" id="ref_new_${key}" placeholder="Добавить..."
-                style="flex:1;padding:6px 10px;border:1px solid var(--line);border-radius:var(--r-sm);font-size:13px;background:var(--bg-elev);color:var(--txt);">
+                style="flex:1;padding:6px 10px;border:1px solid var(--line);border-radius:var(--r-sm);font-size:13px;background:var(--bg-elev);color:var(--txt);"
+                onkeydown="if(event.key==='Enter') Admin.addRef('${key}')">
               <button class="btn-ghost btn-sm" onclick="Admin.addRef('${key}')">+ Добавить</button>
             </div>
           </div>
@@ -1560,13 +1561,16 @@ const Admin = (() => {
         const val = inp?.value.trim();
         if (!val) return;
         const refs = getRefs();
+        if (!Array.isArray(refs[key])) refs[key] = [];
         if (!refs[key].includes(val)) refs[key].push(val);
         setRefs(refs);
         App.navigate("refs");
         App.toast("Добавлено");
     }
     function deleteRef(key, i) {
+        if (!confirm("Удалить значение из справочника?")) return;
         const refs = getRefs();
+        if (!Array.isArray(refs[key])) return;
         refs[key].splice(i, 1);
         setRefs(refs);
         App.navigate("refs");
@@ -1641,6 +1645,11 @@ const Admin = (() => {
             notifyBeforeDays:
                 +document.getElementById("set_notify")?.value || 3,
         });
+
+        if (typeof Audit !== "undefined") {
+            Audit.log("Настройки сохранены", "", "", "info");
+        }
+
         App.toast("Настройки сохранены");
     }
 
@@ -1689,16 +1698,19 @@ const Admin = (() => {
             (w) => w.status !== "done" && w.status !== "rejected",
         );
 
-        const withRisk = active.map((w) => {
-            const progress = calcProgress(w.id);
-            const res = Fuzzy.infer(buildFuzzyInputs(w));
-            return {
-                w,
-                progress,
-                res,
-                student: Storage.getUserById(w.studentId),
-            };
-        });
+        const withRisk = active
+            .map((w) => {
+                const progress = calcProgress(w.id);
+                const res = getFuzzyResult(w);
+                if (!res) return null;
+                return {
+                    w,
+                    progress,
+                    res,
+                    student: Storage.getUserById(w.studentId),
+                };
+            })
+            .filter(Boolean);
 
         const avgProgress = withRisk.length
             ? Math.round(
@@ -1710,12 +1722,7 @@ const Admin = (() => {
             (x) => x.res.risk.term === "high",
         ).length;
 
-        const initials2 = t.fio
-            .split(" ")
-            .map((w) => w[0])
-            .slice(0, 2)
-            .join("")
-            .toUpperCase();
+        const init = Utils.initials(t.fio);
         const maxLoad = t.maxLoad || 8;
         const loadPct = Math.min(
             100,
@@ -1726,7 +1733,7 @@ const Admin = (() => {
       <div class="back-link" onclick="App.navigate('users')">← К пользователям</div>
 
       <div class="profile-hero">
-        <div class="profile-hero-avatar">${initials2}</div>
+        <div class="profile-hero-avatar">${init}</div>
         <div class="profile-hero-body">
           <div class="profile-hero-name">${escapeHtml(t.fio)}</div>
           <div class="profile-hero-sub">${escapeHtml(t.email)}</div>
@@ -1798,7 +1805,10 @@ const Admin = (() => {
                       .map((w) => {
                           const student = Storage.getUserById(w.studentId);
                           const progress = calcProgress(w.id);
-                          const res = Fuzzy.infer(buildFuzzyInputs(w));
+                          const res = getFuzzyResult(w);
+                          const riskValue = res
+                              ? res.risk.value.toFixed(0)
+                              : "—";
                           return `
                 <div class="mini-project" onclick="App.navigate('work-detail', {id: ${w.id}})">
                   <div>
@@ -1809,7 +1819,7 @@ const Admin = (() => {
                   </div>
                   <div style="text-align:right;">
                     <div style="font-size:14px;font-weight:600;">${progress}%</div>
-                    <div style="font-size:11px;color:var(--txt-muted);">риск ${res.risk.value.toFixed(0)}</div>
+                    <div style="font-size:11px;color:var(--txt-muted);">риск ${riskValue}</div>
                   </div>
                 </div>
               `;
@@ -1830,15 +1840,16 @@ const Admin = (() => {
             (w) => w.status !== "done" && w.status !== "rejected",
         );
 
-        const low = active.filter(
-            (w) => Fuzzy.infer(buildFuzzyInputs(w)).risk.term === "low",
-        ).length;
-        const med = active.filter(
-            (w) => Fuzzy.infer(buildFuzzyInputs(w)).risk.term === "med",
-        ).length;
-        const high = active.filter(
-            (w) => Fuzzy.infer(buildFuzzyInputs(w)).risk.term === "high",
-        ).length;
+        let low = 0,
+            med = 0,
+            high = 0;
+        active.forEach((w) => {
+            const res = getFuzzyResult(w);
+            if (!res) return;
+            if (res.risk.term === "low") low++;
+            else if (res.risk.term === "med") med++;
+            else high++;
+        });
 
         Charts.doughnut(
             "adminTeacherRisk",
@@ -1863,23 +1874,21 @@ const Admin = (() => {
             cnt = 0;
         works.forEach((w) => {
             totalProgress += calcProgress(w.id);
-            totalRating += Fuzzy.infer(buildFuzzyInputs(w)).rating.value;
-            cnt++;
+            const res = getFuzzyResult(w);
+            if (res) {
+                totalRating += res.rating.value;
+                cnt++;
+            }
         });
         const avg = (x) => (cnt ? Math.round(x / cnt) : 0);
 
-        const initials3 = s.fio
-            .split(" ")
-            .map((w) => w[0])
-            .slice(0, 2)
-            .join("")
-            .toUpperCase();
+        const init = Utils.initials(s.fio);
 
         return `
       <div class="back-link" onclick="App.navigate('users')">← К пользователям</div>
 
       <div class="profile-hero">
-        <div class="profile-hero-avatar">${initials3}</div>
+        <div class="profile-hero-avatar">${init}</div>
         <div class="profile-hero-body">
           <div class="profile-hero-name">${escapeHtml(s.fio)}</div>
           <div class="profile-hero-sub">${escapeHtml(s.email)}</div>
@@ -1928,18 +1937,21 @@ const Admin = (() => {
                 : works
                       .map((w) => {
                           const progress = calcProgress(w.id);
-                          const res = Fuzzy.infer(buildFuzzyInputs(w));
+                          const res = getFuzzyResult(w);
+                          const riskValue = res
+                              ? res.risk.value.toFixed(0)
+                              : "—";
                           return `
                 <div class="mini-project" onclick="App.navigate('work-detail', {id: ${w.id}})">
                   <div>
                     <div class="mini-project-title">${escapeHtml(w.topic)}</div>
                     <div class="mini-project-sub">
-                      ${escapeHtml(WORK_TYPES[w.type] || "")} · ${statusBadge(w.status)}
+                      ${escapeHtml(Utils.workTypeLabel(w.type))} · ${statusBadge(w.status)}
                     </div>
                   </div>
                   <div style="text-align:right;">
                     <div style="font-size:14px;font-weight:600;">${progress}%</div>
-                    <div style="font-size:11px;color:var(--txt-muted);">риск ${res.risk.value.toFixed(0)}</div>
+                    <div style="font-size:11px;color:var(--txt-muted);">риск ${riskValue}</div>
                   </div>
                 </div>
               `;

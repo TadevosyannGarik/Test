@@ -1,71 +1,47 @@
 /* =========================================================
    RANKING — рейтинги студентов и работ
+   Обновлено: Utils.* вместо дублирующих функций,
+   синхронизация порогов с Fuzzy.THRESHOLDS
    ========================================================= */
 const Ranking = (() => {
+    /* Алиасы на Utils */
+    const escapeHtml = Utils.escapeHtml;
+    const calcProgress = Utils.calcProgress;
+    const getUser = () => Auth.getUser();
+
+    function getFuzzyResult(work, progressOverride) {
+        return Utils.safeFuzzyInfer(
+            Utils.buildFuzzyInputs(work, progressOverride),
+        );
+    }
+
     /* =========================================================
        ДАННЫЕ
        ========================================================= */
     function enrichAll(works) {
-        const list = works || Storage.getWorks();
-        return list.map((w) => ({
-            w,
-            student: Storage.getUserById(w.studentId),
-            teacher: Storage.getUserById(w.teacherId),
-            res: Fuzzy.infer(buildInputs(w)),
-            progress: calcProgress(w.id),
-        }));
-    }
-
-    function buildInputs(work) {
-        const stages = Storage.getStagesByWork(work.id);
-        const tasks = Storage.getTasksByWork(work.id);
-        const comments = Storage.getCommentsByWork(work.id);
-
-        let progress = 0;
-        if (stages.length > 0) {
-            const totalW = stages.reduce((s, x) => s + (x.weight || 1), 0);
-            const doneW = stages
-                .filter((s) => s.done)
-                .reduce((s, x) => s + (x.weight || 1), 0);
-            progress = totalW > 0 ? Math.round((doneW / totalW) * 100) : 0;
-        }
-
-        const totalItems = stages.length + tasks.length;
-        const doneItems =
-            stages.filter((s) => s.done).length +
-            tasks.filter((t) => t.col === "done").length;
-        const activity =
-            totalItems === 0 ? 5 : Math.round((doneItems / totalItems) * 10);
-
-        const days = work.deadline ? Math.max(0, daysUntil(work.deadline)) : 30;
-
-        return {
-            progress,
-            days,
-            activity,
-            edits: comments.length,
-            volume: progress,
-            orig: work.orig || 65,
-            supScore: work.supScore || 5,
-            gost: work.gost || 70,
-        };
-    }
-
-    function calcProgress(workId) {
-        const stages = Storage.getStagesByWork(workId);
-        if (stages.length === 0) return 0;
-        const totalW = stages.reduce((s, x) => s + (x.weight || 1), 0);
-        const doneW = stages
-            .filter((s) => s.done)
-            .reduce((s, x) => s + (x.weight || 1), 0);
-        return totalW === 0 ? 0 : Math.round((doneW / totalW) * 100);
+        const list = Array.isArray(works) ? works : Storage.getWorks();
+        return list
+            .map((w) => {
+                const student = Storage.getUserById(w.studentId);
+                const teacher = Storage.getUserById(w.teacherId);
+                const res = getFuzzyResult(w);
+                if (!res) return null;
+                return {
+                    w,
+                    student,
+                    teacher,
+                    res,
+                    progress: calcProgress(w.id),
+                };
+            })
+            .filter(Boolean);
     }
 
     /* =========================================================
        РАБОТЫ ДЛЯ ТЕКУЩЕГО ПОЛЬЗОВАТЕЛЯ
        ========================================================= */
     function getRelevantWorks() {
-        const user = Auth.getUser();
+        const user = getUser();
         if (!user) return [];
 
         if (user.role === "student") return Storage.getWorksByStudent(user.id);
@@ -101,21 +77,10 @@ const Ranking = (() => {
     }
 
     /* =========================================================
-       ХЕЛПЕРЫ
-       ========================================================= */
-    function escapeHtml(str) {
-        if (!str) return "";
-        return String(str)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;");
-    }
-
-    /* =========================================================
        РЕНДЕР
        ========================================================= */
     function renderRankingSection() {
+        const user = getUser();
         const works = getRelevantWorks();
 
         if (works.length === 0) {
@@ -132,21 +97,39 @@ const Ranking = (() => {
 
         const enriched = enrichAll(works);
 
-        const avgRating = Math.round(
-            enriched.reduce((a, e) => a + e.res.rating.value, 0) /
-                enriched.length,
-        );
-        const avgProgress = Math.round(
-            enriched.reduce((a, e) => a + e.progress, 0) / enriched.length,
-        );
+        const avgRating = enriched.length
+            ? Math.round(
+                  enriched.reduce((a, e) => a + e.res.rating.value, 0) /
+                      enriched.length,
+              )
+            : 0;
+        const avgProgress = enriched.length
+            ? Math.round(
+                  enriched.reduce((a, e) => a + e.progress, 0) /
+                      enriched.length,
+              )
+            : 0;
 
         const top = topByRating(enriched, 5);
         const topIds = new Set(top.map((e) => e.w.id));
 
+        /* Порог «требуют внимания» синхронизирован с Fuzzy.THRESHOLDS.high */
+        const threshold = Fuzzy.THRESHOLDS?.high ?? 65;
+
         const bottom = bottomByRating(enriched, enriched.length)
             .filter((e) => !topIds.has(e.w.id))
-            .filter((e) => e.res.rating.value < 60)
+            .filter((e) => e.res.rating.value < threshold)
             .slice(0, 5);
+
+        /* Заголовки зависят от роли */
+        const topTitle =
+            user?.role === "student"
+                ? "Мои показатели"
+                : user?.role === "teacher"
+                  ? "Топ успевающих"
+                  : "Топ работ";
+        const bottomTitle =
+            user?.role === "student" ? "Мои слабые места" : "Требуют внимания";
 
         return `
       <div class="card" style="margin-bottom:20px;">
@@ -162,7 +145,7 @@ const Ranking = (() => {
           <div class="card-head">
             <div class="card-title">
               ${SVG.award({ cls: "icon icon-sm" })}
-              <span>Топ успевающих</span>
+              <span>${topTitle}</span>
             </div>
           </div>
           ${
@@ -176,7 +159,7 @@ const Ranking = (() => {
           <div class="card-head">
             <div class="card-title">
               ${SVG.alertTriangle({ cls: "icon icon-sm" })}
-              <span>Требуют внимания</span>
+              <span>${bottomTitle}</span>
             </div>
           </div>
           ${
@@ -192,7 +175,7 @@ const Ranking = (() => {
     }
 
     function renderEmpty(text) {
-        return `<div class="empty" style="padding:24px;">${text}</div>`;
+        return `<div class="empty" style="padding:24px;">${escapeHtml(text)}</div>`;
     }
 
     function renderRankRow(e, idx, kind = "top") {
@@ -233,7 +216,7 @@ const Ranking = (() => {
        НАВИГАЦИЯ ПО РОЛИ
        ========================================================= */
     function openWork(workId) {
-        const user = Auth.getUser();
+        const user = getUser();
         if (!user) return;
 
         if (user.role === "admin") {

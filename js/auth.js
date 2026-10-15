@@ -1,5 +1,7 @@
 /* =========================================================
    AUTH — регистрация, вход, роли
+   Обновлено: blocked: false при создании, валидация fio,
+   проверка blocked в loginAs, безопасные вызовы
    ========================================================= */
 const Auth = (() => {
     let selectedRole = "student";
@@ -7,6 +9,7 @@ const Auth = (() => {
 
     /* =========================================================
        ДЕМО-ПОЛЬЗОВАТЕЛИ
+       Пароль "123456" (в открытом виде только для демо)
        ========================================================= */
     function getDemoUsers() {
         return [
@@ -21,6 +24,7 @@ const Auth = (() => {
                 course: 3,
                 direction: "Программная инженерия",
                 recordBook: "21-1234",
+                blocked: false,
                 createdAt: Date.now(),
             },
             {
@@ -34,6 +38,7 @@ const Auth = (() => {
                 degree: "к.т.н.",
                 interests: "Нечёткая логика, искусственный интеллект",
                 maxLoad: 8,
+                blocked: false,
                 createdAt: Date.now(),
             },
             {
@@ -45,6 +50,7 @@ const Auth = (() => {
                 department: "Кафедра информационных систем",
                 position: "Заведующая кафедрой",
                 accessLevel: "Полный",
+                blocked: false,
                 createdAt: Date.now(),
             },
         ];
@@ -91,10 +97,16 @@ const Auth = (() => {
        ВЫБОР РОЛИ
        ========================================================= */
     function pickRole(role) {
+        if (!["student", "teacher", "admin"].includes(role)) return;
         selectedRole = role;
-        document.querySelectorAll(".role-picker button").forEach((b) => {
-            b.classList.toggle("active", b.dataset.role === role);
-        });
+
+        const picker = document.querySelector(".role-picker");
+        if (picker) {
+            picker.querySelectorAll("button").forEach((b) => {
+                b.classList.toggle("active", b.dataset.role === role);
+            });
+        }
+
         renderRoleFields(role);
     }
 
@@ -237,7 +249,9 @@ const Auth = (() => {
         let ok = true;
 
         const fio = document.getElementById("regFio")?.value.trim() || "";
-        ok &= markField("regFio", fio.length >= 3);
+        const fioParts = fio.split(/\s+/).filter(Boolean);
+        const fioOk = fio.length >= 3 && fioParts.length >= 2;
+        ok &= markField("regFio", fioOk);
 
         const email =
             document.getElementById("regEmail")?.value.trim().toLowerCase() ||
@@ -316,6 +330,7 @@ const Auth = (() => {
             fio,
             email,
             pass: hashPass(pass),
+            blocked: false,
             ...roleData,
             createdAt: Date.now(),
         };
@@ -386,6 +401,13 @@ const Auth = (() => {
        ========================================================= */
     function loginAs(user) {
         if (!user) return;
+
+        /* Защита: заблокированный не входит */
+        if (user.blocked) {
+            showMsg("Аккаунт заблокирован. Обратитесь к администратору.");
+            return;
+        }
+
         currentUser = user;
         Storage.setSession({ userId: user.id, loginAt: Date.now() });
 

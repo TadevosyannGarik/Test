@@ -1,96 +1,79 @@
 /* =========================================================
    PDF REPORT — экспорт отчёта в PDF (через печать)
+   Обновлено: Utils.* вместо дублирующих функций,
+   проверка прав при экспорте работы студента
    ========================================================= */
 const PdfReport = (() => {
-    const WORK_TYPE_LABELS = {
-        course: "Курсовая работа",
-        diploma: "Дипломная работа",
-        vkr: "ВКР (бакалавриат)",
-        master: "Магистерская диссертация",
-    };
+    /* Алиасы на Utils */
+    const escapeHtml = Utils.escapeHtml;
+    const calcProgress = Utils.calcProgress;
+    const workTypeLabel = Utils.workTypeLabel;
 
-    /* =========================================================
-       ХЕЛПЕРЫ
-       ========================================================= */
-    function escapeHtml(str) {
-        if (str === null || str === undefined) return "";
-        return String(str)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
-    }
-
-    function workTypeLabel(type) {
-        return WORK_TYPE_LABELS[type] || type || "—";
+    function getUser() {
+        return typeof Auth !== "undefined" ? Auth.getUser() : null;
     }
 
     /* =========================================================
-       ВХОДЫ
+       ВХОДЫ (через Utils)
        ========================================================= */
-    function buildInputs(work) {
-        const stages = Storage.getStagesByWork(work.id);
-        const tasks = Storage.getTasksByWork(work.id);
-        const comments = Storage.getCommentsByWork(work.id);
-
-        let progress = 0;
-        if (stages.length > 0) {
-            const totalW = stages.reduce((s, x) => s + (x.weight || 1), 0);
-            const doneW = stages
-                .filter((s) => s.done)
-                .reduce((s, x) => s + (x.weight || 1), 0);
-            progress = totalW > 0 ? Math.round((doneW / totalW) * 100) : 0;
-        }
-
-        const totalItems = stages.length + tasks.length;
-        const doneItems =
-            stages.filter((s) => s.done).length +
-            tasks.filter((t) => t.col === "done").length;
-        const activity =
-            totalItems === 0 ? 5 : Math.round((doneItems / totalItems) * 10);
-
-        const days = work.deadline ? Math.max(0, daysUntil(work.deadline)) : 30;
-
-        return {
-            progress,
-            days,
-            activity,
-            edits: comments.length,
-            volume: progress,
-            orig: work.orig || 65,
-            supScore: work.supScore || 5,
-            gost: work.gost || 70,
-        };
+    function getInputs(work) {
+        return Utils.buildFuzzyInputs(work);
     }
 
-    function calcProgress(workId) {
-        const stages = Storage.getStagesByWork(workId);
-        if (stages.length === 0) return 0;
-        const totalW = stages.reduce((s, x) => s + (x.weight || 1), 0);
-        const doneW = stages
-            .filter((s) => s.done)
-            .reduce((s, x) => s + (x.weight || 1), 0);
-        return totalW === 0 ? 0 : Math.round((doneW / totalW) * 100);
+    function getFuzzyResult(work) {
+        return Utils.safeFuzzyInfer(Utils.buildFuzzyInputs(work));
     }
 
     /* =========================================================
        ЭКСПОРТ КАФЕДРЫ
        ========================================================= */
     function exportDepartment() {
+        const user = getUser();
+        if (!user) {
+            App.toast("Требуется авторизация");
+            return;
+        }
+
+        /* Только преподаватель или админ */
+        if (user.role !== "teacher" && user.role !== "admin") {
+            App.toast(
+                "Экспорт отчёта кафедры доступен только преподавателям и администраторам",
+            );
+            return;
+        }
+
         const works = Storage.getWorks();
         if (works.length === 0) {
             App.toast("Нет работ для отчёта");
             return;
         }
 
-        const enriched = works.map((w) => ({
-            w,
-            student: Storage.getUserById(w.studentId),
-            teacher: Storage.getUserById(w.teacherId),
-            res: Fuzzy.infer(buildInputs(w)),
-            progress: calcProgress(w.id),
-        }));
+        /* Если преподаватель — только его работы */
+        const filtered =
+            user.role === "teacher"
+                ? works.filter((w) => Storage.sameId(w.teacherId, user.id))
+                : works;
+
+        if (filtered.length === 0) {
+            App.toast("Нет работ для отчёта");
+            return;
+        }
+
+        const enriched = filtered
+            .map((w) => {
+                const student = Storage.getUserById(w.studentId);
+                const teacher = Storage.getUserById(w.teacherId);
+                const res = getFuzzyResult(w);
+                if (!res) return null;
+                return {
+                    w,
+                    student,
+                    teacher,
+                    res,
+                    progress: calcProgress(w.id),
+                };
+            })
+            .filter(Boolean);
 
         const html = buildReportHTML(enriched);
         openPrintWindow(html, "Отчёт по работам кафедры");
@@ -100,16 +83,29 @@ const PdfReport = (() => {
        ЭКСПОРТ СТУДЕНТА
        ========================================================= */
     function exportStudent(workId) {
+        const user = getUser();
+        if (!user) {
+            App.toast("Требуется авторизация");
+            return;
+        }
+
         const w = Storage.getWorkById(workId);
         if (!w) {
             App.toast("Работа не найдена");
             return;
         }
 
+        /* Проверка прав: владелец, преподаватель или админ */
+        const allowed = Utils.ensureOwnerWork(w, user);
+        if (!allowed) {
+            App.toast("Нет доступа к этой работе");
+            return;
+        }
+
         const student = Storage.getUserById(w.studentId);
         const teacher = Storage.getUserById(w.teacherId);
-        const inputs = buildInputs(w);
-        const res = Fuzzy.infer(inputs);
+        const inputs = getInputs(w);
+        const res = Utils.safeFuzzyInfer(inputs);
         const progress = calcProgress(w.id);
         const stages = Storage.getStagesByWork(w.id);
 
@@ -372,7 +368,7 @@ const PdfReport = (() => {
       ${gradeBlock}
 
       <h2>Рекомендация</h2>
-      <p style="font-size:13px;">${Fuzzy.recommendation(inputs, res)}</p>
+      <p style="font-size:13px;">${escapeHtml(Fuzzy.recommendation(inputs, res))}</p>
 
       <footer>
         Отчёт сгенерирован автоматически системой FuzzyProject

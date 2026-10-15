@@ -1,5 +1,7 @@
 /* =========================================================
    APP — шапка, навигация, карточки, модалки
+   Обновлено: расширенный контейнер, адаптивные отступы,
+   более широкая сетка для больших экранов
    ========================================================= */
 
 .app {
@@ -16,7 +18,7 @@
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border-bottom: 1px solid var(--line);
-    padding: 0 32px;
+    padding: 0 40px;
     height: 64px;
     display: flex;
     align-items: center;
@@ -103,7 +105,7 @@
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border-bottom: 1px solid var(--line);
-    padding: 0 32px;
+    padding: 0 40px;
     display: flex;
     align-items: center;
     gap: 4px;
@@ -183,14 +185,29 @@
 }
 
 /* =========================================================
-   КОНТЕНТ
+   КОНТЕНТ — РАСШИРЕННЫЙ
    ========================================================= */
 .app-main {
     flex: 1;
-    padding: 48px 32px;
-    max-width: 1200px;
+    padding: 40px 40px;
+    max-width: 1500px;
     width: 100%;
     margin: 0 auto;
+}
+
+/* На очень широких экранах — ещё больше воздуха */
+@media (min-width: 1700px) {
+    .app-main {
+        padding: 48px 64px;
+        max-width: 1680px;
+    }
+}
+
+/* На средних экранах — умеренно */
+@media (max-width: 1400px) {
+    .app-main {
+        padding: 36px 32px;
+    }
 }
 
 .view {
@@ -239,7 +256,7 @@
 }
 
 /* =========================================================
-   СЕТКИ
+   СЕТКИ — обновлены
    ========================================================= */
 .grid {
     display: grid;
@@ -261,13 +278,18 @@
         grid-template-columns: 1fr;
     }
 }
+@media (min-width: 901px) and (max-width: 1200px) {
+    .grid-4 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
 
 /* =========================================================
-   KPI
+   KPI — крупнее
    ========================================================= */
 .kpi {
     text-align: left;
-    padding: 4px;
+    padding: 8px 4px;
 }
 .kpi-num {
     font-size: var(--fs-3xl);
@@ -370,16 +392,16 @@
 }
 
 /* =========================================================
-   QUICK ACTIONS
+   QUICK ACTIONS — крупнее
    ========================================================= */
 .quick-actions {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 14px;
     margin-top: 16px;
 }
 .quick-action {
-    padding: 20px;
+    padding: 22px;
     border: 1px solid var(--line);
     border-radius: var(--r-md);
     cursor: pointer;
@@ -398,15 +420,15 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     border-radius: var(--r-sm);
     background: var(--bg-soft);
     color: var(--txt);
 }
 .quick-action .qa-ico .icon {
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
 }
 .quick-action .qa-lbl {
     font-size: var(--fs-base);
@@ -489,6 +511,18 @@
 /* =========================================================
    АДАПТИВ
    ========================================================= */
+@media (max-width: 900px) {
+    .app-header {
+        padding: 0 24px;
+    }
+    .app-nav {
+        padding: 0 24px;
+    }
+    .app-main {
+        padding: 28px 24px;
+    }
+}
+
 @media (max-width: 700px) {
     .app-header {
         padding: 0 20px;
@@ -499,7 +533,7 @@
         top: 56px;
     }
     .app-main {
-        padding: 28px 20px;
+        padding: 24px 16px;
     }
     .app-user-info {
         display: none;
@@ -509,5 +543,8 @@
     }
     .card {
         padding: 20px;
+    }
+    .quick-actions {
+        grid-template-columns: 1fr;
     }
 }

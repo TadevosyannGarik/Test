@@ -1,10 +1,20 @@
 /* =========================================================
    SIMULATE — «Что если» симулятор
+   Обновлено: Utils.buildFuzzyInputs и safeFuzzyInfer,
+   безопасные проверки DOM, все id сохранены
    ========================================================= */
 const Simulate = (() => {
     let workId = null;
     let currentWork = null;
     let baseCache = null;
+
+    /* Алиасы на Utils */
+    const escapeHtml = Utils.escapeHtml;
+    const emptyState = Utils.emptyState;
+
+    function getUser() {
+        return Auth.getUser();
+    }
 
     /* =========================================================
        РАБОТЫ ПО РОЛИ
@@ -16,32 +26,34 @@ const Simulate = (() => {
         return Storage.getWorks();
     }
 
-    function emptyState(title, text, iconFn) {
-        return `
-      <div class="card">
-        <div class="empty-state">
-          ${iconFn ? iconFn({ cls: "icon icon-2xl" }) : SVG.alertTriangle({ cls: "icon icon-2xl" })}
-          <h3>${title}</h3>
-          ${text ? `<p>${text}</p>` : ""}
-        </div>
-      </div>
-    `;
-    }
+    /* =========================================================
+       ВХОДЫ (обёртка над Utils.buildFuzzyInputs)
+       ========================================================= */
+    function getBaseInputs(work) {
+        if (!work) return null;
 
-    function escapeHtml(str) {
-        if (!str) return "";
-        return String(str)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;");
+        const inputs = Utils.buildFuzzyInputs(work);
+        if (!inputs) return null;
+
+        /* Подставляем нейтральные значения для отсутствующих полей,
+           чтобы ползунки не были null */
+        return {
+            progress: inputs.progress ?? 0,
+            days: inputs.days ?? 30,
+            activity: inputs.activity ?? 5,
+            edits: inputs.edits ?? 0,
+            volume: inputs.volume ?? 0,
+            orig: inputs.orig ?? 65,
+            supScore: inputs.supScore ?? 5,
+            gost: inputs.gost ?? 70,
+        };
     }
 
     /* =========================================================
        РЕНДЕР
        ========================================================= */
     function render(params) {
-        const user = Auth.getUser();
+        const user = getUser();
         if (!user) return emptyState("Не авторизован", "", SVG.lock);
 
         const works = getAvailableWorks(user);
@@ -64,10 +76,15 @@ const Simulate = (() => {
         if (!currentWork)
             return emptyState("Работа не найдена", "", SVG.folder);
 
-        baseCache = null;
-
         const base = getBaseInputs(currentWork);
-        const currentResult = Fuzzy.infer(base);
+        if (!base)
+            return emptyState(
+                "Не удалось собрать данные",
+                "",
+                SVG.alertTriangle,
+            );
+
+        const currentResult = Utils.safeFuzzyInfer(base);
 
         baseCache = { ...base };
 
@@ -125,53 +142,13 @@ const Simulate = (() => {
     }
 
     /* =========================================================
-       ВХОДЫ
-       ========================================================= */
-    function getBaseInputs(work) {
-        if (!work) return {};
-
-        const stages = Storage.getStagesByWork(work.id);
-        const tasks = Storage.getTasksByWork(work.id);
-        const comments = Storage.getCommentsByWork(work.id);
-
-        let progress = 0;
-        if (stages.length > 0) {
-            const totalW = stages.reduce((s, x) => s + (x.weight || 1), 0);
-            const doneW = stages
-                .filter((s) => s.done)
-                .reduce((s, x) => s + (x.weight || 1), 0);
-            progress = totalW > 0 ? Math.round((doneW / totalW) * 100) : 0;
-        }
-
-        const totalItems = stages.length + tasks.length;
-        const doneItems =
-            stages.filter((s) => s.done).length +
-            tasks.filter((t) => t.col === "done").length;
-        const activity =
-            totalItems === 0 ? 5 : Math.round((doneItems / totalItems) * 10);
-
-        const days = work.deadline ? Math.max(0, daysUntil(work.deadline)) : 30;
-
-        return {
-            progress,
-            days,
-            activity,
-            edits: comments.length,
-            volume: progress,
-            orig: work.orig || 65,
-            supScore: work.supScore || 5,
-            gost: work.gost || 70,
-        };
-    }
-
-    /* =========================================================
        ПОЛЗУНОК
        ========================================================= */
     function slider(id, label, min, max, val, unit) {
         return `
       <div class="slider-row">
         <label>
-          <span>${label}</span>
+          <span>${escapeHtml(label)}</span>
           <span class="val" id="v_${id}">${val}${unit}</span>
         </label>
         <input type="range" id="${id}" min="${min}" max="${max}" value="${val}"
@@ -220,8 +197,8 @@ const Simulate = (() => {
         }
         if (!baseCache) return;
 
-        const baseResult = Fuzzy.infer(baseCache);
-        const currentResult = Fuzzy.infer(inputs);
+        const baseResult = Utils.safeFuzzyInfer(baseCache);
+        const currentResult = Utils.safeFuzzyInfer(inputs);
 
         const box = document.getElementById("simResult");
         if (box) {
@@ -233,6 +210,8 @@ const Simulate = (() => {
        РЕЗУЛЬТАТ
        ========================================================= */
     function renderResult(inputs, baseResult, result) {
+        if (!baseResult || !result) return "";
+
         const riskDiff = result.risk.value - baseResult.risk.value;
         const readyDiff = result.ready.value - baseResult.ready.value;
         const ratingDiff = result.rating.value - baseResult.rating.value;
@@ -241,13 +220,13 @@ const Simulate = (() => {
       <div class="metric-grid" style="margin-bottom:16px;">
         <div class="metric">
           <div class="metric-lbl">Риск</div>
-          <div class="metric-val" style="color:var(--${result.risk.term === "high" ? "bad" : result.risk.term === "med" ? "warn" : "ok"})">
+          <div class="metric-val" style="color:var(--${Utils.riskClass(result.risk.term)})">
             ${result.risk.value.toFixed(0)}
           </div>
         </div>
         <div class="metric">
           <div class="metric-lbl">Готовность</div>
-          <div class="metric-val" style="color:var(--${result.ready.term === "high" ? "ok" : result.ready.term === "med" ? "warn" : "bad"})">
+          <div class="metric-val" style="color:var(--${Utils.readyClass(result.ready.term)})">
             ${result.ready.value.toFixed(0)}
           </div>
         </div>
@@ -268,7 +247,7 @@ const Simulate = (() => {
       ${diffRow("Рейтинг", baseResult.rating.value, result.rating.value, ratingDiff, true)}
 
       <div class="explain" style="margin-top:14px;font-size:12px;">
-        <b>Сценарий:</b> ${describeChange(inputs)}
+        <b>Сценарий:</b> ${escapeHtml(describeChange(inputs))}
       </div>
     `;
     }
@@ -286,7 +265,7 @@ const Simulate = (() => {
         return `
       <div class="sim-diff">
         <div>
-          <div style="font-size:11px;color:var(--txt-muted);">${label}</div>
+          <div style="font-size:11px;color:var(--txt-muted);">${escapeHtml(label)}</div>
           <div class="sim-diff-val">${before.toFixed(0)}</div>
         </div>
         <div class="sim-diff-arrow">→</div>
@@ -341,6 +320,7 @@ const Simulate = (() => {
     function reset() {
         if (!currentWork) return;
         baseCache = getBaseInputs(currentWork);
+        if (!baseCache) return;
 
         const sliderIds = [
             "s_progress",
@@ -352,6 +332,14 @@ const Simulate = (() => {
             "s_supScore",
             "s_gost",
         ];
+
+        const units = {
+            s_progress: "%",
+            s_volume: "%",
+            s_orig: "%",
+            s_gost: "%",
+        };
+
         sliderIds.forEach((id) => {
             const el = document.getElementById(id);
             if (!el) return;
@@ -359,12 +347,6 @@ const Simulate = (() => {
             el.value = baseCache[key];
             const lbl = document.getElementById("v_" + id);
             if (lbl) {
-                const units = {
-                    s_progress: "%",
-                    s_volume: "%",
-                    s_orig: "%",
-                    s_gost: "%",
-                };
                 lbl.textContent = el.value + (units[id] || "");
             }
         });

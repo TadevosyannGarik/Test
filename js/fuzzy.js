@@ -1,18 +1,27 @@
 /* =========================================================
    FUZZY — нечёткая логика Мамдани
+   Обновлено: точность defuzzify, обработка отсутствующих данных,
+   экспорт THRESHOLDS
    ========================================================= */
 const Fuzzy = (() => {
     /* =========================================================
-       ТРЕУГОЛЬНАЯ ФП (с корректной обработкой границ)
+       ТРЕУГОЛЬНАЯ ФП
+       Корректная обработка границ и вырожденных случаев
        ========================================================= */
     function trimf(x, a, b, c) {
-        /* Вырожденные случаи */
+        if (typeof x !== "number" || isNaN(x)) return 0;
+
+        /* Вырожденные случаи: a == b или b == c */
         if (x === a && a === b) return 1;
         if (x === c && b === c) return 1;
 
+        /* Вне треугольника */
         if (x <= a || x >= c) return 0;
+
+        /* Пик */
         if (x === b) return 1;
 
+        /* Левый или правый склон */
         return x < b ? (x - a) / (b - a) : (c - x) / (c - b);
     }
 
@@ -180,6 +189,7 @@ const Fuzzy = (() => {
         stored.forEach((r) => {
             if (r.then === "risk=medium") r.then = "risk=med";
             if (r.then === "ready=medium") r.then = "ready=med";
+            if (r.then === "rating=medium") r.then = "rating=med";
         });
 
         return stored;
@@ -189,11 +199,14 @@ const Fuzzy = (() => {
        СТЕПЕНЬ ИСТИННОСТИ ПРАВИЛА
        ========================================================= */
     function ruleStrength(rule, inputs) {
+        if (!rule || !Array.isArray(rule.if)) return 0;
         const vals = rule.if.map((c) => {
             const [v, t] = c.split("=");
             const mf = MF[v];
             if (!mf || !mf[t]) return 0;
-            return mf[t](inputs[v] ?? 0);
+            const val = inputs[v];
+            if (typeof val !== "number" || isNaN(val)) return 0;
+            return mf[t](val);
         });
         return vals.length === 0 ? 0 : Math.min(...vals);
     }
@@ -220,6 +233,7 @@ const Fuzzy = (() => {
 
     /* =========================================================
        ДЕФАЗЗИФИКАЦИЯ (центр тяжести)
+       Шаг интегрирования 0.25 — точнее
        ========================================================= */
     function defuzzify(outVar, acc) {
         const outMF = OUT[outVar];
@@ -227,13 +241,15 @@ const Fuzzy = (() => {
 
         let num = 0;
         let den = 0;
-        for (let x = 0; x <= 100; x += 0.5) {
+        const STEP = 0.25;
+
+        for (let x = 0; x <= 100; x += STEP) {
             let mu = 0;
             for (const t of ["low", "med", "high"]) {
                 mu = Math.max(mu, Math.min(acc[t], outMF[t](x)));
             }
-            num += x * mu;
-            den += mu;
+            num += x * mu * STEP;
+            den += mu * STEP;
         }
         return den === 0 ? 0 : num / den;
     }
@@ -263,6 +279,29 @@ const Fuzzy = (() => {
        ОСНОВНОЙ ВЫВОД
        ========================================================= */
     function infer(inputs) {
+        if (!inputs || typeof inputs !== "object") {
+            return {
+                risk: {
+                    value: 0,
+                    term: "low",
+                    fired: [],
+                    acc: { low: 0, med: 0, high: 0 },
+                },
+                ready: {
+                    value: 0,
+                    term: "low",
+                    fired: [],
+                    acc: { low: 0, med: 0, high: 0 },
+                },
+                rating: {
+                    value: 0,
+                    term: "low",
+                    fired: [],
+                    acc: { low: 0, med: 0, high: 0 },
+                },
+            };
+        }
+
         const rules = getRules();
         const r = aggregate("risk", rules, inputs);
         const g = aggregate("ready", rules, inputs);
@@ -293,6 +332,7 @@ const Fuzzy = (() => {
        РЕКОМЕНДАЦИЯ
        ========================================================= */
     function recommendation(inputs, res) {
+        if (!res) return "";
         let rec = "";
         if (res.risk.term === "high") {
             rec =
@@ -318,6 +358,14 @@ const Fuzzy = (() => {
        СУГЕНО
        ========================================================= */
     function sugenoInfer(inputs) {
+        if (!inputs || typeof inputs !== "object") {
+            return {
+                risk: { value: 0, term: "low", fired: [] },
+                ready: { value: 0, term: "low", fired: [] },
+                rating: { value: 0, term: "low", fired: [] },
+            };
+        }
+
         const rules = getRules();
 
         function calc(outVar) {
@@ -355,9 +403,10 @@ const Fuzzy = (() => {
     }
 
     /* =========================================================
-       ЧЁТКАЯ ФОРМУЛА
+       ЧЁТКАЯ ФОРМУЛА (baseline для сравнения)
        ========================================================= */
     function crispInfer(inputs) {
+        if (!inputs || typeof inputs !== "object") inputs = {};
         const clamp = (v) => Math.max(0, Math.min(100, v));
 
         const riskRaw =
@@ -452,13 +501,16 @@ const Fuzzy = (() => {
     }
 
     function escapeHtml(str) {
+        if (str === null || str === undefined) return "";
         return String(str)
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;");
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
     }
 
     function explain(inputs, result) {
+        if (!inputs || !result) return "";
         const riskTerm = result.risk.term;
         const riskWord =
             riskTerm === "high"

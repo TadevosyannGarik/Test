@@ -1,26 +1,13 @@
 /* =========================================================
    TEACHER — весь функционал роли «Преподаватель»
+   Обновлено: использует Utils для общих хелперов
    ========================================================= */
 const Teacher = (() => {
     /* =========================================================
-       КОНСТАНТЫ
+       КОНСТАНТЫ (алиасы на Utils)
        ========================================================= */
-    const WORK_STATUSES = {
-        draft: { label: "Черновик", badge: "draft" },
-        pending: { label: "На утверждении", badge: "pending" },
-        active: { label: "В работе", badge: "active" },
-        review: { label: "На проверке", badge: "review" },
-        approved: { label: "Допущена", badge: "approved" },
-        done: { label: "Защищена", badge: "done" },
-        rejected: { label: "Отклонена", badge: "rejected" },
-    };
-
-    const WORK_TYPES = {
-        course: "Курсовая работа",
-        diploma: "Дипломная работа",
-        vkr: "ВКР (бакалавриат)",
-        master: "Магистерская диссертация",
-    };
+    const WORK_STATUSES = Utils.WORK_STATUSES;
+    const WORK_TYPES = Utils.WORK_TYPES;
 
     const GOST_ITEMS = [
         "Шрифт Times New Roman, 14 пт",
@@ -34,19 +21,16 @@ const Teacher = (() => {
     ];
 
     /* =========================================================
-       ХЕЛПЕРЫ
+       ХЕЛПЕРЫ (алиасы на Utils)
        ========================================================= */
+    const escapeHtml = Utils.escapeHtml;
+    const statusBadge = Utils.statusBadge;
+    const calcProgress = Utils.calcProgress;
+    const emptyState = Utils.emptyState;
+    const renderComment = Utils.renderComment;
+
     function getUser() {
         return Auth.getUser();
-    }
-
-    function escapeHtml(str) {
-        if (!str) return "";
-        return String(str)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;");
     }
 
     function getMyStudents() {
@@ -61,62 +45,18 @@ const Teacher = (() => {
     }
 
     function getMyActiveStudents() {
-        return getMyStudents().filter(
-            (x) => x.work.status !== "rejected" && x.work.status !== "done",
+        return getMyStudents().filter((x) =>
+            Utils.isActiveStatus(x.work.status),
         );
     }
 
-    function statusBadge(status) {
-        const s = WORK_STATUSES[status] || WORK_STATUSES.draft;
-        return `<span class="badge ${s.badge}">${s.label}</span>`;
-    }
-
-    function calcProgress(workId) {
-        const stages = Storage.getStagesByWork(workId);
-        if (stages.length === 0) return 0;
-        const total = stages.reduce((s, x) => s + (x.weight || 1), 0);
-        const done = stages
-            .filter((s) => s.done)
-            .reduce((s, x) => s + (x.weight || 1), 0);
-        return total === 0 ? 0 : Math.round((done / total) * 100);
-    }
-
-    function buildFuzzyInputs(work) {
-        const progress = calcProgress(work.id);
-        const stages = Storage.getStagesByWork(work.id);
-        const tasks = Storage.getTasksByWork(work.id);
-        const comments = Storage.getCommentsByWork(work.id);
-
-        const totalItems = stages.length + tasks.length;
-        const doneItems =
-            stages.filter((s) => s.done).length +
-            tasks.filter((t) => t.col === "done").length;
-        const activity =
-            totalItems === 0 ? 5 : Math.round((doneItems / totalItems) * 10);
-
-        const days = work.deadline ? Math.max(0, daysUntil(work.deadline)) : 30;
-
-        return {
-            progress,
-            days,
-            activity,
-            edits: comments.length,
-            volume: progress,
-            orig: work.orig || 65,
-            supScore: work.supScore || 5,
-            gost: work.gost || 70,
-        };
-    }
-
-    function emptyState(title, text, iconFn, actionHtml) {
-        return `
-      <div class="empty-state">
-        ${iconFn ? iconFn({ cls: "icon icon-2xl" }) : SVG.folder({ cls: "icon icon-2xl" })}
-        <h3>${escapeHtml(title)}</h3>
-        ${text ? `<p>${text}</p>` : ""}
-        ${actionHtml || ""}
-      </div>
-    `;
+    /* =========================================================
+       FUZZY
+       ========================================================= */
+    function getFuzzyResult(work, progressOverride) {
+        return Utils.safeFuzzyInfer(
+            Utils.buildFuzzyInputs(work, progressOverride),
+        );
     }
 
     /* =========================================================
@@ -138,10 +78,12 @@ const Teacher = (() => {
         const withRisk = active.map((x) => ({
             ...x,
             progress: calcProgress(x.work.id),
-            risk: Fuzzy.infer(buildFuzzyInputs(x.work)).risk,
+            res: getFuzzyResult(x.work),
         }));
 
-        const highRisk = withRisk.filter((x) => x.risk.term === "high").length;
+        const highRisk = withRisk.filter(
+            (x) => x.res.risk.term === "high",
+        ).length;
 
         const maxLoad = u.maxLoad || 8;
         const currentLoad = active.length;
@@ -225,8 +167,8 @@ const Teacher = (() => {
         </div>
         ${
             withRisk
-                .filter((x) => x.risk.term !== "low")
-                .sort((a, b) => b.risk.value - a.risk.value)
+                .filter((x) => x.res.risk.term !== "low")
+                .sort((a, b) => b.res.risk.value - a.res.risk.value)
                 .slice(0, 5)
                 .map((x) => renderRiskRow(x))
                 .join("") || '<div class="empty">Никто не в зоне риска</div>'
@@ -241,12 +183,12 @@ const Teacher = (() => {
         const withRisk = active.map((x) => ({
             ...x,
             progress: calcProgress(x.work.id),
-            risk: Fuzzy.infer(buildFuzzyInputs(x.work)).risk,
+            res: getFuzzyResult(x.work),
         }));
 
-        const low = withRisk.filter((x) => x.risk.term === "low").length;
-        const med = withRisk.filter((x) => x.risk.term === "med").length;
-        const high = withRisk.filter((x) => x.risk.term === "high").length;
+        const low = withRisk.filter((x) => x.res.risk.term === "low").length;
+        const med = withRisk.filter((x) => x.res.risk.term === "med").length;
+        const high = withRisk.filter((x) => x.res.risk.term === "high").length;
 
         Charts.doughnut(
             "teacherRiskChart",
@@ -261,9 +203,9 @@ const Teacher = (() => {
                 withRisk.map((x) => x.student.fio.split(" ")[0]),
                 withRisk.map((x) => x.progress),
                 withRisk.map((x) =>
-                    x.risk.term === "high"
+                    x.res.risk.term === "high"
                         ? Charts.COLORS.bad
-                        : x.risk.term === "med"
+                        : x.res.risk.term === "med"
                           ? Charts.COLORS.warn
                           : Charts.COLORS.ok,
                 ),
@@ -280,7 +222,7 @@ const Teacher = (() => {
             <div class="request-topic">${escapeHtml(x.work.topic)}</div>
             <div class="request-meta">
               ${escapeHtml(x.student.fio)} · ${escapeHtml(x.student.group || "")} · ${escapeHtml(x.student.faculty || "")}
-              · ${escapeHtml(WORK_TYPES[x.work.type] || "")}
+              · ${escapeHtml(Utils.workTypeLabel(x.work.type))}
             </div>
           </div>
           <div>${statusBadge(x.work.status)}</div>
@@ -296,7 +238,7 @@ const Teacher = (() => {
     }
 
     function renderRiskRow(x) {
-        const cls = x.risk.term;
+        const cls = x.res.risk.term;
         const lbl = Fuzzy.termLabel(cls, "risk");
         return `
       <div class="student-row"
@@ -307,7 +249,7 @@ const Teacher = (() => {
         </div>
         <div class="progress-mini">
           <div style="font-size:11px;color:var(--txt-muted);margin-bottom:3px;">${x.progress}%</div>
-          <div class="progress ${x.progress < 40 ? "low" : x.progress < 70 ? "med" : "high"}">
+          <div class="progress ${Utils.progressClass(x.progress)}">
             <div style="width:${x.progress}%"></div>
           </div>
         </div>
@@ -350,7 +292,7 @@ const Teacher = (() => {
             <div class="request-topic">${escapeHtml(w.topic)}</div>
             <div class="request-meta">
               ${escapeHtml(s.fio)} · ${escapeHtml(s.group || "")} · ${escapeHtml(s.faculty || "")} · ${s.course || ""} курс
-              · ${escapeHtml(WORK_TYPES[w.type] || "")}
+              · ${escapeHtml(Utils.workTypeLabel(w.type))}
             </div>
           </div>
           <div>${statusBadge(w.status)}</div>
@@ -358,7 +300,7 @@ const Teacher = (() => {
 
         ${w.annotation ? `<div class="request-body"><b>Аннотация:</b> ${escapeHtml(w.annotation)}</div>` : ""}
         ${w.goal ? `<div class="request-body"><b>Цель:</b> ${escapeHtml(w.goal)}</div>` : ""}
-        ${w.deadline ? `<div class="request-meta">Планируемая защита: ${w.deadline}</div>` : ""}
+        ${w.deadline ? `<div class="request-meta">Планируемая защита: ${escapeHtml(w.deadline)}</div>` : ""}
 
         <div class="request-actions">
           <button class="btn-ghost btn-sm"
@@ -401,11 +343,11 @@ const Teacher = (() => {
 
         <div class="student-hero-grid">
           <div class="stat-mini">
-            <div class="num" style="font-size:14px;">${escapeHtml(WORK_TYPES[w.type] || "—")}</div>
+            <div class="num" style="font-size:14px;">${escapeHtml(Utils.workTypeLabel(w.type))}</div>
             <div class="lbl">Тип работы</div>
           </div>
           <div class="stat-mini">
-            <div class="num" style="font-size:14px;">${w.deadline || "—"}</div>
+            <div class="num" style="font-size:14px;">${escapeHtml(w.deadline || "—")}</div>
             <div class="lbl">Дата защиты</div>
           </div>
           <div class="stat-mini">
@@ -450,6 +392,17 @@ const Teacher = (() => {
         const w = Storage.getWorkById(workId);
         if (!w) return;
 
+        /* Проверка прав */
+        if (!Storage.sameId(w.teacherId, getUser().id)) {
+            App.toast("Это не ваша заявка");
+            return;
+        }
+
+        if (w.status !== "pending") {
+            App.toast("Заявка уже обработана");
+            return;
+        }
+
         w.status = "active";
         w.approvedAt = Date.now();
         w.updatedAt = Date.now();
@@ -474,6 +427,13 @@ const Teacher = (() => {
     }
 
     function openRejectModal(workId) {
+        const w = Storage.getWorkById(workId);
+        if (!w) return;
+        if (!Storage.sameId(w.teacherId, getUser().id)) {
+            App.toast("Это не ваша заявка");
+            return;
+        }
+
         const html = `
       <div class="modal-back" onclick="if(event.target===this) Teacher.closeModal()">
         <div class="modal">
@@ -506,6 +466,14 @@ const Teacher = (() => {
 
         const w = Storage.getWorkById(workId);
         if (!w) return;
+        if (!Storage.sameId(w.teacherId, getUser().id)) {
+            App.toast("Это не ваша заявка");
+            return;
+        }
+        if (w.status !== "pending") {
+            App.toast("Заявка уже обработана");
+            return;
+        }
 
         w.status = "rejected";
         w.rejectReason = reason;
@@ -539,17 +507,16 @@ const Teacher = (() => {
         App.toast("Заявка отклонена");
         App.navigate("requests");
     }
-
     /* ---------------------------------------------------------
        МОИ СТУДЕНТЫ
        --------------------------------------------------------- */
     VIEWS.students = function () {
         const students = getMyStudents();
-        const active = students.filter(
-            (x) => x.work.status !== "rejected" && x.work.status !== "done",
+        const active = students.filter((x) =>
+            Utils.isActiveStatus(x.work.status),
         );
         const other = students.filter(
-            (x) => x.work.status === "rejected" || x.work.status === "done",
+            (x) => !Utils.isActiveStatus(x.work.status),
         );
 
         return `
@@ -583,7 +550,7 @@ const Teacher = (() => {
 
     function renderStudentRow(x) {
         const progress = calcProgress(x.work.id);
-        const res = Fuzzy.infer(buildFuzzyInputs(x.work));
+        const res = getFuzzyResult(x.work);
         const cls = res.risk.term;
         const lbl = Fuzzy.termLabel(cls, "risk");
 
@@ -595,7 +562,7 @@ const Teacher = (() => {
         </div>
         <div class="progress-mini">
           <div style="font-size:11px;color:var(--txt-muted);margin-bottom:3px;">${progress}%</div>
-          <div class="progress ${progress < 40 ? "low" : progress < 70 ? "med" : "high"}">
+          <div class="progress ${Utils.progressClass(progress)}">
             <div style="width:${progress}%"></div>
           </div>
         </div>
@@ -616,21 +583,25 @@ const Teacher = (() => {
         if (!w || !s)
             return '<div class="card"><div class="empty">Студент не найден</div></div>';
 
+        /* Проверка прав: работа должна быть у этого преподавателя */
+        if (!Storage.sameId(w.teacherId, getUser().id)) {
+            return `
+        <div class="card">
+          ${emptyState("Это не ваш студент", "Работа относится к другому руководителю.", SVG.lock)}
+        </div>
+      `;
+        }
+
         const progress = calcProgress(w.id);
         const stages = Storage.getStagesByWork(w.id);
         const tasks = Storage.getTasksByWork(w.id);
         const versions = Storage.getVersionsByWork(w.id);
         const comments = Storage.getCommentsByWork(w.id);
 
-        const inputs = buildFuzzyInputs(w);
-        const res = Fuzzy.infer(inputs);
+        const inputs = Utils.buildFuzzyInputs(w);
+        const res = Utils.safeFuzzyInfer(inputs);
         const rec = Fuzzy.recommendation(inputs, res);
-        const recClass =
-            res.risk.term === "high"
-                ? "bad"
-                : res.risk.term === "med"
-                  ? "warn"
-                  : "ok";
+        const recCls = Utils.riskClass(res.risk.term);
 
         const daysLeft = w.deadline ? daysUntil(w.deadline) : null;
 
@@ -647,7 +618,7 @@ const Teacher = (() => {
             </div>
             <div style="margin-top:10px;font-size:14px;font-weight:500;">${escapeHtml(w.topic)}</div>
             <div style="font-size:12px;color:var(--txt-muted);margin-top:4px;">
-              ${escapeHtml(WORK_TYPES[w.type] || "")} · создана ${fmtDate(w.createdAt)}
+              ${escapeHtml(Utils.workTypeLabel(w.type))} · создана ${fmtDate(w.createdAt)}
               ${daysLeft !== null ? " · до дедлайна " + (daysLeft >= 0 ? daysLeft + " дн." : "просрочено") : ""}
             </div>
           </div>
@@ -660,13 +631,13 @@ const Teacher = (() => {
             <div class="lbl">Прогресс</div>
           </div>
           <div class="stat-mini">
-            <div class="num" style="color:var(--${res.risk.term === "high" ? "bad" : res.risk.term === "med" ? "warn" : "ok"})">
+            <div class="num" style="color:var(--${Utils.riskClass(res.risk.term)})">
               ${res.risk.value.toFixed(0)}
             </div>
             <div class="lbl">Риск</div>
           </div>
           <div class="stat-mini">
-            <div class="num" style="color:var(--${res.ready.term === "high" ? "ok" : res.ready.term === "med" ? "warn" : "bad"})">
+            <div class="num" style="color:var(--${Utils.readyClass(res.ready.term)})">
               ${res.ready.value.toFixed(0)}
             </div>
             <div class="lbl">Готовность</div>
@@ -680,7 +651,17 @@ const Teacher = (() => {
 
       <div class="card">
         <div class="card-title">Рекомендация системы</div>
-        <div class="recommendation ${recClass}">${rec}</div>
+        <div class="recommendation ${recCls}">${escapeHtml(rec)}</div>
+        ${
+            !res.hasAnyTeacherCheck
+                ? `
+          <div class="notice" style="margin-top:12px;font-size:12px;background:var(--warn-soft);border-left:2px solid var(--warn);">
+            ${SVG.info({ cls: "icon icon-xs" })}
+            Оценка предварительная — проверка работы ещё не проводилась.
+          </div>
+        `
+                : ""
+        }
       </div>
 
       <div class="grid grid-2 mt-16">
@@ -691,12 +672,12 @@ const Teacher = (() => {
                   ? '<div class="empty">Этапов нет</div>'
                   : stages
                         .map(
-                            (s) => `
-            <div class="stage-item ${s.done ? "done" : ""}">
-              <div class="stage-check ${s.done ? "on" : ""}" style="cursor:default;"></div>
+                            (st) => `
+            <div class="stage-item ${st.done ? "done" : ""}">
+              <div class="stage-check ${st.done ? "on" : ""}" style="cursor:default;"></div>
               <div class="stage-body">
-                <div class="stage-name">${escapeHtml(s.name)}</div>
-                <div class="stage-meta">${s.deadline ? "до " + s.deadline : "—"} · вес ${s.weight || 1}</div>
+                <div class="stage-name">${escapeHtml(st.name)}</div>
+                <div class="stage-meta">${st.deadline ? "до " + escapeHtml(st.deadline) : "—"} · вес ${st.weight || 1}</div>
               </div>
             </div>
           `,
@@ -847,24 +828,18 @@ const Teacher = (() => {
             cnt = 0;
         studentWorks.forEach((w) => {
             totalProgress += calcProgress(w.id);
-            totalRating += Fuzzy.infer(buildFuzzyInputs(w)).rating.value;
+            totalRating += getFuzzyResult(w).rating.value;
             cnt++;
         });
         const avg = (x) => (cnt ? Math.round(x / cnt) : 0);
 
-        const initials = s.fio
-            .split(" ")
-            .filter(Boolean)
-            .map((w) => w[0])
-            .slice(0, 2)
-            .join("")
-            .toUpperCase();
+        const init = Utils.initials(s.fio);
 
         return `
       <div class="back-link" onclick="App.navigate('students')">← К студентам</div>
 
       <div class="profile-hero">
-        <div class="profile-hero-avatar">${initials}</div>
+        <div class="profile-hero-avatar">${init}</div>
         <div class="profile-hero-body">
           <div class="profile-hero-name">${escapeHtml(s.fio)}</div>
           <div class="profile-hero-sub">${escapeHtml(s.email)}</div>
@@ -927,9 +902,9 @@ const Teacher = (() => {
           </div>
           <div style="font-size:15px;font-weight:500;margin-bottom:8px;">${escapeHtml(activeWork.topic)}</div>
           <div style="font-size:12px;color:var(--txt-muted);margin-bottom:12px;">
-            ${escapeHtml(WORK_TYPES[activeWork.type] || "")} · ${statusBadge(activeWork.status)}
+            ${escapeHtml(Utils.workTypeLabel(activeWork.type))} · ${statusBadge(activeWork.status)}
           </div>
-          ${renderStagesMiniForTeacher(activeWork.id)}
+          ${Utils.renderStagesMiniForTeacher(activeWork.id)}
         </div>
       `
               : ""
@@ -940,14 +915,14 @@ const Teacher = (() => {
         ${studentWorks
             .map((w) => {
                 const progress = calcProgress(w.id);
-                const res = Fuzzy.infer(buildFuzzyInputs(w));
+                const res = getFuzzyResult(w);
                 return `
             <div class="mini-project"
               onclick="App.navigate('student-detail', {id: ${s.id}, workId: ${w.id}})">
               <div>
                 <div class="mini-project-title">${escapeHtml(w.topic)}</div>
                 <div class="mini-project-sub">
-                  ${escapeHtml(WORK_TYPES[w.type] || "")} · ${statusBadge(w.status)}
+                  ${escapeHtml(Utils.workTypeLabel(w.type))} · ${statusBadge(w.status)}
                 </div>
               </div>
               <div style="text-align:right;">
@@ -975,7 +950,8 @@ const Teacher = (() => {
             works.find((w) => Storage.sameId(w.teacherId, u.id)) || works[0];
         if (!w) return;
 
-        const inputs = buildFuzzyInputs(w);
+        const inputs = Utils.buildFuzzyInputs(w);
+        if (!inputs) return;
 
         Charts.radar(
             "teacherStudentRadar",
@@ -994,9 +970,9 @@ const Teacher = (() => {
                         inputs.progress,
                         inputs.activity * 10,
                         inputs.volume,
-                        inputs.orig,
-                        inputs.gost,
-                        inputs.supScore * 10,
+                        inputs.orig ?? 50,
+                        inputs.gost ?? 50,
+                        (inputs.supScore ?? 5) * 10,
                     ],
                     color: Charts.COLORS.purple,
                 },
@@ -1004,46 +980,23 @@ const Teacher = (() => {
         );
     };
 
-    function renderStagesMiniForTeacher(workId) {
-        const stages = Storage.getStagesByWork(workId);
-        if (stages.length === 0) return '<div class="empty">Этапов нет</div>';
-        const done = stages.filter((s) => s.done).length;
-        return `
-      <div style="font-size:12px;color:var(--txt-muted);margin-bottom:8px;">
-        Выполнено ${done} из ${stages.length}
-      </div>
-      ${stages
-          .map(
-              (s) => `
-        <div style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;border-bottom:1px solid var(--line);">
-          <span style="color:var(--${s.done ? "ok" : "txt-soft"})">
-            ${s.done ? SVG.check({ cls: "icon icon-xs" }) : "○"}
-          </span>
-          <span style="${s.done ? "text-decoration:line-through;opacity:.6;" : ""}">
-            ${escapeHtml(s.name)}
-          </span>
-          <span style="margin-left:auto;color:var(--txt-muted);font-size:11px;">вес ${s.weight || 1}</span>
-        </div>
-      `,
-          )
-          .join("")}
-    `;
-    }
-
-    function renderComment(c) {
-        const author = Storage.getUserById(c.authorId);
-        return `
-      <div class="comment">
-        <div class="comment-head">
-          <span class="comment-author">${escapeHtml(author?.fio || "Неизвестный")}</span>
-          <span>${fmtDateTime(c.createdAt)}</span>
-        </div>
-        <div class="comment-text">${escapeHtml(c.text)}</div>
-      </div>
-    `;
-    }
-
+    /* ---------------------------------------------------------
+       ЗАМЕЧАНИЯ К ВЕРСИЯМ
+       --------------------------------------------------------- */
     function openVersionCommentModal(versionId) {
+        const version = Storage.getVersions().find((v) =>
+            Storage.sameId(v.id, versionId),
+        );
+        if (!version) {
+            App.toast("Версия не найдена");
+            return;
+        }
+        const work = Storage.getWorkById(version.workId);
+        if (!work || !Storage.sameId(work.teacherId, getUser().id)) {
+            App.toast("Это не ваша версия");
+            return;
+        }
+
         const html = `
       <div class="modal-back" onclick="if(event.target===this) Teacher.closeModal()">
         <div class="modal">
@@ -1077,7 +1030,16 @@ const Teacher = (() => {
         const version = Storage.getVersions().find((v) =>
             Storage.sameId(v.id, versionId),
         );
-        if (!version) return;
+        if (!version) {
+            App.toast("Версия не найдена");
+            return;
+        }
+
+        const work = Storage.getWorkById(version.workId);
+        if (!work || !Storage.sameId(work.teacherId, getUser().id)) {
+            App.toast("Это не ваша версия");
+            return;
+        }
 
         Storage.saveComment({
             id: uid(),
@@ -1089,8 +1051,7 @@ const Teacher = (() => {
             kind: "version",
         });
 
-        const work = Storage.getWorkById(version.workId);
-        if (work && typeof Notifications !== "undefined") {
+        if (typeof Notifications !== "undefined") {
             Notifications.add({
                 userId: work.studentId,
                 type: "comment",
@@ -1100,9 +1061,19 @@ const Teacher = (() => {
             });
         }
 
+        if (typeof Audit !== "undefined") {
+            Audit.log(
+                "Замечание к версии",
+                work.topic,
+                text.slice(0, 60),
+                "info",
+            );
+        }
+
         closeModal();
         App.toast("Замечание добавлено");
     }
+
     /* ---------------------------------------------------------
        ПРОВЕРКА РАБОТЫ
        --------------------------------------------------------- */
@@ -1139,7 +1110,7 @@ const Teacher = (() => {
                 </div>
                 <div class="progress-mini">
                   <div style="font-size:11px;color:var(--txt-muted);margin-bottom:3px;">${progress}%</div>
-                  <div class="progress ${progress < 40 ? "low" : progress < 70 ? "med" : "high"}">
+                  <div class="progress ${Utils.progressClass(progress)}">
                     <div style="width:${progress}%"></div>
                   </div>
                 </div>
@@ -1183,6 +1154,14 @@ const Teacher = (() => {
     function openReviewModal(workId) {
         const w = Storage.getWorkById(workId);
         if (!w) return;
+        if (!Storage.sameId(w.teacherId, getUser().id)) {
+            App.toast("Это не ваша работа");
+            return;
+        }
+        if (w.status !== "active" && w.status !== "review") {
+            App.toast("Эту работу нельзя проверять в текущем статусе");
+            return;
+        }
 
         reviewWorkId = workId;
         reviewGostState = { ...(w.gostChecks || {}) };
@@ -1225,7 +1204,7 @@ const Teacher = (() => {
                 data-idx="${i}"
                 onclick="Teacher.toggleGost2(${i})">
                 <span class="gost-check"></span>
-                <span>${item}</span>
+                <span>${escapeHtml(item)}</span>
               </div>
             `,
             ).join("")}
@@ -1298,9 +1277,9 @@ const Teacher = (() => {
         const gl = document.getElementById("gostLabel");
         if (gl) gl.textContent = `Соответствие ГОСТу (${gostPct}%)`;
 
-        const base = buildFuzzyInputs(w);
+        const base = Utils.buildFuzzyInputs(w);
         const inputs = { ...base, supScore, orig, gost: gostPct };
-        const res = Fuzzy.infer(inputs);
+        const res = Utils.safeFuzzyInfer(inputs);
 
         const box = document.getElementById("reviewFuzzy");
         if (!box) return;
@@ -1309,14 +1288,14 @@ const Teacher = (() => {
       <div class="fuzzy-panel" style="grid-template-columns:1fr 1fr 1fr;">
         <div class="fuzzy-out">
           <div class="fuzzy-out-lbl">Риск</div>
-          <div class="fuzzy-out-val" style="font-size:20px;color:var(--${res.risk.term === "high" ? "bad" : res.risk.term === "med" ? "warn" : "ok"})">
+          <div class="fuzzy-out-val" style="font-size:20px;color:var(--${Utils.riskClass(res.risk.term)})">
             ${res.risk.value.toFixed(0)}
           </div>
           <div class="fuzzy-out-term">${Fuzzy.termLabel(res.risk.term, "risk")}</div>
         </div>
         <div class="fuzzy-out">
           <div class="fuzzy-out-lbl">Готовность</div>
-          <div class="fuzzy-out-val" style="font-size:20px;color:var(--${res.ready.term === "high" ? "ok" : res.ready.term === "med" ? "warn" : "bad"})">
+          <div class="fuzzy-out-val" style="font-size:20px;color:var(--${Utils.readyClass(res.ready.term)})">
             ${res.ready.value.toFixed(0)}
           </div>
           <div class="fuzzy-out-term">${Fuzzy.termLabel(res.ready.term, "ready")}</div>
@@ -1329,9 +1308,9 @@ const Teacher = (() => {
           <div class="fuzzy-out-term">${Fuzzy.termLabel(res.rating.term, "rating")}</div>
         </div>
       </div>
-      <div class="recommendation mt-8 ${res.risk.term === "high" ? "bad" : res.risk.term === "med" ? "warn" : "ok"}"
+      <div class="recommendation mt-8 ${Utils.riskClass(res.risk.term)}"
         style="font-size:12px;">
-        ${Fuzzy.recommendation(inputs, res)}
+        ${escapeHtml(Fuzzy.recommendation(inputs, res))}
       </div>
     `;
     }
@@ -1343,9 +1322,23 @@ const Teacher = (() => {
     function saveReview(workId) {
         const w = Storage.getWorkById(workId);
         if (!w) return;
+        if (!Storage.sameId(w.teacherId, getUser().id)) {
+            App.toast("Это не ваша работа");
+            return;
+        }
+        if (w.status !== "active" && w.status !== "review") {
+            App.toast("Работа не в том статусе для сохранения проверки");
+            return;
+        }
 
-        w.supScore = +(document.getElementById("rv_supScore")?.value || 5);
-        w.orig = +(document.getElementById("rv_orig")?.value || 65);
+        w.supScore = Math.max(
+            0,
+            Math.min(10, +(document.getElementById("rv_supScore")?.value || 5)),
+        );
+        w.orig = Math.max(
+            0,
+            Math.min(100, +(document.getElementById("rv_orig")?.value || 65)),
+        );
         w.gostChecks = { ...reviewGostState };
         w.gost = computeGostPct(reviewGostState);
         w.updatedAt = Date.now();
@@ -1390,6 +1383,12 @@ const Teacher = (() => {
     function markReview(workId) {
         const w = Storage.getWorkById(workId);
         if (!w) return;
+        if (!Storage.sameId(w.teacherId, getUser().id)) {
+            App.toast("Это не ваша работа");
+            return;
+        }
+        if (w.status !== "active") return;
+
         w.status = "review";
         w.updatedAt = Date.now();
         Storage.saveWork(w);
@@ -1411,6 +1410,12 @@ const Teacher = (() => {
     function markActive(workId) {
         const w = Storage.getWorkById(workId);
         if (!w) return;
+        if (!Storage.sameId(w.teacherId, getUser().id)) {
+            App.toast("Это не ваша работа");
+            return;
+        }
+        if (w.status !== "review") return;
+
         w.status = "active";
         w.updatedAt = Date.now();
         Storage.saveWork(w);
@@ -1432,6 +1437,14 @@ const Teacher = (() => {
     function approveFinal(workId) {
         const w = Storage.getWorkById(workId);
         if (!w) return;
+        if (!Storage.sameId(w.teacherId, getUser().id)) {
+            App.toast("Это не ваша работа");
+            return;
+        }
+        if (w.status !== "active" && w.status !== "review") {
+            App.toast("Работа не в том статусе");
+            return;
+        }
         if (!confirm("Допустить работу к защите?")) return;
 
         w.status = "approved";
@@ -1456,7 +1469,6 @@ const Teacher = (() => {
         App.toast("Работа допущена к защите");
         App.navigate("students");
     }
-
     /* ---------------------------------------------------------
        РЕДАКТОР ПРАВИЛ
        --------------------------------------------------------- */
@@ -1483,8 +1495,8 @@ const Teacher = (() => {
             <input type="checkbox" ${r.enabled ? "checked" : ""}
               onchange="Teacher.toggleRule(${r.id}, this.checked)">
             <div style="flex:1;">
-              <div class="rule-if">ЕСЛИ ${r.if.join(" И ")}</div>
-              <div class="rule-then">ТО ${r.then}</div>
+              <div class="rule-if">ЕСЛИ ${escapeHtml(r.if.join(" И "))}</div>
+              <div class="rule-then">ТО ${escapeHtml(r.then)}</div>
               <input type="text" class="rule-desc" value="${escapeHtml(r.desc)}"
                 onchange="Teacher.updateRuleDesc(${r.id}, this.value)">
             </div>
@@ -1591,7 +1603,7 @@ const Teacher = (() => {
         const withRisk = active.map((x) => ({
             ...x,
             progress: calcProgress(x.work.id),
-            res: Fuzzy.infer(buildFuzzyInputs(x.work)),
+            res: getFuzzyResult(x.work),
         }));
 
         const avgProgress = active.length
@@ -1629,7 +1641,7 @@ const Teacher = (() => {
         </div>
         <div class="metric">
           <div class="metric-lbl">Ср. риск</div>
-          <div class="metric-val" style="color:var(--${avgRisk > 60 ? "bad" : avgRisk > 40 ? "warn" : "ok"})">${avgRisk}</div>
+          <div class="metric-val" style="color:var(--${Utils.riskClass(avgRisk < 40 ? "low" : avgRisk < 65 ? "med" : "high")})">${avgRisk}</div>
         </div>
         <div class="metric">
           <div class="metric-lbl">Ср. готовность</div>
@@ -1662,7 +1674,7 @@ const Teacher = (() => {
             student: x.student,
             work: x.work,
             progress: calcProgress(x.work.id),
-            res: Fuzzy.infer(buildFuzzyInputs(x.work)),
+            res: getFuzzyResult(x.work),
         }));
 
         if (withData.length > 0) {
@@ -1842,26 +1854,31 @@ const Teacher = (() => {
     };
 
     /* ---------------------------------------------------------
-       ПРОВЕРКА ЗАДАЧ
+       ПРОВЕРКА ЗАДАЧ (tasks-review)
        --------------------------------------------------------- */
     VIEWS["tasks-review"] = function () {
         const u = getUser();
+        if (!u) return "";
+
         const myWorks = Storage.getWorksByTeacher(u.id);
         const myWorkIds = myWorks.map((w) => w.id);
 
-        const allTasks = Storage.getTasks().filter(
+        /* Загружаем задачи один раз */
+        const allTasks = Storage.getTasks();
+
+        const inReview = allTasks.filter(
             (t) =>
                 myWorkIds.some((id) => Storage.sameId(id, t.workId)) &&
                 t.col === "review",
         );
 
-        const enriched = allTasks.map((t) => {
+        const enriched = inReview.map((t) => {
             const work = Storage.getWorkById(t.workId);
             const student = work ? Storage.getUserById(work.studentId) : null;
             return { t, work, student };
         });
 
-        const done = Storage.getTasks()
+        const done = allTasks
             .filter(
                 (t) =>
                     myWorkIds.some((id) => Storage.sameId(id, t.workId)) &&
@@ -1930,7 +1947,7 @@ const Teacher = (() => {
             t.deadline
                 ? `
           <div style="font-size:12px;color:var(--txt-muted);margin:6px 0;">
-            Дедлайн задачи: <b>${t.deadline}</b>
+            Дедлайн задачи: <b>${escapeHtml(t.deadline)}</b>
             (${daysUntil(t.deadline) >= 0 ? "осталось " + daysUntil(t.deadline) + " дн." : "просрочено"})
           </div>
         `
@@ -1990,31 +2007,42 @@ const Teacher = (() => {
         const t = tasks.find((x) => Storage.sameId(x.id, taskId));
         if (!t) return;
 
+        /* Проверка: задача должна быть в review */
+        if (t.col !== "review") {
+            App.toast("Задача не на проверке");
+            return;
+        }
+
+        /* Проверка прав */
+        const work = Storage.getWorkById(t.workId);
+        if (!work || !Storage.sameId(work.teacherId, getUser().id)) {
+            App.toast("Это не ваша задача");
+            return;
+        }
+
         t.col = "done";
         t.reviewedBy = getUser().id;
         t.reviewedAt = Date.now();
         t.reviewStatus = "approved";
         Storage.setTasks(tasks);
 
-        const work = Storage.getWorkById(t.workId);
-        if (work) {
-            if (typeof Notifications !== "undefined") {
-                Notifications.add({
-                    userId: work.studentId,
-                    type: "approve",
-                    title: "Задача одобрена",
-                    text: `«${t.title}» — проверено руководителем`,
-                    link: { view: "my-work" },
-                });
-            }
-            if (typeof Audit !== "undefined") {
-                Audit.log(
-                    "Задача одобрена",
-                    t.title,
-                    `студент: ${Storage.getUserById(work.studentId)?.fio || ""}`,
-                    "positive",
-                );
-            }
+        if (typeof Notifications !== "undefined") {
+            Notifications.add({
+                userId: work.studentId,
+                type: "approve",
+                title: "Задача одобрена",
+                text: `«${t.title}» — проверено руководителем`,
+                link: { view: "my-work" },
+            });
+        }
+
+        if (typeof Audit !== "undefined") {
+            Audit.log(
+                "Задача одобрена",
+                t.title,
+                `студент: ${Storage.getUserById(work.studentId)?.fio || ""}`,
+                "positive",
+            );
         }
 
         App.toast("Задача одобрена");
@@ -2026,26 +2054,36 @@ const Teacher = (() => {
         const t = tasks.find((x) => Storage.sameId(x.id, taskId));
         if (!t) return;
 
+        if (t.col !== "review") {
+            App.toast("Задача не на проверке");
+            return;
+        }
+
+        const work = Storage.getWorkById(t.workId);
+        if (!work || !Storage.sameId(work.teacherId, getUser().id)) {
+            App.toast("Это не ваша задача");
+            return;
+        }
+
         t.col = "progress";
         t.reviewedBy = getUser().id;
         t.reviewedAt = Date.now();
         t.reviewStatus = "rejected";
+        t.reviewComment = "";
         Storage.setTasks(tasks);
 
-        const work = Storage.getWorkById(t.workId);
-        if (work) {
-            if (typeof Notifications !== "undefined") {
-                Notifications.add({
-                    userId: work.studentId,
-                    type: "reject",
-                    title: "Задача возвращена в работу",
-                    text: `«${t.title}» — нужны доработки`,
-                    link: { view: "my-work" },
-                });
-            }
-            if (typeof Audit !== "undefined") {
-                Audit.log("Задача возвращена", t.title, "", "negative");
-            }
+        if (typeof Notifications !== "undefined") {
+            Notifications.add({
+                userId: work.studentId,
+                type: "reject",
+                title: "Задача возвращена в работу",
+                text: `«${t.title}» — нужны доработки`,
+                link: { view: "my-work" },
+            });
+        }
+
+        if (typeof Audit !== "undefined") {
+            Audit.log("Задача возвращена", t.title, "", "negative");
         }
 
         App.toast("Задача возвращена в работу");
@@ -2053,6 +2091,20 @@ const Teacher = (() => {
     }
 
     function taskRejectWithComment(taskId) {
+        const t = Storage.getTasks().find((x) => Storage.sameId(x.id, taskId));
+        if (!t) return;
+
+        if (t.col !== "review") {
+            App.toast("Задача не на проверке");
+            return;
+        }
+
+        const work = Storage.getWorkById(t.workId);
+        if (!work || !Storage.sameId(work.teacherId, getUser().id)) {
+            App.toast("Это не ваша задача");
+            return;
+        }
+
         const html = `
       <div class="modal-back" onclick="if(event.target===this) App.closeModal()">
         <div class="modal">
@@ -2087,6 +2139,17 @@ const Teacher = (() => {
         const t = tasks.find((x) => Storage.sameId(x.id, taskId));
         if (!t) return;
 
+        if (t.col !== "review") {
+            App.toast("Задача не на проверке");
+            return;
+        }
+
+        const work = Storage.getWorkById(t.workId);
+        if (!work || !Storage.sameId(work.teacherId, getUser().id)) {
+            App.toast("Это не ваша задача");
+            return;
+        }
+
         t.col = "progress";
         t.reviewedBy = getUser().id;
         t.reviewedAt = Date.now();
@@ -2094,35 +2157,32 @@ const Teacher = (() => {
         t.reviewComment = comment;
         Storage.setTasks(tasks);
 
-        const work = Storage.getWorkById(t.workId);
-        if (work) {
-            Storage.saveComment({
-                id: uid(),
-                workId: work.id,
-                authorId: getUser().id,
-                text: `Замечание к задаче «${t.title}»: ${comment}`,
-                createdAt: Date.now(),
-                kind: "task-review",
+        Storage.saveComment({
+            id: uid(),
+            workId: work.id,
+            authorId: getUser().id,
+            text: `Замечание к задаче «${t.title}»: ${comment}`,
+            createdAt: Date.now(),
+            kind: "task-review",
+        });
+
+        if (typeof Notifications !== "undefined") {
+            Notifications.add({
+                userId: work.studentId,
+                type: "comment",
+                title: "Замечание к задаче",
+                text: `«${t.title}»: ${comment.slice(0, 80)}`,
+                link: { view: "my-work" },
             });
+        }
 
-            if (typeof Notifications !== "undefined") {
-                Notifications.add({
-                    userId: work.studentId,
-                    type: "comment",
-                    title: "Замечание к задаче",
-                    text: `«${t.title}»: ${comment.slice(0, 80)}`,
-                    link: { view: "my-work" },
-                });
-            }
-
-            if (typeof Audit !== "undefined") {
-                Audit.log(
-                    "Задача возвращена с замечанием",
-                    t.title,
-                    comment,
-                    "warning",
-                );
-            }
+        if (typeof Audit !== "undefined") {
+            Audit.log(
+                "Задача возвращена с замечанием",
+                t.title,
+                comment,
+                "warning",
+            );
         }
 
         App.closeModal();
@@ -2138,6 +2198,16 @@ const Teacher = (() => {
     function markAsDone(workId) {
         const w = Storage.getWorkById(workId);
         if (!w) return;
+
+        /* Проверка прав и статуса */
+        if (!Storage.sameId(w.teacherId, getUser().id)) {
+            App.toast("Это не ваша работа");
+            return;
+        }
+        if (w.status !== "approved") {
+            App.toast("Работа не допущена к защите");
+            return;
+        }
 
         const student = Storage.getUserById(w.studentId);
 
@@ -2216,6 +2286,15 @@ const Teacher = (() => {
         const w = Storage.getWorkById(workId);
         if (!w) return;
 
+        if (!Storage.sameId(w.teacherId, getUser().id)) {
+            App.toast("Это не ваша работа");
+            return;
+        }
+        if (w.status !== "approved") {
+            App.toast("Работа не допущена к защите");
+            return;
+        }
+
         const comment =
             document.getElementById("grade_comment")?.value.trim() || "";
         const date = document.getElementById("grade_date")?.value;
@@ -2255,6 +2334,15 @@ const Teacher = (() => {
     function returnFromApproved(workId) {
         const w = Storage.getWorkById(workId);
         if (!w) return;
+
+        if (!Storage.sameId(w.teacherId, getUser().id)) {
+            App.toast("Это не ваша работа");
+            return;
+        }
+        if (w.status !== "approved") {
+            App.toast("Работа не в статусе «Допущена»");
+            return;
+        }
         if (!confirm("Вернуть работу в статус «На проверке»?")) return;
 
         w.status = "review";
@@ -2319,7 +2407,7 @@ const Teacher = (() => {
         openRejectModal,
         rejectWork,
 
-        /* Замечания */
+        /* Замечания к версиям */
         openVersionCommentModal,
         saveVersionComment,
 

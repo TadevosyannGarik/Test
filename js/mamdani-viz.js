@@ -1,9 +1,14 @@
 /* =========================================================
    MAMDANI VIZ — пошаговая визуализация нечёткого вывода
+   Обновлено: Utils.* для хелперов, Chart.js через Charts
    ========================================================= */
 const MamdaniViz = (() => {
     let selectedWorkId = null;
     let currentStep = "all";
+
+    /* Алиасы на Utils */
+    const escapeHtml = Utils.escapeHtml;
+    const emptyState = Utils.emptyState;
 
     const VAR_NAMES = {
         progress: "Прогресс",
@@ -19,27 +24,6 @@ const MamdaniViz = (() => {
     /* =========================================================
        ХЕЛПЕРЫ
        ========================================================= */
-    function escapeHtml(str) {
-        if (!str) return "";
-        return String(str)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;");
-    }
-
-    function emptyState(title, text, iconFn) {
-        return `
-      <div class="card">
-        <div class="empty-state">
-          ${iconFn ? iconFn({ cls: "icon icon-2xl" }) : SVG.alertTriangle({ cls: "icon icon-2xl" })}
-          <h3>${escapeHtml(title)}</h3>
-          ${text ? `<p>${text}</p>` : ""}
-        </div>
-      </div>
-    `;
-    }
-
     function safeMF(varName, term, value) {
         const mf = Fuzzy.MF[varName];
         if (!mf || typeof mf[term] !== "function") return 0;
@@ -51,6 +35,26 @@ const MamdaniViz = (() => {
         if (user.role === "student") return Storage.getWorksByStudent(user.id);
         if (user.role === "teacher") return Storage.getWorksByTeacher(user.id);
         return Storage.getWorks();
+    }
+
+    /* Входы — обёртка над Utils.buildFuzzyInputs */
+    function buildInputs(work) {
+        if (!work) return {};
+        const inputs = Utils.buildFuzzyInputs(work);
+        if (!inputs) return {};
+
+        /* Подставляем нейтральные значения для отображения
+           (чтобы не было null в фаззификации) */
+        return {
+            progress: inputs.progress ?? 0,
+            days: inputs.days ?? 30,
+            activity: inputs.activity ?? 5,
+            edits: inputs.edits ?? 0,
+            volume: inputs.volume ?? 0,
+            orig: inputs.orig ?? 65,
+            supScore: inputs.supScore ?? 5,
+            gost: inputs.gost ?? 70,
+        };
     }
 
     /* =========================================================
@@ -137,15 +141,15 @@ const MamdaniViz = (() => {
 
     function renderTab(id, label) {
         return `<button class="${currentStep === id ? "active" : ""}"
-          onclick="MamdaniViz.step('${id}')">${label}</button>`;
+          onclick="MamdaniViz.step('${id}')">${escapeHtml(label)}</button>`;
     }
 
     function pipelineStep(num, title, sub, active) {
         return `
       <div class="pipeline-step ${active ? "active" : ""}">
         <div class="pipeline-step-num">${num}</div>
-        <div class="pipeline-step-title">${title}</div>
-        <div class="pipeline-step-sub">${sub}</div>
+        <div class="pipeline-step-title">${escapeHtml(title)}</div>
+        <div class="pipeline-step-sub">${escapeHtml(sub)}</div>
       </div>
     `;
     }
@@ -167,46 +171,6 @@ const MamdaniViz = (() => {
             default:
                 return "";
         }
-    }
-
-    /* =========================================================
-       ВХОДЫ
-       ========================================================= */
-    function buildInputs(work) {
-        if (!work) return {};
-
-        const stages = Storage.getStagesByWork(work.id);
-        const tasks = Storage.getTasksByWork(work.id);
-        const comments = Storage.getCommentsByWork(work.id);
-
-        let progress = 0;
-        if (stages.length > 0) {
-            const totalW = stages.reduce((s, x) => s + (x.weight || 1), 0);
-            const doneW = stages
-                .filter((s) => s.done)
-                .reduce((s, x) => s + (x.weight || 1), 0);
-            progress = totalW > 0 ? Math.round((doneW / totalW) * 100) : 0;
-        }
-
-        const totalItems = stages.length + tasks.length;
-        const doneItems =
-            stages.filter((s) => s.done).length +
-            tasks.filter((t) => t.col === "done").length;
-        const activity =
-            totalItems === 0 ? 5 : Math.round((doneItems / totalItems) * 10);
-
-        const days = work.deadline ? Math.max(0, daysUntil(work.deadline)) : 30;
-
-        return {
-            progress,
-            days,
-            activity,
-            edits: comments.length,
-            volume: progress,
-            orig: work.orig || 65,
-            supScore: work.supScore || 5,
-            gost: work.gost || 70,
-        };
     }
 
     /* =========================================================
@@ -242,7 +206,7 @@ const MamdaniViz = (() => {
 
                 return `
             <div class="rule-fired" style="grid-template-columns: 160px 1fr 90px;">
-              <div style="font-size:13px;font-weight:500;">${VAR_NAMES[v] || v}</div>
+              <div style="font-size:13px;font-weight:500;">${escapeHtml(VAR_NAMES[v] || v)}</div>
               <div>
                 <div style="font-size:11px;color:var(--txt-muted);margin-bottom:4px;">
                   Значение: <b>${val}</b>
@@ -347,7 +311,7 @@ const MamdaniViz = (() => {
         <div class="rule-fired-id">#${f.rule.id}</div>
         <div class="rule-fired-body">
           <div class="rule-fired-title">${escapeHtml(f.rule.desc)}</div>
-          <div class="rule-fired-if">ЕСЛИ ${f.rule.if.join(" И ")} → ТО ${f.rule.then}</div>
+          <div class="rule-fired-if">ЕСЛИ ${escapeHtml(f.rule.if.join(" И "))} → ТО ${escapeHtml(f.rule.then)}</div>
           <div class="rule-fired-bar"><div style="width:${mu * 100}%"></div></div>
         </div>
         <div class="rule-mu">μ = ${mu.toFixed(3)}</div>
@@ -361,7 +325,7 @@ const MamdaniViz = (() => {
         <div class="rule-fired-id">#${b.rule.id}</div>
         <div class="rule-fired-body">
           <div class="rule-fired-title">${escapeHtml(b.rule.desc)}</div>
-          <div class="rule-fired-if">ЕСЛИ ${b.rule.if.join(" И ")} → ТО ${b.rule.then}</div>
+          <div class="rule-fired-if">ЕСЛИ ${escapeHtml(b.rule.if.join(" И "))} → ТО ${escapeHtml(b.rule.then)}</div>
           <div class="rule-fired-bar"><div style="width:${b.minStrength * 100}%"></div></div>
         </div>
         <div class="rule-mu" style="color:var(--txt-muted)">μ = ${b.minStrength.toFixed(3)}</div>
@@ -413,14 +377,14 @@ const MamdaniViz = (() => {
       <div class="grid grid-3">
         <div class="metric">
           <div class="metric-lbl">Итоговый риск</div>
-          <div class="metric-val" style="color:var(--${result.risk.term === "high" ? "bad" : result.risk.term === "med" ? "warn" : "ok"})">
+          <div class="metric-val" style="color:var(--${Utils.riskClass(result.risk.term)})">
             ${result.risk.value.toFixed(1)}
           </div>
           <div class="metric-sub">${Fuzzy.termLabel(result.risk.term, "risk")}</div>
         </div>
         <div class="metric">
           <div class="metric-lbl">Готовность</div>
-          <div class="metric-val" style="color:var(--${result.ready.term === "high" ? "ok" : result.ready.term === "med" ? "warn" : "bad"})">
+          <div class="metric-val" style="color:var(--${Utils.readyClass(result.ready.term)})">
             ${result.ready.value.toFixed(1)}
           </div>
           <div class="metric-sub">${Fuzzy.termLabel(result.ready.term, "ready")}</div>
@@ -506,14 +470,13 @@ const MamdaniViz = (() => {
     function compareRow(label, m, s, c) {
         return `
       <tr>
-        <td><b>${label}</b></td>
+        <td><b>${escapeHtml(label)}</b></td>
         <td>${m.toFixed(1)}</td>
         <td>${s.toFixed(1)}</td>
         <td>${c.toFixed(1)}</td>
       </tr>
     `;
     }
-
     /* =========================================================
        ИТОГОВЫЙ БЛОК
        ========================================================= */
@@ -545,14 +508,14 @@ const MamdaniViz = (() => {
       <div class="grid grid-3">
         <div class="metric">
           <div class="metric-lbl">Риск срыва сроков</div>
-          <div class="metric-val" style="color:var(--${result.risk.term === "high" ? "bad" : result.risk.term === "med" ? "warn" : "ok"})">
+          <div class="metric-val" style="color:var(--${Utils.riskClass(result.risk.term)})">
             ${result.risk.value.toFixed(1)}
           </div>
           <div class="metric-sub">${Fuzzy.termLabel(result.risk.term, "risk")}</div>
         </div>
         <div class="metric">
           <div class="metric-lbl">Готовность</div>
-          <div class="metric-val" style="color:var(--${result.ready.term === "high" ? "ok" : result.ready.term === "med" ? "warn" : "bad"})">
+          <div class="metric-val" style="color:var(--${Utils.readyClass(result.ready.term)})">
             ${result.ready.value.toFixed(1)}
           </div>
           <div class="metric-sub">${Fuzzy.termLabel(result.ready.term, "ready")}</div>
@@ -580,9 +543,9 @@ const MamdaniViz = (() => {
 
                 return `
             <div style="display:flex;align-items:center;gap:10px;padding:6px 0;font-size:13px;">
-              <span style="width:150px;color:var(--txt-muted);">${VAR_NAMES[v] || v}</span>
+              <span style="width:150px;color:var(--txt-muted);">${escapeHtml(VAR_NAMES[v] || v)}</span>
               <span style="font-weight:500;width:50px;">${val}</span>
-              <span style="color:var(--accent);width:80px;font-size:12px;">${dt.term}</span>
+              <span style="color:var(--accent);width:80px;font-size:12px;">${escapeHtml(dt.term)}</span>
               <div class="rule-fired-bar" style="flex:1;">
                 <div style="width:${maxMu * 100}%"></div>
               </div>
@@ -613,36 +576,35 @@ const MamdaniViz = (() => {
         const work = Storage.getWorkById(selectedWorkId);
         if (!work) return;
 
-        const inputs = buildInputs(work);
-        const result = Fuzzy.infer(inputs);
-
         const root = document.getElementById("viewRoot");
         if (!root) return;
 
         root.innerHTML = `<div class="view active">${render()}</div>`;
 
-        setTimeout(() => drawCharts(inputs, result), 0);
+        setTimeout(() => drawCharts(), 0);
     }
 
     /* =========================================================
-       ГРАФИКИ
+       ГРАФИКИ (через Chart.js напрямую, цвета из Charts.COLORS)
        ========================================================= */
-    function getChartColors() {
-        const cs = getComputedStyle(document.documentElement);
-        const get = (n, f) => cs.getPropertyValue(n).trim() || f;
-        return {
-            ok: get("--ok", "#10b981"),
-            warn: get("--warn", "#f59e0b"),
-            bad: get("--bad", "#ef4444"),
-            accent: get("--accent", "#6366f1"),
-            txt: get("--txt-muted", "#71717a"),
-            line: get("--line", "#e4e4e7"),
-        };
-    }
-
-    function drawCharts(inputs, result) {
+    function drawCharts() {
+        if (typeof Charts === "undefined") return;
         if (!Charts.hasChart()) return;
-        const C = getChartColors();
+
+        const work = Storage.getWorkById(selectedWorkId);
+        if (!work) return;
+
+        const inputs = buildInputs(work);
+        const result = Fuzzy.infer(inputs);
+
+        const C = {
+            ok: Charts.COLORS.ok,
+            warn: Charts.COLORS.warn,
+            bad: Charts.COLORS.bad,
+            accent: Charts.COLORS.accent,
+            txt: Charts.COLORS.txt,
+            line: Charts.COLORS.line,
+        };
 
         /* --- Агрегация --- */
         const aggrCanvas = document.getElementById("vizAggrChart");
@@ -705,35 +667,52 @@ const MamdaniViz = (() => {
                             borderWidth: 2.5,
                             pointRadius: 0,
                             fill: true,
-                            backgroundColor: C.accent + "20",
+                            backgroundColor: "rgba(47, 107, 255, 0.12)",
                         },
                     ],
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    animation: { duration: 400 },
                     plugins: {
                         legend: {
-                            labels: { color: C.txt, font: { size: 11 } },
+                            labels: {
+                                color: C.txt,
+                                font: { size: 11 },
+                                boxWidth: 12,
+                                usePointStyle: true,
+                            },
+                        },
+                        tooltip: {
+                            backgroundColor: "#fff",
+                            titleColor: C.txt,
+                            bodyColor: C.txt,
+                            borderColor: C.line,
+                            borderWidth: 1,
                         },
                     },
                     scales: {
                         x: {
-                            ticks: { color: C.txt, maxTicksLimit: 11 },
-                            grid: { color: C.line },
+                            ticks: {
+                                color: C.txt,
+                                font: { size: 10 },
+                                maxTicksLimit: 11,
+                            },
+                            grid: { color: C.line, drawBorder: false },
                         },
                         y: {
                             min: 0,
                             max: 1,
-                            ticks: { color: C.txt },
-                            grid: { color: C.line },
+                            ticks: { color: C.txt, font: { size: 10 } },
+                            grid: { color: C.line, drawBorder: false },
                         },
                     },
                 },
             });
         }
 
-        /* --- Дефаззификация --- */
+        /* --- Дефаззификация (центр тяжести) --- */
         const defuzzCanvas = document.getElementById("vizDefuzzChart");
         if (defuzzCanvas) {
             if (defuzzCanvas._chart) {
@@ -745,15 +724,24 @@ const MamdaniViz = (() => {
 
             const x = Array.from({ length: 101 }, (_, i) => i);
             const acc = result.risk.acc;
-            const agg = x.map((v) => {
-                let mu = 0;
-                for (const t of ["low", "med", "high"]) {
-                    mu = Math.max(mu, Math.min(acc[t], Fuzzy.OUT.risk[t](v)));
-                }
-                return mu;
-            });
-            const cogPoint = x.map((v) =>
-                Math.abs(v - result.risk.value) < 0.6 ? 1 : null,
+
+            /* Агрегат */
+            const dataLow = x.map((v) =>
+                Math.min(acc.low, Fuzzy.OUT.risk.low(v)),
+            );
+            const dataMed = x.map((v) =>
+                Math.min(acc.med, Fuzzy.OUT.risk.med(v)),
+            );
+            const dataHigh = x.map((v) =>
+                Math.min(acc.high, Fuzzy.OUT.risk.high(v)),
+            );
+            const dataMax = x.map((v, i) =>
+                Math.max(dataLow[i], dataMed[i], dataHigh[i]),
+            );
+
+            /* Вертикальная линия центра тяжести */
+            const centerLine = x.map((v) =>
+                v === Math.round(result.risk.value) ? 1 : null,
             );
 
             defuzzCanvas._chart = new Chart(defuzzCanvas, {
@@ -763,41 +751,52 @@ const MamdaniViz = (() => {
                     datasets: [
                         {
                             label: "Агрегат",
-                            data: agg,
+                            data: dataMax,
                             borderColor: C.accent,
-                            backgroundColor: C.accent + "30",
-                            fill: true,
-                            pointRadius: 0,
+                            backgroundColor: "rgba(47, 107, 255, 0.15)",
                             borderWidth: 2,
+                            pointRadius: 0,
+                            fill: true,
                         },
                         {
-                            label: `Центр тяжести = ${result.risk.value.toFixed(1)}`,
-                            data: cogPoint,
+                            label: `Центр тяжести (${result.risk.value.toFixed(1)})`,
+                            data: centerLine,
                             borderColor: C.bad,
-                            pointRadius: 7,
-                            pointBackgroundColor: C.bad,
-                            showLine: false,
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            borderDash: [4, 4],
+                            fill: false,
                         },
                     ],
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    animation: { duration: 400 },
                     plugins: {
                         legend: {
-                            labels: { color: C.txt, font: { size: 11 } },
+                            labels: {
+                                color: C.txt,
+                                font: { size: 11 },
+                                boxWidth: 12,
+                                usePointStyle: true,
+                            },
                         },
                     },
                     scales: {
                         x: {
-                            ticks: { color: C.txt, maxTicksLimit: 11 },
-                            grid: { color: C.line },
+                            ticks: {
+                                color: C.txt,
+                                font: { size: 10 },
+                                maxTicksLimit: 11,
+                            },
+                            grid: { color: C.line, drawBorder: false },
                         },
                         y: {
                             min: 0,
                             max: 1,
-                            ticks: { color: C.txt },
-                            grid: { color: C.line },
+                            ticks: { color: C.txt, font: { size: 10 } },
+                            grid: { color: C.line, drawBorder: false },
                         },
                     },
                 },

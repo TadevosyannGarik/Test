@@ -1,5 +1,7 @@
 /* =========================================================
-   STORAGE — обёртка над localStorage
+   STORAGE — обёртка над localStorage + утилиты
+   Обновлено: getSizeKB в байтах, каскадное удаление,
+   комментарий про hashPass
    ========================================================= */
 const Storage = (() => {
     const KEYS = {
@@ -16,6 +18,7 @@ const Storage = (() => {
         consults: "fp_consults",
         refs: "fp_refs",
         settings: "fp_settings",
+        mfOverrides: "fp_mf_overrides",
     };
 
     /* =========================================================
@@ -49,6 +52,7 @@ const Storage = (() => {
             console.warn("[Storage] remove error:", key, e);
         }
     }
+
     /* =========================================================
        СРАВНЕНИЕ ID
        ========================================================= */
@@ -98,6 +102,7 @@ const Storage = (() => {
     function clearSession() {
         remove(KEYS.session);
     }
+
     /* =========================================================
        РАБОТЫ
        ========================================================= */
@@ -125,12 +130,50 @@ const Storage = (() => {
         else works.push(work);
         setWorks(works);
     }
+
+    /**
+     * Каскадное удаление работы:
+     * - stages (этапы)
+     * - tasks (задачи)
+     * - versions (версии)
+     * - comments (комментарии, включая task-review и version)
+     * - consults (консультации по этой работе)
+     * - notifications (уведомления, связанные с этой работой)
+     */
     function deleteWork(id) {
+        if (id === null || id === undefined) return;
+
+        /* Работы */
         setWorks(getWorks().filter((w) => !sameId(w.id, id)));
+
+        /* Этапы */
         setStages(getStages().filter((s) => !sameId(s.workId, id)));
+
+        /* Задачи */
         setTasks(getTasks().filter((t) => !sameId(t.workId, id)));
+
+        /* Версии */
         setVersions(getVersions().filter((v) => !sameId(v.workId, id)));
+
+        /* Комментарии */
         setComments(getComments().filter((c) => !sameId(c.workId, id)));
+
+        /* Консультации по этой работе (если есть workId в consult) */
+        const consults = get(KEYS.consults, []);
+        if (Array.isArray(consults)) {
+            const filtered = consults.filter((c) => !sameId(c.workId, id));
+            set(KEYS.consults, filtered);
+        }
+
+        /* Уведомления, связанные с этой работой */
+        const notifs = get(KEYS.notif, []);
+        if (Array.isArray(notifs)) {
+            const filtered = notifs.filter((n) => {
+                if (!n.link || !n.link.params) return true;
+                return !sameId(n.link.params.id, id);
+            });
+            set(KEYS.notif, filtered);
+        }
     }
 
     /* =========================================================
@@ -260,14 +303,34 @@ const Storage = (() => {
         });
     }
 
+    /**
+     * Размер данных в КБ (по реальному размеру в байтах,
+     * а не по количеству символов)
+     */
     function getSizeKB() {
-        let size = 0;
+        let bytes = 0;
         Object.keys(localStorage).forEach((key) => {
             if (key.startsWith("fp_")) {
-                size += (localStorage[key] || "").length;
+                const value = localStorage[key] || "";
+                /* UTF-16 = 2 байта на символ */
+                bytes += value.length * 2;
             }
         });
-        return Math.round(size / 1024);
+        return Math.round(bytes / 1024);
+    }
+
+    /**
+     * Размер данных в байтах (точно)
+     */
+    function getSizeBytes() {
+        let bytes = 0;
+        Object.keys(localStorage).forEach((key) => {
+            if (key.startsWith("fp_")) {
+                const value = localStorage[key] || "";
+                bytes += value.length * 2;
+            }
+        });
+        return bytes;
     }
 
     return {
@@ -325,11 +388,15 @@ const Storage = (() => {
 
         clearAll,
         getSizeKB,
+        getSizeBytes,
     };
 })();
 
 /* =========================================================
    ХЕШИРОВАНИЕ ПАРОЛЯ
+   ⚠️ ВНИМАНИЕ: это НЕ криптостойкое хеширование.
+   Используется только для демо-проекта.
+   Для продакшена — bcrypt/argon2/PBKDF2 на сервере.
    ========================================================= */
 function hashPass(p) {
     if (!p) return "h0";

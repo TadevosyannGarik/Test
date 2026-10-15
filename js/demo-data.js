@@ -1,116 +1,204 @@
 /* =========================================================
-   DEMO DATA — генерация тестовых данных для демонстрации
+   DEMO DATA — генерация насыщенных тестовых данных
+   Армянские имена, 10 преподавателей, 40 студентов, 60+ работ
    ========================================================= */
 const DemoData = (() => {
     /* =========================================================
-       ДАННЫЕ ДЛЯ ГЕНЕРАЦИИ
+       ПРЕПОДАВАТЕЛИ (10) — армянские имена
        ========================================================= */
     const TEACHERS_DATA = [
         {
-            fio: "Петров Пётр Петрович",
+            fio: "Петросян Пётр Петрович",
             email: "teacher@demo.ru",
-            pass: "123456",
             department: "Кафедра информационных систем",
             position: "Доцент",
             degree: "к.т.н.",
-            interests: "Нечёткая логика, искусственный интеллект",
-            maxLoad: 8,
+            interests: "Нечёткая логика, ИИ",
+            maxLoad: 12,
         },
         {
-            fio: "Сидорова Елена Алексеевна",
-            email: "sidorova@demo.ru",
-            pass: "123456",
+            fio: "Саргсян Елена Алексеевна",
+            email: "sargsyan@demo.ru",
             department: "Кафедра информационных систем",
             position: "Профессор",
             degree: "д.т.н.",
             interests: "Машинное обучение, Big Data",
-            maxLoad: 6,
-        },
-        {
-            fio: "Козлов Дмитрий Владимирович",
-            email: "kozlov@demo.ru",
-            pass: "123456",
-            department: "Кафедра прикладной математики",
-            position: "Старший преподаватель",
-            degree: "к.ф.-м.н.",
-            interests: "Численные методы, оптимизация",
             maxLoad: 10,
         },
+        {
+            fio: "Карапетян Давид Владимирович",
+            email: "karapetyan@demo.ru",
+            department: "Кафедра прикладной математики",
+            position: "Ст. преподаватель",
+            degree: "к.ф.-м.н.",
+            interests: "Численные методы, оптимизация",
+            maxLoad: 14,
+        },
+        {
+            fio: "Аветисян Ольга Ивановна",
+            email: "avetisyan@demo.ru",
+            department: "Кафедра информационных систем",
+            position: "Доцент",
+            degree: "к.т.н.",
+            interests: "Веб-технологии, UX",
+            maxLoad: 12,
+        },
+        {
+            fio: "Григорян Андраник Сергеевич",
+            email: "grigoryan@demo.ru",
+            department: "Кафедра программной инженерии",
+            position: "Профессор",
+            degree: "д.т.н.",
+            interests: "Архитектура ПО, DevOps",
+            maxLoad: 10,
+        },
+        {
+            fio: "Оганесян Мария Николаевна",
+            email: "hovanisyan@demo.ru",
+            department: "Кафедра программной инженерии",
+            position: "Доцент",
+            degree: "к.т.н.",
+            interests: "Тестирование, QA",
+            maxLoad: 12,
+        },
+        {
+            fio: "Абраамян Игорь Александрович",
+            email: "abrahamyan@demo.ru",
+            department: "Кафедра прикладной математики",
+            position: "Доцент",
+            degree: "к.ф.-м.н.",
+            interests: "Статистика, анализ данных",
+            maxLoad: 12,
+        },
+        {
+            fio: "Мкртчян Анна Дмитриевна",
+            email: "mkrtchyan@demo.ru",
+            department: "Кафедра информационных систем",
+            position: "Ст. преподаватель",
+            degree: "—",
+            interests: "Базы данных, SQL",
+            maxLoad: 14,
+        },
+        {
+            fio: "Погосян Виктор Павлович",
+            email: "poghosyan@demo.ru",
+            department: "Кафедра программной инженерии",
+            position: "Профессор",
+            degree: "д.т.н.",
+            interests: "Компиляторы, языки",
+            maxLoad: 8,
+        },
+        {
+            fio: "Тер-Петросян Татьяна Сергеевна",
+            email: "terpetrosyan@demo.ru",
+            department: "Кафедра прикладной математики",
+            position: "Доцент",
+            degree: "к.ф.-м.н.",
+            interests: "Теория вероятностей",
+            maxLoad: 12,
+        },
     ];
 
-    const STUDENTS_DATA = [
+    /* =========================================================
+       СТУДЕНТЫ (40) — армянские имена
+       ========================================================= */
+    const STUDENT_NAMES = [
+        "Арутюнян Арман Ашотович",
+        "Геворгян Ани Вардановна",
+        "Саргсян Тигран Гагикович",
+        "Оганесян Мариам Ашотовна",
+        "Петросян Нарек Ваагнович",
+        "Авагян Лусине Арменовна",
+        "Григорян Давид Самвелович",
+        "Мкртчян Анна Арамовна",
+        "Карапетян Арсен Гагикович",
+        "Давтян Марине Вагеевна",
+        "Абраамян Ваге Артурович",
+        "Степанян Рипсиме Левоновна",
+        "Погосян Геворг Ашотович",
+        "Симонян Асмик Арменовна",
+        "Акопян Гайк Ваагнович",
+        "Галстян Нарине Тиграновна",
+        "Бабаян Ашот Размикович",
+        "Мартиросян Ануш Гагиковна",
+        "Саакян Вардан Артурович",
+        "Назарян Лилит Самвеловна",
+        "Манукян Тигран Ашотович",
+        "Овсепян Гаяне Вагеевна",
+        "Аветисян Самвел Арменович",
+        "Торосян Ани Арамовна",
+        "Геворгян Артак Григорьевич",
+        "Арутюнян Мери Рафиковна",
+        "Айрапетян Ваге Вагеевич",
+        "Хачатрян Сона Артуровна",
+        "Кочарян Григор Ашотович",
+        "Сафарян Анна Гагиковна",
+        "Микаелян Арсен Вагеевич",
+        "Оганесян Лусине Арменовна",
+        "Асланян Гарик Самвелович",
+        "Багдасарян Анаит Рафиковна",
+        "Мовсисян Артак Вагеевич",
+        "Даниелян Рипсиме Артуровна",
+        "Абрамян Ваге Григорьевич",
+        "Симонян Нарине Ашотовна",
+        "Григорян Арман Арменович",
+        "Аветисян Марине Самвеловна",
+    ];
+
+    const GROUPS = [
         {
-            fio: "Иванов Иван Иванович",
-            group: "ПИ-21-1",
-            course: 3,
-            faculty: "ФИТ",
-            direction: "Программная инженерия",
-        },
-        {
-            fio: "Смирнова Анна Викторовна",
-            group: "ПИ-21-1",
-            course: 3,
-            faculty: "ФИТ",
-            direction: "Программная инженерия",
-        },
-        {
-            fio: "Кузнецов Дмитрий Сергеевич",
-            group: "ПИ-21-2",
-            course: 3,
-            faculty: "ФИТ",
-            direction: "Программная инженерия",
-        },
-        {
-            fio: "Орлова Мария Константиновна",
-            group: "ПИ-21-2",
-            course: 3,
-            faculty: "ФИТ",
-            direction: "Программная инженерия",
-        },
-        {
-            fio: "Фёдоров Кирилл Николаевич",
-            group: "ИВТ-22-1",
-            course: 2,
-            faculty: "ФИТ",
-            direction: "Информатика и ВТ",
-        },
-        {
-            fio: "Николаева Ольга Павловна",
-            group: "ИВТ-22-1",
-            course: 2,
-            faculty: "ФИТ",
-            direction: "Информатика и ВТ",
-        },
-        {
-            fio: "Морозов Артём Юрьевич",
-            group: "ПИ-20-1",
+            group: "ՊԻ-20-1",
             course: 4,
             faculty: "ФИТ",
             direction: "Программная инженерия",
         },
         {
-            fio: "Волкова Екатерина Дмитриевна",
-            group: "ПИ-20-1",
+            group: "ՊԻ-20-2",
             course: 4,
             faculty: "ФИТ",
             direction: "Программная инженерия",
         },
         {
-            fio: "Лебедев Роман Андреевич",
-            group: "ПМ-21-1",
+            group: "ՊԻ-21-1",
+            course: 3,
+            faculty: "ФИТ",
+            direction: "Программная инженерия",
+        },
+        {
+            group: "ՊԻ-21-2",
+            course: 3,
+            faculty: "ФИТ",
+            direction: "Программная инженерия",
+        },
+        {
+            group: "ԻՎՏ-21-1",
+            course: 3,
+            faculty: "ФИТ",
+            direction: "Информатика и ВТ",
+        },
+        {
+            group: "ԻՎՏ-22-1",
+            course: 2,
+            faculty: "ФИТ",
+            direction: "Информатика и ВТ",
+        },
+        {
+            group: "ՊՄ-21-1",
             course: 3,
             faculty: "ФПМ",
             direction: "Прикладная математика",
         },
         {
-            fio: "Соколова Виктория Максимовна",
-            group: "ПМ-21-1",
-            course: 3,
+            group: "ՊՄ-22-1",
+            course: 2,
             faculty: "ФПМ",
             direction: "Прикладная математика",
         },
     ];
 
+    /* =========================================================
+       ТЕМЫ РАБОТ
+       ========================================================= */
     const TOPICS = [
         "Информационная система управления проектами на основе нечёткой логики",
         "Нейросетевые методы в образовании",
@@ -127,6 +215,52 @@ const DemoData = (() => {
         "Оптимизация расписания занятий",
         "Электронный журнал успеваемости",
         "Система поддержки принятия решений на основе Мамдани",
+        "Разработка REST API для образовательной платформы",
+        "Веб-приложение для учёта научных публикаций",
+        "Система контроля версий студенческих работ",
+        "Автоматическая проверка оригинальности текстов",
+        "Платформа для онлайн-тестирования студентов",
+        "Микросервисная архитектура для вузовских систем",
+        "Система прогнозирования успеваемости на ML",
+        "Приложение для учёта посещаемости с QR-кодами",
+        "Виртуальный ассистент для студентов на NLP",
+        "Система анализа качества образования",
+        "Веб-сервис для обмена учебными материалами",
+        "Интерактивная карта кампуса с AR",
+        "Система управления научными грантами",
+        "Платформа для peer-review студенческих работ",
+        "Автоматизация формирования отчётов кафедры",
+        "Приложение для совместной работы над проектами",
+        "Система мониторинга нагрузки преподавателей",
+        "База знаний с поиском на основе графов",
+        "Инструмент для визуализации учебных планов",
+        "Система генерации тестовых заданий",
+        "Платформа для студенческих стартапов",
+        "Онлайн-портфолио студентов и выпускников",
+        "Система управления научными конференциями",
+        "Приложение для трекинга практик и стажировок",
+        "Интеграционная шина для вузовских систем",
+        "Сервис анализа отзывов о преподавателях",
+        "Платформа для геймификации обучения",
+        "Система документооборота приёмной комиссии",
+        "Инструмент для планирования учебной нагрузки",
+        "Приложение для учёта внеучебной деятельности",
+        "Система поддержки инклюзивного образования",
+        "Платформа для наставничества «студент-студент»",
+        "Сервис анализа эффективности курсов",
+        "Система дистанционного прокторинга",
+        "Платформа для научных коллабораций",
+        "Веб-приложение для учёта стипендий",
+        "Система автоматического реферирования текстов",
+        "Инструмент для визуализации успеваемости",
+        "Сервис подбора научного руководителя",
+        "Платформа для обмена опытом преподавателей",
+        "Система учёта публикационной активности",
+        "Приложение для организации студенческих олимпиад",
+        "Платформа для проектного обучения",
+        "Сервис мониторинга качества онлайн-курсов",
+        "Система управления академической мобильностью",
+        "Инструмент анализа рынка труда для студентов",
     ];
 
     const STAGE_NAMES = [
@@ -135,11 +269,13 @@ const DemoData = (() => {
         "Проектирование архитектуры",
         "Разработка модуля 1",
         "Разработка модуля 2",
+        "Интеграция",
         "Тестирование",
         "Апробация",
         "Оформление по ГОСТу",
         "Подготовка презентации",
         "Предзащита",
+        "Финальная доработка",
     ];
 
     const TASK_NAMES = [
@@ -153,6 +289,14 @@ const DemoData = (() => {
         "Подготовить слайды",
         "Написать аннотацию",
         "Проверить орфографию",
+        "Подготовить обзор литературы",
+        "Описать методологию",
+        "Построить UML-диаграммы",
+        "Настроить CI/CD",
+        "Провести код-ревью",
+        "Подготовить демо-версию",
+        "Провести юзабилити-тест",
+        "Написать документацию",
     ];
 
     const COMMENT_TEXTS = [
@@ -166,6 +310,29 @@ const DemoData = (() => {
         "Не забудьте про заключение — это важная часть.",
         "Оригинальность хорошая, но нужно увеличить объём.",
         "Приятно видеть такой прогресс. Продолжайте.",
+        "Раздел 1.2 требует больше ссылок на источники.",
+        "Отличный анализ! Добавьте сравнительную таблицу.",
+        "Графики хорошие, но подписи мелкие.",
+        "Стоит добавить блок-схему алгоритма.",
+        "Проверьте единообразие терминологии.",
+        "Хорошая динамика, но отставание по срокам.",
+        "Рекомендую добавить раздел о практической значимости.",
+        "Обратите внимание на оформление формул.",
+        "Уникальность текста в норме — продолжайте.",
+        "Финальная версия выглядит профессионально.",
+    ];
+
+    const CONSULT_TOPICS = [
+        "Обсуждение главы 1",
+        "Обсуждение главы 2",
+        "Уточнение методологии",
+        "Предзащита работы",
+        "Разбор замечаний руководителя",
+        "План дальнейших действий",
+        "Проверка практической части",
+        "Обсуждение результатов эксперимента",
+        "Подготовка к защите",
+        "Промежуточный контроль",
     ];
 
     /* =========================================================
@@ -183,6 +350,9 @@ const DemoData = (() => {
     function daysAhead(n) {
         return new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
     }
+    function daysAgoStr(n) {
+        return new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
+    }
     function shuffle(arr) {
         const a = [...arr];
         for (let i = a.length - 1; i > 0; i--) {
@@ -191,13 +361,17 @@ const DemoData = (() => {
         }
         return a;
     }
+    function pickMany(arr, count) {
+        return shuffle(arr).slice(0, count);
+    }
 
     /* =========================================================
        ГЕНЕРАЦИЯ
        ========================================================= */
     function generate() {
         const existingUsers = Storage.getUsers();
-        if (existingUsers.length > 5) {
+
+        if (existingUsers.length > 10) {
             if (
                 !confirm(
                     `В системе уже ${existingUsers.length} пользователей. ` +
@@ -207,7 +381,7 @@ const DemoData = (() => {
                 return;
         }
 
-        App.toast("Генерация демо-данных...");
+        App.toast("Генерация насыщенных демо-данных...");
 
         /* =========================================================
            1. ПОЛЬЗОВАТЕЛИ
@@ -215,6 +389,7 @@ const DemoData = (() => {
         const users = [...existingUsers];
         const existingEmails = new Set(users.map((u) => u.email));
 
+        /* --- Преподаватели --- */
         const teachers = [];
         for (const t of TEACHERS_DATA) {
             if (existingEmails.has(t.email)) {
@@ -225,55 +400,61 @@ const DemoData = (() => {
             const teacher = {
                 id: uid(),
                 role: "teacher",
-                ...t,
-                pass: hashPass(t.pass),
-                createdAt: Date.now(),
+                fio: t.fio,
+                email: t.email,
+                pass: hashPass("123456"),
+                department: t.department,
+                position: t.position,
+                degree: t.degree,
+                interests: t.interests,
+                maxLoad: t.maxLoad,
+                blocked: false,
+                createdAt: daysAgo(randInt(300, 400)),
             };
             users.push(teacher);
             teachers.push(teacher);
             existingEmails.add(t.email);
         }
 
+        /* --- Студенты (40) --- */
         const students = [];
-        for (let i = 0; i < STUDENTS_DATA.length; i++) {
-            const s = STUDENTS_DATA[i];
+        for (let i = 0; i < STUDENT_NAMES.length; i++) {
+            const fio = STUDENT_NAMES[i];
             const email = `student${i + 1}@demo.ru`;
             if (existingEmails.has(email)) {
                 const found = users.find((u) => u.email === email);
                 if (found) students.push(found);
                 continue;
             }
+            const g = GROUPS[i % GROUPS.length];
             const student = {
                 id: uid(),
                 role: "student",
-                fio: s.fio,
+                fio,
                 email,
                 pass: hashPass("123456"),
-                faculty: s.faculty,
-                group: s.group,
-                course: s.course,
-                direction: s.direction,
-                recordBook: `${s.course}${String(i + 1).padStart(3, "0")}`,
-                createdAt: Date.now(),
+                faculty: g.faculty,
+                group: g.group,
+                course: g.course,
+                direction: g.direction,
+                recordBook: `${g.course}${String(i + 1).padStart(3, "0")}`,
+                blocked: false,
+                createdAt: daysAgo(randInt(200, 400)),
             };
             users.push(student);
             students.push(student);
             existingEmails.add(email);
         }
 
-        if (teachers.length === 0) {
-            App.toast("Нет преподавателей для создания работ");
-            return;
-        }
-        if (students.length === 0) {
-            App.toast("Нет студентов для создания работ");
+        if (teachers.length === 0 || students.length === 0) {
+            App.toast("Не удалось создать пользователей");
             return;
         }
 
         Storage.setUsers(users);
 
         /* =========================================================
-           2. РАБОТЫ
+           2. РАБОТЫ (60+)
            ========================================================= */
         const works = Storage.getWorks();
         const stages = Storage.getStages();
@@ -282,16 +463,17 @@ const DemoData = (() => {
         const comments = Storage.getComments();
 
         const statusPlan = [
-            { status: "pending", count: 2 },
-            { status: "active", count: 5 },
-            { status: "review", count: 2 },
-            { status: "approved", count: 2 },
-            { status: "done", count: 3 },
-            { status: "rejected", count: 1 },
+            { status: "pending", count: 6 },
+            { status: "active", count: 18 },
+            { status: "review", count: 8 },
+            { status: "approved", count: 6 },
+            { status: "done", count: 18 },
+            { status: "rejected", count: 4 },
         ];
 
         let topicIdx = 0;
         let globalIdx = 0;
+        const activeWorks = [];
 
         for (const plan of statusPlan) {
             for (let i = 0; i < plan.count; i++) {
@@ -301,9 +483,19 @@ const DemoData = (() => {
                 topicIdx++;
                 globalIdx++;
 
-                const createdAt = daysAgo(randInt(30, 90));
-                const updatedAt = daysAgo(randInt(1, 15));
-                const deadline = daysAhead(randInt(10, 60));
+                const createdAt = daysAgo(randInt(30, 380));
+                const updatedAt = daysAgo(randInt(0, 20));
+
+                let deadline;
+                if (plan.status === "done" || plan.status === "rejected") {
+                    deadline = daysAgoStr(randInt(30, 200));
+                } else if (Math.random() < 0.15) {
+                    deadline = daysAgoStr(randInt(1, 15));
+                } else if (Math.random() < 0.25) {
+                    deadline = daysAhead(randInt(1, 5));
+                } else {
+                    deadline = daysAhead(randInt(10, 120));
+                }
 
                 const work = {
                     id: uid(),
@@ -313,14 +505,17 @@ const DemoData = (() => {
                     topic,
                     annotation:
                         `Работа посвящена исследованию в области «${topic.toLowerCase()}». ` +
-                        `Рассматриваются современные подходы и предлагается авторское решение.`,
-                    keywords: "нечёткая логика, управление, автоматизация",
+                        `Рассматриваются современные подходы и предлагается авторское решение. ` +
+                        `Особое внимание уделено практической реализации и апробации.`,
+                    keywords:
+                        "нечёткая логика, управление, автоматизация, исследование",
                     goal: "Разработать и апробировать информационную систему.",
                     tasksText:
                         "1. Изучить предметную область\n" +
                         "2. Спроектировать систему\n" +
                         "3. Реализовать прототип\n" +
-                        "4. Провести тестирование",
+                        "4. Провести тестирование\n" +
+                        "5. Оформить документацию",
                     deadline,
                     status: plan.status,
                     createdAt,
@@ -328,14 +523,16 @@ const DemoData = (() => {
                 };
 
                 if (plan.status === "done") {
-                    work.finalGrade = pick([3, 4, 4, 5, 5, 5]);
+                    work.finalGrade = pick([3, 4, 4, 4, 5, 5, 5, 5]);
                     work.gradeComment = pick([
                         "Отличная защита, чёткие ответы на вопросы",
                         "Хорошая работа, но были замечания",
                         "Работа заслуживает высокой оценки",
                         "Уверенная защита, но не все вопросы раскрыты",
+                        "Прекрасная презентация и глубокий анализ",
+                        "Есть небольшие недочёты, но в целом отлично",
                     ]);
-                    work.defendedAt = daysAgo(randInt(1, 30));
+                    work.defendedAt = daysAgo(randInt(1, 180));
                 }
 
                 if (plan.status === "rejected") {
@@ -343,22 +540,30 @@ const DemoData = (() => {
                         "Тема недостаточно раскрыта, требуется переработка",
                         "Слишком общая формулировка, нужна конкретика",
                         "Не соответствует направлению подготовки",
+                        "Дублирование с другой работой",
                     ]);
+                }
+
+                if (["review", "approved", "done"].includes(plan.status)) {
+                    work.supScore = randInt(4, 10);
+                    work.orig = randInt(45, 95);
+                    work.gost = randInt(50, 100);
                 }
 
                 works.push(work);
 
-                /* ---------- Этапы ---------- */
+                if (["active", "review"].includes(plan.status)) {
+                    activeWorks.push(work);
+                }
+
+                /* ---------- ЭТАПЫ ---------- */
                 if (
                     ["active", "review", "approved", "done"].includes(
                         plan.status,
                     )
                 ) {
-                    const stageCount = randInt(3, 5);
-                    const stageNames = shuffle(STAGE_NAMES).slice(
-                        0,
-                        stageCount,
-                    );
+                    const stageCount = randInt(4, 8);
+                    const stageNames = pickMany(STAGE_NAMES, stageCount);
 
                     let doneUntil;
                     if (plan.status === "done") doneUntil = stageCount;
@@ -374,27 +579,27 @@ const DemoData = (() => {
                             id: uid(),
                             workId: work.id,
                             name: stageNames[k],
-                            description: "",
-                            deadline: daysAhead(randInt(5, 40)),
-                            weight: randInt(1, 3),
+                            description: isDone ? "Выполнено в срок" : "",
+                            deadline: daysAhead(randInt(-10, 60)),
+                            weight: randInt(1, 4),
                             order: k + 1,
                             done: isDone,
                             completedAt: isDone
-                                ? daysAgo(randInt(1, 20))
+                                ? daysAgo(randInt(1, 60))
                                 : null,
                             createdAt,
                         });
                     }
                 }
 
-                /* ---------- Задачи ---------- */
+                /* ---------- ЗАДАЧИ ---------- */
                 if (
                     ["active", "review", "approved", "done"].includes(
                         plan.status,
                     )
                 ) {
-                    const taskCount = randInt(4, 7);
-                    const taskNames = shuffle(TASK_NAMES).slice(0, taskCount);
+                    const taskCount = randInt(5, 10);
+                    const taskNames = pickMany(TASK_NAMES, taskCount);
 
                     let cols;
                     if (plan.status === "done") {
@@ -410,39 +615,49 @@ const DemoData = (() => {
                         cols = [
                             "done",
                             "done",
+                            "done",
                             "progress",
                             "progress",
                             "todo",
                             "todo",
                             "review",
+                            "todo",
+                            "done",
                         ].slice(0, taskCount);
                     } else {
                         cols = Array(taskCount).fill("todo");
                     }
 
                     for (let k = 0; k < taskCount; k++) {
-                        tasks.push({
+                        const col = cols[k] || "todo";
+                        const task = {
                             id: uid(),
                             workId: work.id,
                             title: taskNames[k],
-                            col: cols[k] || "todo",
+                            col,
                             deadline:
-                                Math.random() > 0.5
-                                    ? daysAhead(randInt(3, 25))
+                                Math.random() > 0.4
+                                    ? daysAhead(randInt(-5, 30))
                                     : null,
                             createdAt,
                             updatedAt,
-                        });
+                        };
+                        if (col === "done" && Math.random() > 0.5) {
+                            task.reviewedBy = teacher.id;
+                            task.reviewedAt = daysAgo(randInt(1, 20));
+                            task.reviewStatus = "approved";
+                        }
+                        tasks.push(task);
                     }
                 }
 
-                /* ---------- Версии ---------- */
+                /* ---------- ВЕРСИИ ---------- */
                 if (
                     ["active", "review", "approved", "done"].includes(
                         plan.status,
                     )
                 ) {
-                    const vCount = randInt(1, 4);
+                    const vCount = randInt(2, 6);
                     for (let v = 0; v < vCount; v++) {
                         versions.push({
                             id: uid(),
@@ -450,31 +665,32 @@ const DemoData = (() => {
                             version: `1.${v}`,
                             filename: `chapter_${v + 1}.docx`,
                             comment: pick([
-                                "Добавлена глава " + (v + 1),
-                                "Исправлены замечания",
+                                `Добавлена глава ${v + 1}`,
+                                "Исправлены замечания руководителя",
                                 "Расширено введение",
-                                "Обновлена литература",
-                                "Финальная версия",
+                                "Обновлён список литературы",
+                                "Доработана практическая часть",
+                                "Финальная версия главы",
                             ]),
-                            createdAt: daysAgo(randInt(1, 30)),
+                            createdAt: daysAgo(randInt(1, 90)),
                         });
                     }
                 }
 
-                /* ---------- Комментарии ---------- */
+                /* ---------- КОММЕНТАРИИ ---------- */
                 if (
                     ["active", "review", "approved", "done"].includes(
                         plan.status,
                     )
                 ) {
-                    const cCount = randInt(2, 5);
+                    const cCount = randInt(3, 8);
                     for (let c = 0; c < cCount; c++) {
                         comments.push({
                             id: uid(),
                             workId: work.id,
                             authorId: teacher.id,
                             text: pick(COMMENT_TEXTS),
-                            createdAt: daysAgo(randInt(1, 20)),
+                            createdAt: daysAgo(randInt(1, 60)),
                             kind: "review",
                         });
                     }
@@ -489,28 +705,47 @@ const DemoData = (() => {
         Storage.setComments(comments);
 
         /* =========================================================
-           3. АУДИТ
+           3. АУДИТ (100 записей)
            ========================================================= */
         const auditLog = Storage.get("fp_audit", []);
-        for (let i = 0; i < 20; i++) {
+        const auditActions = [
+            "Создана работа",
+            "Утверждена заявка",
+            "Оценка выставлена",
+            "Работа защищена",
+            "Загружена версия",
+            "Добавлено замечание",
+            "Создан пользователь",
+            "Пользователь заблокирован",
+            "Работа отправлена на проверку",
+            "Задача одобрена",
+            "Задача возвращена",
+            "Консультация подтверждена",
+            "Экспорт PDF",
+            "Проверка ГОСТа",
+            "Изменена ФП",
+        ];
+
+        for (let i = 0; i < 100; i++) {
             const u = pick(users);
             auditLog.push({
                 id: uid(),
                 userId: u.id,
                 userFio: u.fio,
                 userRole: u.role,
-                action: pick([
-                    "Создана работа",
-                    "Утверждена заявка",
-                    "Оценка выставлена",
-                    "Работа защищена",
-                    "Загружена версия",
-                    "Добавлено замечание",
+                action: pick(auditActions),
+                target: pick(TOPICS).slice(0, 50),
+                details: Math.random() > 0.7 ? "Автоматическая запись" : "",
+                type: pick([
+                    "info",
+                    "info",
+                    "info",
+                    "positive",
+                    "positive",
+                    "warning",
+                    "negative",
                 ]),
-                target: pick(TOPICS).slice(0, 40),
-                details: "",
-                type: pick(["info", "info", "positive"]),
-                createdAt: daysAgo(randInt(1, 30)),
+                createdAt: daysAgo(randInt(1, 365)),
             });
         }
         Storage.set("fp_audit", auditLog);
@@ -519,6 +754,7 @@ const DemoData = (() => {
            4. УВЕДОМЛЕНИЯ
            ========================================================= */
         const notifs = Storage.get("fp_notifications", []);
+
         for (const s of students) {
             notifs.push({
                 id: uid(),
@@ -526,54 +762,158 @@ const DemoData = (() => {
                 type: "info",
                 title: "Добро пожаловать в FuzzyProject",
                 text: "Система поможет вам вести работу над курсовой или дипломной.",
-                read: false,
-                createdAt: daysAgo(randInt(1, 10)),
+                read: Math.random() > 0.5,
+                createdAt: daysAgo(randInt(30, 200)),
             });
         }
+
+        for (const t of teachers) {
+            notifs.push({
+                id: uid(),
+                userId: t.id,
+                type: "info",
+                title: "Добро пожаловать в FuzzyProject",
+                text: "Система поможет вам курировать студенческие работы.",
+                read: Math.random() > 0.3,
+                createdAt: daysAgo(randInt(30, 200)),
+            });
+        }
+
+        works
+            .filter((w) => w.status === "pending")
+            .forEach((w) => {
+                notifs.push({
+                    id: uid(),
+                    userId: w.teacherId,
+                    type: "info",
+                    title: "Новая заявка на руководство",
+                    text: `«${w.topic.slice(0, 60)}»`,
+                    read: false,
+                    link: { view: "requests" },
+                    createdAt: daysAgo(randInt(1, 20)),
+                });
+            });
+
+        works
+            .filter((w) => w.status === "review")
+            .forEach((w) => {
+                notifs.push({
+                    id: uid(),
+                    userId: w.studentId,
+                    type: "info",
+                    title: "Работа на проверке",
+                    text: `«${w.topic.slice(0, 60)}» — руководитель проверяет`,
+                    read: Math.random() > 0.5,
+                    link: { view: "my-work" },
+                    createdAt: daysAgo(randInt(1, 15)),
+                });
+            });
+
         Storage.set("fp_notifications", notifs);
 
         /* =========================================================
-           5. КОНСУЛЬТАЦИИ
+           5. КОНСУЛЬТАЦИИ (15)
            ========================================================= */
         const consults = Storage.get("fp_consults", []);
-        const consultCount = Math.min(3, students.length);
-        for (let i = 0; i < consultCount; i++) {
-            const s = students[i];
-            const teacher = teachers[i % teachers.length];
-            if (!s || !teacher) continue;
+        const statuses = ["pending", "approved", "done", "rejected"];
+
+        for (let i = 0; i < 15; i++) {
+            const work = pick(activeWorks);
+            if (!work) continue;
+
+            const datetime = new Date(
+                Date.now() +
+                    randInt(-15, 20) * 86400000 +
+                    randInt(0, 12) * 3600000,
+            ).toLocaleString("ru-RU", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+            });
+
+            const status = pick(statuses);
 
             consults.push({
                 id: uid(),
-                studentId: s.id,
-                teacherId: teacher.id,
-                datetime: new Date(
-                    Date.now() + randInt(1, 7) * 86400000,
-                ).toLocaleString("ru-RU", {
-                    day: "2-digit",
-                    month: "2-digit",
-                    year: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                }),
-                topic: pick([
-                    "Обсуждение главы 2",
-                    "Консультация по методологии",
-                    "Предзащита",
+                studentId: work.studentId,
+                teacherId: work.teacherId,
+                datetime,
+                topic: pick(CONSULT_TOPICS),
+                comment: pick([
+                    "Прошу помочь с текущими вопросами.",
+                    "Есть несколько вопросов по методологии.",
+                    "Хочу обсудить результаты эксперимента.",
+                    "Нужна консультация по оформлению.",
                 ]),
-                comment: "Прошу помочь с текущими вопросами.",
-                status: pick(["pending", "approved", "pending"]),
-                response: "",
-                createdAt: daysAgo(randInt(1, 10)),
-                updatedAt: Date.now(),
+                status,
+                response:
+                    status === "rejected"
+                        ? pick([
+                              "Занят в это время",
+                              "Перенесём на другую неделю",
+                              "К сожалению, не смогу",
+                          ])
+                        : status === "approved"
+                          ? "Подтверждаю, встретимся в назначенное время."
+                          : "",
+                createdAt: daysAgo(randInt(1, 30)),
+                updatedAt: daysAgo(randInt(0, 5)),
             });
         }
         Storage.set("fp_consults", consults);
 
         /* =========================================================
+           6. СПРАВОЧНИКИ
+           ========================================================= */
+        const refs = Storage.get("fp_refs", null);
+        if (!refs) {
+            Storage.set("fp_refs", {
+                faculties: ["ФИТ", "ФПМ", "ФЭН", "ГФ", "ФМО"],
+                departments: [
+                    "Кафедра информационных систем",
+                    "Кафедра программной инженерии",
+                    "Кафедра прикладной математики",
+                    "Кафедра математического моделирования",
+                ],
+                groups: [
+                    "ՊԻ-20-1",
+                    "ՊԻ-20-2",
+                    "ՊԻ-21-1",
+                    "ՊԻ-21-2",
+                    "ԻՎՏ-21-1",
+                    "ԻՎՏ-22-1",
+                    "ՊՄ-21-1",
+                    "ՊՄ-22-1",
+                ],
+                directions: [
+                    "Программная инженерия",
+                    "Информационные системы",
+                    "Информатика и ВТ",
+                    "Прикладная математика",
+                ],
+            });
+        }
+
+        /* =========================================================
+           7. НАСТРОЙКИ
+           ========================================================= */
+        const settings = Storage.get("fp_settings", null);
+        if (!settings) {
+            Storage.set("fp_settings", {
+                systemName: "FuzzyProject",
+                academicYear: "2024/2025",
+                defaultDeadlineDays: 30,
+                notifyBeforeDays: 3,
+            });
+        }
+
+        /* =========================================================
            ИТОГ
            ========================================================= */
         App.toast(
-            `Готово! ${students.length} студентов, ${teachers.length} преподавателей`,
+            `Готово! ${students.length} студентов, ${teachers.length} преподавателей, ${works.length} работ`,
         );
 
         if (typeof App.refreshNotifications === "function") {
@@ -582,7 +922,7 @@ const DemoData = (() => {
 
         setTimeout(() => {
             App.navigate("dashboard");
-        }, 600);
+        }, 800);
     }
 
     /* =========================================================
@@ -591,12 +931,10 @@ const DemoData = (() => {
     function clearAll() {
         if (
             !confirm(
-                "Удалить ВСЕ данные?\n\n" +
-                    "Это действие необратимо. Продолжить?",
+                "Удалить ВСЕ данные?\n\nЭто действие необратимо. Продолжить?",
             )
         )
             return;
-
         if (!confirm("Вы точно уверены? Все данные будут потеряны.")) return;
 
         Object.keys(localStorage).forEach((key) => {

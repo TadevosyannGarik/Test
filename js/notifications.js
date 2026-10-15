@@ -1,9 +1,24 @@
 /* =========================================================
    NOTIFICATIONS — система уведомлений
+   Обновлено: единый setAll, оптимизация unreadCount,
+   использование Utils.escapeHtml
    ========================================================= */
 const Notifications = (() => {
     const KEY = "fp_notifications";
     const MAX_PER_USER = 200;
+
+    /* Алиас на Utils.escapeHtml (или локальная реализация) */
+    const escapeHtml =
+        typeof Utils !== "undefined" && Utils.escapeHtml
+            ? Utils.escapeHtml
+            : (str) => {
+                  if (str === null || str === undefined) return "";
+                  return String(str)
+                      .replace(/&/g, "&amp;")
+                      .replace(/</g, "&lt;")
+                      .replace(/>/g, "&gt;")
+                      .replace(/"/g, "&quot;");
+              };
 
     /* =========================================================
        ЧТЕНИЕ / ЗАПИСЬ
@@ -14,17 +29,18 @@ const Notifications = (() => {
     }
 
     function setAll(list) {
-        Storage.set(KEY, list);
+        Storage.set(KEY, Array.isArray(list) ? list : []);
     }
 
     /* =========================================================
        ДОБАВЛЕНИЕ
        ========================================================= */
     function add({ userId, type, title, text, link }) {
-        if (!userId) return;
+        if (!userId) return null;
 
         const list = getAll();
-        list.push({
+
+        const notif = {
             id: uid(),
             userId,
             type: type || "info",
@@ -33,24 +49,35 @@ const Notifications = (() => {
             link: link || null,
             read: false,
             createdAt: Date.now(),
-        });
+        };
+        list.push(notif);
 
-        /* Ограничение на пользователя */
+        /* Ограничение на пользователя — оставляем последние MAX_PER_USER */
         const userNotifs = list.filter((n) => Storage.sameId(n.userId, userId));
+
+        let finalList = list;
+
         if (userNotifs.length > MAX_PER_USER) {
-            const toRemove = userNotifs
-                .sort((a, b) => a.createdAt - b.createdAt)
-                .slice(0, userNotifs.length - MAX_PER_USER)
-                .map((n) => n.id);
-            const filtered = list.filter((n) => !toRemove.includes(n.id));
-            setAll(filtered);
-        } else {
-            setAll(list);
+            /* Сортируем по дате (старые сверху) */
+            const sorted = [...userNotifs].sort(
+                (a, b) => a.createdAt - b.createdAt,
+            );
+            const toRemove = new Set(
+                sorted
+                    .slice(0, userNotifs.length - MAX_PER_USER)
+                    .map((n) => n.id),
+            );
+            finalList = list.filter((n) => !toRemove.has(n.id));
         }
+
+        /* Один вызов setAll — было двойное сохранение */
+        setAll(finalList);
 
         if (typeof App !== "undefined" && App.refreshNotifications) {
             App.refreshNotifications();
         }
+
+        return notif;
     }
 
     /* =========================================================
@@ -68,9 +95,13 @@ const Notifications = (() => {
 
     function unreadCount(userId) {
         if (!userId) return 0;
-        return getAll().filter(
-            (n) => Storage.sameId(n.userId, userId) && !n.read,
-        ).length;
+        let count = 0;
+        const list = getAll();
+        for (let i = 0; i < list.length; i++) {
+            const n = list[i];
+            if (Storage.sameId(n.userId, userId) && !n.read) count++;
+        }
+        return count;
     }
 
     /* =========================================================
@@ -79,7 +110,7 @@ const Notifications = (() => {
     function markRead(id) {
         const list = getAll();
         const n = list.find((x) => Storage.sameId(x.id, id));
-        if (!n) return;
+        if (!n || n.read) return;
         n.read = true;
         setAll(list);
     }
@@ -87,24 +118,32 @@ const Notifications = (() => {
     function markAllRead(userId) {
         if (!userId) return;
         const list = getAll();
+        let changed = false;
         list.forEach((n) => {
-            if (Storage.sameId(n.userId, userId)) n.read = true;
+            if (Storage.sameId(n.userId, userId) && !n.read) {
+                n.read = true;
+                changed = true;
+            }
         });
-        setAll(list);
+        if (changed) setAll(list);
     }
 
     /* =========================================================
        УДАЛЕНИЕ
        ========================================================= */
     function deleteNotif(id) {
-        const list = getAll().filter((n) => !Storage.sameId(n.id, id));
-        setAll(list);
+        const list = getAll();
+        const filtered = list.filter((n) => !Storage.sameId(n.id, id));
+        if (filtered.length === list.length) return false;
+        setAll(filtered);
+        return true;
     }
 
     function clearAllForUser(userId) {
         if (!userId) return;
-        const list = getAll().filter((n) => !Storage.sameId(n.userId, userId));
-        setAll(list);
+        const list = getAll();
+        const filtered = list.filter((n) => !Storage.sameId(n.userId, userId));
+        setAll(filtered);
     }
 
     /* =========================================================
@@ -159,7 +198,11 @@ const Notifications = (() => {
             ${unread > 0 ? `<span class="count-chip">${unread}</span>` : ""}
           </h4>
           <div style="display:flex;gap:8px;align-items:center;">
-            ${unread > 0 ? `<button onclick="Notifications.markAll()" class="notif-action">Прочитать все</button>` : ""}
+            ${
+                unread > 0
+                    ? `<button onclick="Notifications.markAll()" class="notif-action">Прочитать все</button>`
+                    : ""
+            }
             <button onclick="Notifications.closePanel()" title="Закрыть" class="notif-close">
               ${SVG.x({ cls: "icon icon-xs" })}
             </button>
@@ -184,15 +227,6 @@ const Notifications = (() => {
         <div class="notif-item-time">${fmtDateTime(n.createdAt)}</div>
       </div>
     `;
-    }
-
-    function escapeHtml(str) {
-        if (!str) return "";
-        return String(str)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;");
     }
 
     /* =========================================================

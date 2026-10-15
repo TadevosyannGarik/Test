@@ -1,8 +1,23 @@
 /* =========================================================
    MF EDITOR — визуальный редактор функций принадлежности
+   Обновлено: усиленная валидация, санитизация,
+   проверка синхронизации с Fuzzy.MF + автоочистка битых overrides
    ========================================================= */
 const MFEditor = (() => {
     const STORAGE_KEY = "fp_mf_overrides";
+
+    /* =========================================================
+       ЭКРАНИРОВАНИЕ
+       ========================================================= */
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return "";
+        return String(str)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
 
     const VAR_LABELS = {
         progress: "Прогресс",
@@ -15,6 +30,7 @@ const MFEditor = (() => {
         gost: "Соответствие ГОСТу",
     };
 
+    /* Эталонные значения — ДОЛЖНЫ совпадать с fuzzy.js MF */
     const DEFAULTS = {
         progress: { low: [0, 0, 50], med: [25, 50, 75], high: [50, 100, 100] },
         days: { low: [0, 0, 20], med: [10, 25, 40], high: [30, 60, 60] },
@@ -29,23 +45,62 @@ const MFEditor = (() => {
     let selectedVar = "progress";
 
     /* =========================================================
+       ВАЛИДАЦИЯ
+       ========================================================= */
+    function clamp01(v) {
+        if (typeof v !== "number" || isNaN(v) || !isFinite(v)) return 0;
+        return Math.max(0, Math.min(100, v));
+    }
+
+    function sanitizeTriangle(tri) {
+        if (!Array.isArray(tri) || tri.length !== 3) return [0, 0, 0];
+        let [a, b, c] = tri.map(clamp01);
+        if (a > b) [a, b] = [b, a];
+        if (b > c) [b, c] = [c, b];
+        if (a > b) [a, b] = [b, a];
+        return [a, b, c];
+    }
+
+    function sanitizeOverrides(obj) {
+        if (!obj || typeof obj !== "object" || Array.isArray(obj)) return {};
+        const clean = {};
+        for (const varName of Object.keys(obj)) {
+            if (!DEFAULTS[varName]) continue;
+            const terms = obj[varName];
+            if (!terms || typeof terms !== "object") continue;
+            clean[varName] = {};
+            for (const term of Object.keys(terms)) {
+                if (!DEFAULTS[varName][term]) continue;
+                const tri = terms[term];
+                if (!Array.isArray(tri) || tri.length !== 3) continue;
+                clean[varName][term] = sanitizeTriangle(tri);
+            }
+            if (Object.keys(clean[varName]).length === 0) {
+                delete clean[varName];
+            }
+        }
+        return clean;
+    }
+
+    /* =========================================================
        OVERRIDES
        ========================================================= */
     function getOverrides() {
-        const o = Storage.get(STORAGE_KEY, {});
-        return o && typeof o === "object" && !Array.isArray(o) ? o : {};
+        const raw = Storage.get(STORAGE_KEY, {});
+        return sanitizeOverrides(raw);
     }
 
     function setOverrides(o) {
-        Storage.set(STORAGE_KEY, o);
+        const clean = sanitizeOverrides(o);
+        Storage.set(STORAGE_KEY, clean);
         applyOverrides();
     }
 
-    /* Используем trimf из Fuzzy (с корректной обработкой границ) */
     function _trimf(x, a, b, c) {
         if (typeof Fuzzy !== "undefined" && Fuzzy.trimf) {
             return Fuzzy.trimf(x, a, b, c);
         }
+        if (typeof x !== "number" || isNaN(x)) return 0;
         if (x === a && a === b) return 1;
         if (x === c && b === c) return 1;
         if (x <= a || x >= c) return 0;
@@ -53,11 +108,8 @@ const MFEditor = (() => {
         return x < b ? (x - a) / (b - a) : (c - x) / (c - b);
     }
 
-    /* Применить все overrides */
-    function applyOverrides() {
-        const overrides = getOverrides();
-
-        /* Сброс к DEFAULTS */
+    function resetToDefaults() {
+        if (typeof Fuzzy === "undefined" || !Fuzzy.MF) return;
         for (const v in DEFAULTS) {
             if (!Fuzzy.MF[v]) continue;
             for (const t in DEFAULTS[v]) {
@@ -65,26 +117,80 @@ const MFEditor = (() => {
                 Fuzzy.MF[v][t] = (x) => _trimf(x, a, b, c);
             }
         }
+    }
 
-        /* Применение overrides */
+    function applyOverrides() {
+        if (typeof Fuzzy === "undefined" || !Fuzzy.MF) return;
+
+        resetToDefaults();
+
+        const overrides = getOverrides();
         for (const varName in overrides) {
             if (!Fuzzy.MF[varName]) continue;
             for (const term in overrides[varName]) {
                 if (typeof Fuzzy.MF[varName][term] !== "function") continue;
                 const tri = overrides[varName][term];
                 if (!Array.isArray(tri) || tri.length !== 3) continue;
-                const [a, b, c] = tri;
+                const [a, b, c] = sanitizeTriangle(tri);
                 Fuzzy.MF[varName][term] = (x) => _trimf(x, a, b, c);
             }
         }
     }
 
     function restoreVarDefaults(varName) {
+        if (typeof Fuzzy === "undefined" || !Fuzzy.MF) return;
         if (!Fuzzy.MF[varName] || !DEFAULTS[varName]) return;
         for (const t in DEFAULTS[varName]) {
             const [a, b, c] = DEFAULTS[varName][t];
             Fuzzy.MF[varName][t] = (x) => _trimf(x, a, b, c);
         }
+    }
+
+    /* =========================================================
+       ПРОВЕРКА СИНХРОНИЗАЦИИ С fuzzy.js
+       Возвращает true, если всё ок, иначе false
+       ========================================================= */
+    function checkSyncWithFuzzy(silent = false) {
+        if (typeof Fuzzy === "undefined" || !Fuzzy.MF) return true;
+        const issues = [];
+        const testPoints = [0, 10, 25, 50, 75, 90, 100];
+
+        for (const varName in DEFAULTS) {
+            if (!Fuzzy.MF[varName]) {
+                issues.push(`Fuzzy.MF.${varName} отсутствует`);
+                continue;
+            }
+            for (const term in DEFAULTS[varName]) {
+                if (typeof Fuzzy.MF[varName][term] !== "function") {
+                    issues.push(`Fuzzy.MF.${varName}.${term} не функция`);
+                    continue;
+                }
+                const [a, b, c] = DEFAULTS[varName][term];
+                for (const x of testPoints) {
+                    const expected = _trimf(x, a, b, c);
+                    const actual = Fuzzy.MF[varName][term](x);
+                    if (Math.abs(expected - actual) > 0.001) {
+                        issues.push(
+                            `Fuzzy.MF.${varName}.${term} ≠ DEFAULTS при x=${x} (${actual.toFixed(3)} vs ${expected.toFixed(3)})`,
+                        );
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (issues.length > 0) {
+            if (!silent) {
+                console.warn("[MFEditor] Расхождение DEFAULTS и Fuzzy.MF:");
+                issues.forEach((i) => console.warn("  · " + i));
+            }
+            return false;
+        }
+
+        if (!silent) {
+            console.log("[MFEditor] DEFAULTS и Fuzzy.MF синхронизированы ✓");
+        }
+        return true;
     }
 
     /* =========================================================
@@ -115,7 +221,7 @@ const MFEditor = (() => {
                   (v) => `
             <div class="mf-var-card ${selectedVar === v ? "active" : ""}"
               onclick="MFEditor.selectVar('${v}')">
-              <div class="mf-var-name">${VAR_LABELS[v] || v}</div>
+              <div class="mf-var-name">${escapeHtml(VAR_LABELS[v] || v)}</div>
               <div class="mf-var-terms">low / med / high</div>
             </div>
           `,
@@ -124,7 +230,7 @@ const MFEditor = (() => {
         </div>
 
         <div class="section-label" style="margin-top:24px;">
-          Функции принадлежности для «${VAR_LABELS[selectedVar] || selectedVar}»
+          Функции принадлежности для «${escapeHtml(VAR_LABELS[selectedVar] || selectedVar)}»
         </div>
 
         <div class="mf-canvas-wrap">
@@ -132,7 +238,9 @@ const MFEditor = (() => {
         </div>
 
         <div class="grid grid-3 mt-16">
-          ${["low", "med", "high"].map((t) => renderTermCard(t, currentDef[t])).join("")}
+          ${["low", "med", "high"]
+              .map((t) => renderTermCard(t, currentDef[t]))
+              .join("")}
         </div>
 
         <div style="display:flex;gap:8px;margin-top:20px;flex-wrap:wrap;">
@@ -144,6 +252,12 @@ const MFEditor = (() => {
             ${SVG.trash({ cls: "icon icon-sm" })}
             <span>Сбросить все ФП</span>
           </button>
+        </div>
+
+        <div class="notice" style="margin-top:16px;font-size:12px;">
+          ${SVG.info({ cls: "icon icon-xs" })}
+          Значения: <b>a</b> — левая точка, <b>b</b> — вершина, <b>c</b> — правая точка.
+          Все числа от 0 до 100, при этом <b>a ≤ b ≤ c</b>.
         </div>
       </div>
     `;
@@ -169,19 +283,19 @@ const MFEditor = (() => {
         <div class="row-2" style="gap:6px;">
           <div>
             <label style="font-size:10px;color:var(--txt-muted);">a</label>
-            <input type="number" value="${tri[0]}" min="0" max="100"
+            <input type="number" value="${tri[0]}" min="0" max="100" step="1"
               onchange="MFEditor.updateTri('${term}', 0, +this.value)"
               style="width:100%;padding:5px 8px;font-size:12px;">
           </div>
           <div>
             <label style="font-size:10px;color:var(--txt-muted);">b</label>
-            <input type="number" value="${tri[1]}" min="0" max="100"
+            <input type="number" value="${tri[1]}" min="0" max="100" step="1"
               onchange="MFEditor.updateTri('${term}', 1, +this.value)"
               style="width:100%;padding:5px 8px;font-size:12px;">
           </div>
           <div>
             <label style="font-size:10px;color:var(--txt-muted);">c</label>
-            <input type="number" value="${tri[2]}" min="0" max="100"
+            <input type="number" value="${tri[2]}" min="0" max="100" step="1"
               onchange="MFEditor.updateTri('${term}', 2, +this.value)"
               style="width:100%;padding:5px 8px;font-size:12px;">
           </div>
@@ -200,7 +314,10 @@ const MFEditor = (() => {
     }
 
     function updateTri(term, idx, val) {
-        val = Math.max(0, Math.min(100, isNaN(+val) ? 0 : +val));
+        if (!["low", "med", "high"].includes(term)) return;
+        if (![0, 1, 2].includes(idx)) return;
+
+        const safeVal = clamp01(+val);
 
         const overrides = getOverrides();
         if (!overrides[selectedVar]) {
@@ -209,14 +326,22 @@ const MFEditor = (() => {
             );
         }
 
-        overrides[selectedVar][term][idx] = val;
-
-        const tri = overrides[selectedVar][term];
-        tri[1] = Math.max(0, Math.min(100, tri[1]));
-        tri[0] = Math.max(0, Math.min(tri[1], tri[0]));
-        tri[2] = Math.max(tri[1], Math.min(100, tri[2]));
+        overrides[selectedVar][term][idx] = safeVal;
+        overrides[selectedVar][term] = sanitizeTriangle(
+            overrides[selectedVar][term],
+        );
 
         setOverrides(overrides);
+
+        if (typeof Audit !== "undefined") {
+            Audit.log(
+                "Изменена ФП",
+                `${VAR_LABELS[selectedVar] || selectedVar} · ${term}`,
+                `[${overrides[selectedVar][term].join(", ")}]`,
+                "info",
+            );
+        }
+
         renderView();
     }
 
@@ -240,14 +365,14 @@ const MFEditor = (() => {
             return;
 
         Storage.remove(STORAGE_KEY);
-
-        for (const v in DEFAULTS) {
-            restoreVarDefaults(v);
-        }
-
+        resetToDefaults();
         renderView();
         if (typeof App !== "undefined" && App.toast) {
             App.toast("Все ФП сброшены к значениям по умолчанию");
+        }
+
+        if (typeof Audit !== "undefined") {
+            Audit.log("Сброшены все ФП", "", "", "warning");
         }
     }
 
@@ -266,9 +391,11 @@ const MFEditor = (() => {
         if (!canvas) return;
 
         const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+
         const dpr = window.devicePixelRatio || 1;
-        const cssW = canvas.offsetWidth;
-        const cssH = canvas.offsetHeight;
+        const cssW = canvas.offsetWidth || 400;
+        const cssH = canvas.offsetHeight || 240;
 
         canvas.width = cssW * dpr;
         canvas.height = cssH * dpr;
@@ -290,7 +417,6 @@ const MFEditor = (() => {
 
         ctx.clearRect(0, 0, w, h);
 
-        /* Сетка */
         ctx.strokeStyle = colorLine;
         ctx.lineWidth = 1;
         for (let i = 0; i <= 10; i++) {
@@ -308,7 +434,6 @@ const MFEditor = (() => {
             ctx.stroke();
         }
 
-        /* Оси */
         ctx.strokeStyle = colorTxtSoft;
         ctx.lineWidth = 1.5;
         ctx.beginPath();
@@ -318,7 +443,6 @@ const MFEditor = (() => {
         ctx.lineTo(1, h);
         ctx.stroke();
 
-        /* Треугольники */
         const overrides = getOverrides();
         const currentDef = JSON.parse(JSON.stringify(DEFAULTS[selectedVar]));
         if (overrides[selectedVar]) {
@@ -328,7 +452,7 @@ const MFEditor = (() => {
         }
 
         for (const term of ["low", "med", "high"]) {
-            const [a, b, c] = currentDef[term];
+            const [a, b, c] = sanitizeTriangle(currentDef[term]);
             const xA = (a / 100) * w;
             const xB = (b / 100) * w;
             const xC = (c / 100) * w;
@@ -362,7 +486,6 @@ const MFEditor = (() => {
             ctx.fillText(term, xB, 15);
         }
 
-        /* Ось X */
         ctx.fillStyle = colorTxt;
         ctx.font = "10px Inter, system-ui, sans-serif";
         ctx.textAlign = "left";
@@ -372,10 +495,41 @@ const MFEditor = (() => {
     }
 
     /* =========================================================
-       АВТОПРИМЕНЕНИЕ
+       ИНИЦИАЛИЗАЦИЯ
+       1. Применяет overrides к Fuzzy.MF.
+       2. Проверяет синхронизацию.
+       3. Если что-то не так — автоочистка битых overrides.
        ========================================================= */
     function init() {
         applyOverrides();
+
+        if (typeof Fuzzy === "undefined" || !Fuzzy.MF) {
+            // Fuzzy ещё не загружен — ничего не делаем
+            return;
+        }
+
+        const ok = checkSyncWithFuzzy(true);
+
+        if (!ok) {
+            console.warn(
+                "[MFEditor] Обнаружено расхождение — автоочистка fp_mf_overrides",
+            );
+            Storage.remove(STORAGE_KEY);
+            resetToDefaults();
+
+            const stillBroken = !checkSyncWithFuzzy(true);
+            if (stillBroken) {
+                console.error(
+                    "[MFEditor] Даже после сброса DEFAULTS не совпадают с Fuzzy.MF. Проверьте код fuzzy.js.",
+                );
+            } else {
+                console.log(
+                    "[MFEditor] Автоочистка выполнена, MF сброшены к DEFAULTS ✓",
+                );
+            }
+        } else {
+            checkSyncWithFuzzy(false);
+        }
     }
 
     /* =========================================================

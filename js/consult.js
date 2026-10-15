@@ -1,5 +1,7 @@
 /* =========================================================
    CONSULT — заявки на консультации
+   Обновлено: проверка прав, безопасный выбор работы,
+   Utils.escapeHtml
    ========================================================= */
 const Consult = (() => {
     const KEY = "fp_consults";
@@ -18,14 +20,32 @@ const Consult = (() => {
         done: "Проведена",
     };
 
+    const escapeHtml =
+        typeof Utils !== "undefined" && Utils.escapeHtml
+            ? Utils.escapeHtml
+            : (str) => {
+                  if (str === null || str === undefined) return "";
+                  return String(str)
+                      .replace(/&/g, "&amp;")
+                      .replace(/</g, "&lt;")
+                      .replace(/>/g, "&gt;")
+                      .replace(/"/g, "&quot;");
+              };
+
+    function getUser() {
+        return typeof Auth !== "undefined" ? Auth.getUser() : null;
+    }
+
     /* =========================================================
        БАЗОВЫЕ ОПЕРАЦИИ
        ========================================================= */
     function getAll() {
-        return Storage.get(KEY, []);
+        const list = Storage.get(KEY, []);
+        return Array.isArray(list) ? list : [];
     }
+
     function setAll(list) {
-        Storage.set(KEY, list);
+        Storage.set(KEY, Array.isArray(list) ? list : []);
     }
 
     function forStudent(studentId) {
@@ -48,9 +68,27 @@ const Consult = (() => {
     }
 
     /* =========================================================
+       ПРАВА
+       ========================================================= */
+    function canModify(consult, user) {
+        if (!consult || !user) return false;
+        if (user.role === "admin") return true;
+        if (user.role === "student")
+            return Storage.sameId(consult.studentId, user.id);
+        if (user.role === "teacher")
+            return Storage.sameId(consult.teacherId, user.id);
+        return false;
+    }
+
+    /* =========================================================
        СОЗДАНИЕ
        ========================================================= */
     function create({ studentId, teacherId, datetime, topic, comment }) {
+        if (!studentId || !teacherId || !datetime || !topic) {
+            App.toast("Не все поля заполнены");
+            return null;
+        }
+
         const teacher = Storage.getUserById(teacherId);
         if (!teacher) {
             App.toast("Руководитель не найден");
@@ -99,9 +137,18 @@ const Consult = (() => {
        ДЕЙСТВИЯ
        ========================================================= */
     function doApprove(id, response) {
+        const user = getUser();
         const list = getAll();
         const c = list.find((x) => Storage.sameId(x.id, id));
         if (!c) return;
+        if (!canModify(c, user)) {
+            App.toast("Нет прав на это действие");
+            return;
+        }
+        if (c.status !== STATUS.pending) {
+            App.toast("Заявка уже обработана");
+            return;
+        }
 
         c.status = STATUS.approved;
         c.response = response || "";
@@ -124,9 +171,18 @@ const Consult = (() => {
     }
 
     function doReject(id, reason) {
+        const user = getUser();
         const list = getAll();
         const c = list.find((x) => Storage.sameId(x.id, id));
         if (!c) return;
+        if (!canModify(c, user)) {
+            App.toast("Нет прав на это действие");
+            return;
+        }
+        if (c.status !== STATUS.pending) {
+            App.toast("Заявка уже обработана");
+            return;
+        }
 
         c.status = STATUS.rejected;
         c.response = reason || "";
@@ -154,9 +210,18 @@ const Consult = (() => {
     }
 
     function doMarkDone(id) {
+        const user = getUser();
         const list = getAll();
         const c = list.find((x) => Storage.sameId(x.id, id));
         if (!c) return;
+        if (!canModify(c, user)) {
+            App.toast("Нет прав на это действие");
+            return;
+        }
+        if (c.status !== STATUS.approved) {
+            App.toast("Можно отметить только подтверждённую");
+            return;
+        }
 
         c.status = STATUS.done;
         c.updatedAt = Date.now();
@@ -168,9 +233,19 @@ const Consult = (() => {
     }
 
     function doCancel(id) {
+        const user = getUser();
+        if (!user) return;
         const list = getAll();
         const c = list.find((x) => Storage.sameId(x.id, id));
         if (!c) return;
+        if (!Storage.sameId(c.studentId, user.id)) {
+            App.toast("Только студент может отменить свою заявку");
+            return;
+        }
+        if (c.status !== STATUS.pending) {
+            App.toast("Можно отменить только ожидающую заявку");
+            return;
+        }
 
         c.status = STATUS.rejected;
         c.response = "Отменено студентом";
@@ -195,15 +270,6 @@ const Consult = (() => {
     /* =========================================================
        РЕНДЕР
        ========================================================= */
-    function escapeHtml(str) {
-        if (!str) return "";
-        return String(str)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;");
-    }
-
     function renderPage(user) {
         if (!user)
             return '<div class="card"><div class="empty">Пользователь не найден</div></div>';
@@ -291,6 +357,7 @@ const Consult = (() => {
         const teacher = Storage.getUserById(c.teacherId);
         const isTeacher = user.role === "teacher";
         const isStudent = user.role === "student";
+        const isAdmin = user.role === "admin";
         const statusLabel = STATUS_LABELS[c.status] || c.status;
 
         return `
@@ -300,7 +367,7 @@ const Consult = (() => {
             <div class="consult-time">${escapeHtml(c.datetime)}</div>
             <div class="consult-topic">
               ${
-                  isTeacher
+                  isTeacher || isAdmin
                       ? `Студент: ${escapeHtml(student?.fio || "—")}`
                       : `Руководитель: ${escapeHtml(teacher?.fio || "—")}`
               }
@@ -327,7 +394,7 @@ const Consult = (() => {
         </div>
 
         ${
-            isTeacher && c.status === STATUS.pending
+            (isTeacher || isAdmin) && c.status === STATUS.pending
                 ? `
           <div class="consult-actions">
             <button class="btn-primary btn-sm" onclick="Consult.uiApprove(${c.id})">
@@ -344,7 +411,7 @@ const Consult = (() => {
         }
 
         ${
-            isTeacher && c.status === STATUS.approved
+            (isTeacher || isAdmin) && c.status === STATUS.approved
                 ? `
           <div class="consult-actions">
             <button class="btn-ghost btn-sm" onclick="Consult.uiMarkDone(${c.id})">
@@ -376,11 +443,14 @@ const Consult = (() => {
        МОДАЛКА СОЗДАНИЯ
        ========================================================= */
     function openCreateModal() {
-        const user = Auth.getUser();
+        const user = getUser();
         if (!user || user.role !== "student") return;
 
         const works = Storage.getWorksByStudent(user.id);
-        const work = works[0];
+        const work =
+            works.find((w) => w.status === "active" || w.status === "review") ||
+            works[0];
+
         if (!work) {
             App.toast("Сначала создайте работу");
             return;
@@ -435,11 +505,13 @@ const Consult = (() => {
     }
 
     function saveCreate() {
-        const user = Auth.getUser();
+        const user = getUser();
         if (!user) return;
 
         const works = Storage.getWorksByStudent(user.id);
-        const work = works[0];
+        const work =
+            works.find((w) => w.status === "active" || w.status === "review") ||
+            works[0];
         if (!work) {
             App.toast("У вас нет работы");
             return;

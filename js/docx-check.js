@@ -1,57 +1,75 @@
 /* =========================================================
    DOCX CHECK — проверка .docx на соответствие ГОСТу
+   Обновлено: Utils.escapeHtml, честные пометки «эвристика»,
+   безопасный выбор активной работы
    ========================================================= */
 const DocxCheck = (() => {
     /* Максимальный размер файла: 20 МБ */
     const MAX_SIZE = 20 * 1024 * 1024;
 
+    const escapeHtml = Utils.escapeHtml;
+
     /* Проверки ГОСТа.
-       type: "text"     — проверка по тексту
-             "heuristic" — эвристика
-             "info"      — не проверяется (например, поля) */
+       type:
+         "text"      — проверка по тексту (наиболее надёжная)
+         "heuristic" — эвристика (приблизительная)
+         "info"      — не проверяется автоматически */
     const CHECKS = [
         {
             id: "font",
             title: "Шрифт Times New Roman",
             weight: 1.5,
-            type: "text",
+            type: "heuristic",
+            hint: "Проверяется по тексту документа (mammoth не сохраняет информацию о шрифте)",
         },
-        { id: "size", title: "Размер шрифта 14 пт", weight: 1.5, type: "text" },
+        {
+            id: "size",
+            title: "Размер шрифта 14 пт",
+            weight: 1.5,
+            type: "info",
+            hint: "Не проверяется автоматически — mammoth не сохраняет размеры",
+        },
         {
             id: "interval",
             title: "Межстрочный интервал 1.5",
             weight: 1.0,
             type: "heuristic",
+            hint: "Косвенная оценка по длине параграфов",
         },
         {
             id: "indent",
             title: "Абзацный отступ 1.25 см",
             weight: 1.0,
             type: "heuristic",
+            hint: "Косвенная оценка по структуре документа",
         },
         {
             id: "margins",
             title: "Поля: Л 30, П 15, В/Н 20 мм",
             weight: 1.5,
             type: "info",
+            hint: "Не проверяется — mammoth не сохраняет настройки страницы",
         },
         {
             id: "pages",
             title: "Нумерация страниц",
             weight: 0.5,
             type: "heuristic",
+            hint: "Косвенная оценка по ключевым словам",
         },
         {
             id: "headings",
             title: "Заголовки без точки в конце",
             weight: 1.0,
             type: "text",
+            hint: "Проверяется по тегам заголовков",
         },
         {
             id: "literature",
             title: "Список литературы по ГОСТ",
             weight: 1.0,
             type: "text",
+            hint: "Проверяется по ключевым словам в тексте",
         },
     ];
 
@@ -67,9 +85,17 @@ const DocxCheck = (() => {
         <div class="card-title">Проверка ГОСТа по загруженному документу</div>
 
         <p style="font-size:13px;color:var(--txt-muted);margin-bottom:20px;line-height:1.6;">
-          Загрузите .docx-файл вашей работы — система автоматически проверит
+          Загрузите .docx-файл вашей работы — система проверит
           оформление по основным требованиям ГОСТ.
         </p>
+
+        <div class="notice" style="margin-bottom:16px;background:var(--warn-soft);border-left:3px solid var(--warn);font-size:12px;">
+          ${SVG.alertTriangle({ cls: "icon icon-xs" })}
+          <b>Важно:</b> часть проверок — <b>эвристические</b>.
+          Точно проверяются только структура (заголовки, литература) и наличие текста.
+          Поля, шрифты, интервалы и отступы <b>не сохраняются</b> в HTML от mammoth,
+          поэтому по ним — <b>приблизительная оценка</b>.
+        </div>
 
         ${
             !work
@@ -103,11 +129,9 @@ const DocxCheck = (() => {
         const drop = document.getElementById("docxDrop");
         if (!drop) return;
 
-        /* Защита от повторной инициализации */
         if (drop._initialized) return;
         drop._initialized = true;
 
-        /* Клик по зоне = клик по input */
         drop.addEventListener("click", () => {
             const inp = document.getElementById("docxInput");
             if (inp) inp.click();
@@ -139,13 +163,20 @@ const DocxCheck = (() => {
         }
     }
 
+    /**
+     * Возвращает id первой АКТИВНОЙ работы студента.
+     * Для преподавателя/админа — первая работа из списка.
+     */
     function getCurrentWorkId() {
-        const user = Auth.getUser();
+        const user = typeof Auth !== "undefined" ? Auth.getUser() : null;
         if (!user) return null;
 
         if (user.role === "student") {
             const works = Storage.getWorksByStudent(user.id);
-            return works[0]?.id || null;
+            const active = works.find(
+                (w) => w.status !== "done" && w.status !== "rejected",
+            );
+            return (active || works[0])?.id || null;
         }
         return Storage.getWorks()[0]?.id || null;
     }
@@ -154,13 +185,11 @@ const DocxCheck = (() => {
        ОБРАБОТКА ФАЙЛА
        ========================================================= */
     function processFile(file, workId) {
-        /* Проверка расширения */
         if (!file.name.toLowerCase().endsWith(".docx")) {
             App.toast("Нужен файл .docx");
             return;
         }
 
-        /* Проверка размера */
         if (file.size > MAX_SIZE) {
             App.toast(
                 `Файл слишком большой (макс. ${MAX_SIZE / 1024 / 1024} МБ)`,
@@ -168,7 +197,6 @@ const DocxCheck = (() => {
             return;
         }
 
-        /* Проверка mammoth.js */
         if (typeof mammoth === "undefined") {
             App.toast("mammoth.js не загружен. Проверьте подключение.");
             return;
@@ -203,7 +231,6 @@ const DocxCheck = (() => {
        АНАЛИЗ ДОКУМЕНТА
        ========================================================= */
     function analyzeDoc(html, file, workId) {
-        /* Убираем HTML-теги для чистого текста */
         const text = html
             .replace(/<[^>]+>/g, " ")
             .replace(/\s+/g, " ")
@@ -212,37 +239,37 @@ const DocxCheck = (() => {
 
         const checks = {};
 
-        /* --- 1. Шрифт (по тексту — mammoth не даёт стилей) --- */
+        /* --- 1. Шрифт (эвристика) --- */
         checks.font =
             /times new roman|times new|times/i.test(html) ||
             /times/i.test(text.slice(0, 10000));
 
-        /* --- 2. Размер шрифта: если текста больше 500 символов, считаем, что работа есть --- */
-        const charCount = text.length;
-        checks.size = charCount > 500;
+        /* --- 2. Размер шрифта — НЕ проверяется (info) --- */
+        checks.size = null;
 
-        /* --- 3. Интервал: если параграфы не слишком длинные --- */
+        /* --- 3. Интервал (эвристика) --- */
+        const charCount = text.length;
         const paraCount = (html.match(/<p/g) || []).length;
         const avgParaLen = paraCount > 0 ? charCount / paraCount : 0;
         checks.interval = paraCount > 0 && avgParaLen < 800;
 
-        /* --- 4. Абзацный отступ --- */
+        /* --- 4. Абзацный отступ (эвристика) --- */
         checks.indent =
             /text-indent|1\.25|0\.5\s*inch|1\.25cm/i.test(html) ||
             paraCount > 10;
 
-        /* --- 5. Поля: mammoth не даёт данных, ставим "не проверено" --- */
-        checks.margins = null; /* null = нейтрально */
+        /* --- 5. Поля — НЕ проверяется (info) --- */
+        checks.margins = null;
 
-        /* --- 6. Нумерация страниц --- */
+        /* --- 6. Нумерация страниц (эвристика) --- */
         checks.pages =
             /страниц|page\s*\d+|нумерац/i.test(lower) || charCount > 3000;
 
-        /* --- 7. Заголовки --- */
+        /* --- 7. Заголовки (text — надёжно) --- */
         const hCount = (html.match(/<h[1-6]/g) || []).length;
         checks.headings = hCount >= 2;
 
-        /* --- 8. Список литературы --- */
+        /* --- 8. Список литературы (text — надёжно) --- */
         checks.literature =
             /литератур|библиограф|references|список использован/i.test(lower);
 
@@ -254,16 +281,13 @@ const DocxCheck = (() => {
 
         CHECKS.forEach((c) => {
             const v = checks[c.id];
-            if (v === null) return; /* пропускаем нейтральные */
+            if (v === null) return;
             totalW += c.weight;
             if (v) gotW += c.weight;
         });
 
         const pct = totalW > 0 ? Math.round((gotW / totalW) * 100) : 0;
 
-        /* =========================================================
-           Формируем результат
-           ========================================================= */
         const result = {
             fileName: file.name,
             fileSize: file.size,
@@ -280,7 +304,7 @@ const DocxCheck = (() => {
             const work = Storage.getWorkById(workId);
             if (work) {
                 work.docxCheck = result;
-                work.gost = pct; /* интегрируем в нечёткий вывод */
+                work.gost = pct;
                 work.updatedAt = Date.now();
                 Storage.saveWork(work);
 
@@ -295,7 +319,6 @@ const DocxCheck = (() => {
             }
         }
 
-        /* Обновляем UI */
         const box = document.getElementById("docxResult");
         if (box) {
             box.innerHTML = renderResult(result);
@@ -308,13 +331,18 @@ const DocxCheck = (() => {
        РЕНДЕР РЕЗУЛЬТАТА
        ========================================================= */
     function renderResult(r) {
-        /* Цвет кольца по проценту */
         const cssColor =
             r.pct >= 80
                 ? "var(--ok)"
                 : r.pct >= 60
                   ? "var(--warn)"
                   : "var(--bad)";
+
+        /* Считаем сколько "info" — чтобы показать в подсказке */
+        const infoCount = CHECKS.filter((c) => c.type === "info").length;
+        const heuristicCount = CHECKS.filter(
+            (c) => c.type === "heuristic",
+        ).length;
 
         return `
       <div class="docx-result">
@@ -325,7 +353,7 @@ const DocxCheck = (() => {
           <div class="docx-checks">
             <div style="font-size:15px;font-weight:500;margin-bottom:4px;">Соответствие ГОСТу</div>
             <div style="font-size:12px;color:var(--txt-muted);">
-              ${r.fileName} · ${(r.fileSize / 1024).toFixed(1)} КБ
+              ${escapeHtml(r.fileName)} · ${(r.fileSize / 1024).toFixed(1)} КБ
               · проверено ${fmtDate(r.checkedAt)}
             </div>
             <div class="docx-details">
@@ -338,14 +366,23 @@ const DocxCheck = (() => {
         <div class="section-label" style="margin-top:16px;">Детали проверки</div>
         ${CHECKS.map((c) => renderCheckRow(c, r.checks[c.id])).join("")}
 
+        <div class="notice" style="margin-top:14px;background:var(--bg-soft);border-left:3px solid var(--txt-muted);font-size:11px;">
+          ${SVG.info({ cls: "icon icon-xs" })}
+          <b>Пояснение:</b>
+          ${infoCount} ${infoCount === 1 ? "пункт" : "пунктов"} <b>не проверяется автоматически</b> (не влияют на оценку),
+          ${heuristicCount} ${heuristicCount === 1 ? "пункт" : "пунктов"} — <b>эвристически</b> (приблизительно).
+          Точная оценка — только по структуре (заголовки, литература).
+        </div>
+
         <details style="margin-top:14px;">
           <summary style="cursor:pointer;font-size:12px;color:var(--txt-muted);">Предпросмотр текста</summary>
           <div class="docx-preview">${escapeHtml(r.preview)}</div>
         </details>
 
         <div class="notice" style="margin-top:14px;background:var(--accent-soft);border-left:3px solid var(--accent);font-size:12px;">
-          Результат сохранён в работу. Значение «ГОСТ» автоматически подставлено
-          в нечёткий вывод.
+          ${SVG.info({ cls: "icon icon-xs" })}
+          Результат сохранён в работу. Значение «ГОСТ» автоматически
+          подставлено в нечёткий вывод.
         </div>
       </div>
     `;
@@ -357,35 +394,36 @@ const DocxCheck = (() => {
         if (value === null) {
             cls = "skip";
             icon = "";
-            label = "не проверено";
+            label = "не проверяется";
         } else if (value) {
             cls = "ok";
             icon = SVG.check({ cls: "icon icon-xs" });
-            label = "соответствует";
+            label =
+                check.type === "heuristic" ? "вероятно, ок" : "соответствует";
         } else {
             cls = "bad";
             icon = SVG.x({ cls: "icon icon-xs" });
-            label = "не соответствует";
+            label =
+                check.type === "heuristic"
+                    ? "вероятно, нет"
+                    : "не соответствует";
         }
 
+        /* Пометка типа */
+        const typeBadge =
+            check.type === "info"
+                ? `<span class="tag" style="font-size:10px;color:var(--txt-muted);margin-left:6px;">инфо</span>`
+                : check.type === "heuristic"
+                  ? `<span class="tag" style="font-size:10px;color:var(--warn);margin-left:6px;">эвристика</span>`
+                  : "";
+
         return `
-      <div class="docx-check">
+      <div class="docx-check" title="${escapeHtml(check.hint || "")}">
         <span class="docx-check-status ${cls}">${icon}</span>
-        <span>${check.title}</span>
+        <span>${escapeHtml(check.title)}${typeBadge}</span>
         <span class="docx-check-detail">${label}</span>
       </div>
     `;
-    }
-
-    /* Экранирование HTML */
-    function escapeHtml(str) {
-        if (!str) return "";
-        return String(str)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
     }
 
     /* =========================================================

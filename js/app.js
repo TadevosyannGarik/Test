@@ -1,5 +1,7 @@
 /* =========================================================
    APP — запуск, навигация, рендер разделов, модалки, toast
+   Обновлено: consultations у админа, обработка ошибок _after,
+   проверка blocked, безопасные вызовы зависимостей
    ========================================================= */
 const App = (() => {
     let currentUser = null;
@@ -60,6 +62,11 @@ const App = (() => {
             { id: "mamdani", icon: SVG.brain, label: "Мамдани" },
             { id: "simulate", icon: SVG.sliders, label: "Симулятор" },
             { id: "rankings", icon: SVG.award, label: "Рейтинги" },
+            {
+                id: "consultations",
+                icon: SVG.calendar,
+                label: "Консультации",
+            },
             { id: "audit", icon: SVG.log, label: "Аудит" },
             { id: "analytics", icon: SVG.trending, label: "Аналитика" },
             { id: "mfEditor", icon: SVG.settings, label: "Редактор ФП" },
@@ -97,13 +104,23 @@ const App = (() => {
        ========================================================= */
     function boot(user) {
         if (!user) return;
+
+        /* Проверка блокировки */
+        if (user.blocked) {
+            console.warn("[App] Пользователь заблокирован");
+            if (typeof Auth !== "undefined" && Auth.logout) {
+                Auth.logout();
+            }
+            return;
+        }
+
         currentUser = user;
 
         const nameEl = document.getElementById("hUserName");
         const roleEl = document.getElementById("hUserRole");
         const avEl = document.getElementById("hAvatar");
 
-        if (nameEl) nameEl.textContent = user.fio;
+        if (nameEl) nameEl.textContent = user.fio || "—";
         if (roleEl) roleEl.textContent = roleName(user.role);
         if (avEl) avEl.textContent = initials(user.fio);
 
@@ -153,8 +170,8 @@ const App = (() => {
     function navigate(viewId, params) {
         if (!viewId) return;
 
-        const hideNav = viewId === "create-work";
         const nav = document.getElementById("mainNav");
+        const hideNav = viewId === "create-work";
         if (nav) nav.style.display = hideNav ? "none" : "flex";
 
         document.querySelectorAll("#mainNav button").forEach((b) => {
@@ -174,10 +191,21 @@ const App = (() => {
             return;
         }
 
+        /* Выбираем VIEWS по роли */
         let views = {};
-        if (currentUser.role === "student") views = { ...Student.VIEWS };
-        else if (currentUser.role === "teacher") views = { ...Teacher.VIEWS };
-        else if (currentUser.role === "admin") views = { ...Admin.VIEWS };
+        if (currentUser.role === "student" && typeof Student !== "undefined") {
+            views = { ...Student.VIEWS };
+        } else if (
+            currentUser.role === "teacher" &&
+            typeof Teacher !== "undefined"
+        ) {
+            views = { ...Teacher.VIEWS };
+        } else if (
+            currentUser.role === "admin" &&
+            typeof Admin !== "undefined"
+        ) {
+            views = { ...Admin.VIEWS };
+        }
 
         const fn = views[viewId];
         const afterFn = views[viewId + "_after"];
@@ -187,7 +215,10 @@ const App = (() => {
                 root.innerHTML = fn(params);
             } catch (err) {
                 console.error("[App] Ошибка рендера раздела:", viewId, err);
-                root.innerHTML = placeholder("Ошибка в разделе: " + viewId);
+                root.innerHTML = placeholder(
+                    "Ошибка в разделе: " + viewId,
+                    err.message,
+                );
                 return;
             }
             if (afterFn) {
@@ -195,21 +226,26 @@ const App = (() => {
                     try {
                         afterFn(params);
                     } catch (err) {
-                        console.warn("[App] Ошибка _after:", viewId, err);
+                        console.error("[App] Ошибка _after:", viewId, err);
+                        toast("Ошибка отрисовки: " + viewId);
                     }
                 }, 0);
             }
         } else {
-            root.innerHTML = placeholder("Раздел в разработке");
+            root.innerHTML = placeholder(
+                "Раздел в разработке",
+                `Раздел «${viewId}» ещё не реализован для вашей роли.`,
+            );
         }
     }
 
-    function placeholder(text) {
+    function placeholder(text, hint) {
         return `
       <div class="card">
         <div class="placeholder">
           <div class="placeholder-ico">${SVG.alertTriangle({ cls: "icon icon-2xl" })}</div>
-          <div>${text}</div>
+          <div style="font-weight:500;margin-bottom:6px;">${text}</div>
+          ${hint ? `<div style="font-size:12px;color:var(--txt-muted);">${hint}</div>` : ""}
         </div>
       </div>
     `;
@@ -259,18 +295,22 @@ const App = (() => {
         if (!currentUser) return;
         if (typeof Notifications === "undefined") return;
 
-        const count = Notifications.unreadCount(currentUser.id);
-        const el = document.getElementById("notifCount");
-        const bell = document.getElementById("notifBell");
-        if (!el || !bell) return;
+        try {
+            const count = Notifications.unreadCount(currentUser.id);
+            const el = document.getElementById("notifCount");
+            const bell = document.getElementById("notifBell");
+            if (!el || !bell) return;
 
-        if (count > 0) {
-            el.textContent = count > 9 ? "9+" : count;
-            el.style.display = "";
-            bell.classList.add("has-new");
-        } else {
-            el.style.display = "none";
-            bell.classList.remove("has-new");
+            if (count > 0) {
+                el.textContent = count > 9 ? "9+" : count;
+                el.style.display = "";
+                bell.classList.add("has-new");
+            } else {
+                el.style.display = "none";
+                bell.classList.remove("has-new");
+            }
+        } catch (err) {
+            console.warn("[App] refreshNotifications:", err);
         }
     }
 
@@ -296,6 +336,11 @@ document.addEventListener("DOMContentLoaded", () => {
         console.error("[App] Модуль Auth не загружен");
         return;
     }
+    if (typeof Storage === "undefined") {
+        console.error("[App] Модуль Storage не загружен");
+        return;
+    }
+
     Auth.seedDemo();
     Auth.pickRole("student");
     Auth.restoreSession();
