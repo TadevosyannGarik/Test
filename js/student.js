@@ -4317,6 +4317,13 @@ const Student = (() => {
         App.toast(`Экспортировано ${events.length} событий`);
     }
 
+    VIEWS.announcements = function () {
+        if (typeof Announcements === "undefined") {
+            return '<div class="card"><div class="empty">Модуль недоступен</div></div>';
+        }
+        return Announcements.renderPage(getUser());
+    };
+
     VIEWS.mamdani = function (params) {
         return MamdaniViz.render(params);
     };

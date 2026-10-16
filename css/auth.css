@@ -1,3 +1,7 @@
+/* =========================================================
+   AUTH — экран входа и регистрации
+   ========================================================= */
+
 .auth-screen {
     min-height: 100vh;
     display: flex;
@@ -9,9 +13,9 @@
 
 .auth-card {
     width: 100%;
-    max-width: 560px;
+    max-width: 580px;
     background: var(--bg-elev);
-    border-radius: 20px;
+    border-radius: var(--r-xl);
     padding: 48px 44px;
     animation: fadeUp 0.5s ease;
     border: 1px solid var(--line);
@@ -24,14 +28,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 12px;
+    gap: 14px;
     margin-bottom: 10px;
 }
 .auth-brand .brand-mark {
-    width: 36px;
-    height: 36px;
-    font-size: 13px;
-    border-radius: var(--r);
+    width: 42px;
+    height: 42px;
+    font-size: 14px;
+    border-radius: 50%;
     background: var(--txt);
     color: var(--bg);
     display: inline-flex;
@@ -42,7 +46,7 @@
 }
 .auth-brand .brand-name {
     font-size: var(--fs-xl);
-    font-weight: 400;
+    font-weight: 500;
     color: var(--txt);
     letter-spacing: -0.025em;
 }
@@ -55,39 +59,48 @@
     letter-spacing: 0.01em;
 }
 
+/* =========================================================
+   ТАБЫ — таблетки
+   ========================================================= */
 .auth-tabs {
     display: flex;
-    gap: 28px;
-    margin-bottom: 32px;
-    border-bottom: 1px solid var(--line);
+    gap: 4px;
+    margin-bottom: 28px;
+    padding: 4px;
+    background: var(--bg-soft);
+    border-radius: var(--r-pill);
 }
 .auth-tabs button {
+    flex: 1;
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 12px 0;
+    justify-content: center;
+    gap: 8px;
+    padding: 11px 20px;
     font-size: var(--fs-base);
-    font-weight: 400;
+    font-weight: 500;
     color: var(--txt-muted);
-    border-bottom: 2px solid transparent;
-    margin-bottom: -1px;
-    transition:
-        color var(--t-fast),
-        border-color var(--t-fast);
+    border-radius: var(--r-pill);
+    transition: all var(--t-fast);
     background: transparent;
+    border: none;
 }
 .auth-tabs button:hover {
     color: var(--txt);
 }
 .auth-tabs button.active {
     color: var(--txt);
-    border-bottom-color: var(--txt);
-    font-weight: 500;
+    background: var(--bg-elev);
+    font-weight: 600;
+    box-shadow: var(--shadow-xs);
 }
 
+/* =========================================================
+   СООБЩЕНИЯ
+   ========================================================= */
 .auth-msg {
     display: none;
-    padding: 14px 16px;
+    padding: 14px 18px;
     border-radius: var(--r);
     font-size: var(--fs-sm);
     margin-bottom: 20px;
@@ -108,6 +121,9 @@
     border-color: rgba(31, 138, 76, 0.15);
 }
 
+/* =========================================================
+   ROLE PICKER — карточки-таблетки
+   ========================================================= */
 .role-picker {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -122,8 +138,8 @@
     gap: 14px;
     padding: 26px 12px;
     background: var(--bg-elev);
-    border: 1px solid var(--line);
-    border-radius: var(--r-md);
+    border: 1.5px solid var(--line);
+    border-radius: var(--r-lg);
     color: var(--txt-muted);
     font-size: var(--fs-sm);
     font-weight: 400;
@@ -140,16 +156,17 @@
     background: var(--txt);
     border-color: var(--txt);
     color: var(--bg);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
 }
 .role-picker .icon {
-    width: 26px;
-    height: 26px;
+    width: 28px;
+    height: 28px;
     stroke-width: 1.5;
 }
 .role-lbl {
     font-size: var(--fs-base);
     font-weight: 500;
+    letter-spacing: -0.01em;
 }
 
 @media (max-width: 520px) {
@@ -160,9 +177,13 @@
         flex-direction: row;
         justify-content: flex-start;
         padding: 16px 20px;
+        border-radius: var(--r);
     }
 }
 
+/* =========================================================
+   ДЕМО-ПОДСКАЗКА
+   ========================================================= */
 .demo-hint {
     margin-top: 32px;
     padding-top: 24px;
@@ -175,7 +196,7 @@
     margin-bottom: 14px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    font-weight: 500;
+    font-weight: 600;
 }
 .demo-title b {
     color: var(--txt);
@@ -193,28 +214,31 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: transparent;
+    background: var(--bg-soft);
     border: 1px solid var(--line);
-    border-radius: 100px;
-    padding: 8px 16px;
+    border-radius: var(--r-pill);
+    padding: 9px 18px;
     font-size: var(--fs-xs);
     color: var(--txt-muted);
     transition: all var(--t-fast);
     letter-spacing: 0.02em;
-    font-weight: 500;
+    font-weight: 600;
 }
 .demo-btn:hover {
     background: var(--txt);
     color: var(--bg);
     border-color: var(--txt);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    box-shadow: var(--shadow-sm);
 }
 .demo-btn .icon {
-    width: 12px;
-    height: 12px;
+    width: 14px;
+    height: 14px;
 }
 
+/* =========================================================
+   ФОРМА
+   ========================================================= */
 .auth-form .field {
     margin-bottom: 22px;
 }
@@ -234,10 +258,25 @@
     }
     .auth-card {
         padding: 32px 24px;
-        border-radius: 16px;
+        border-radius: var(--r-lg);
         max-width: 100%;
     }
     .auth-tabs {
-        gap: 20px;
+        gap: 4px;
     }
+    .auth-tabs button {
+        padding: 10px 14px;
+        font-size: var(--fs-sm);
+    }
+}
+
+/* =========================================================
+   КНОПКА «ВОЙТИ» / «СОЗДАТЬ»
+   ========================================================= */
+.auth-form .btn-primary {
+    width: 100%;
+    padding: 14px 24px;
+    font-size: var(--fs-md);
+    font-weight: 500;
+    margin-top: 8px;
 }

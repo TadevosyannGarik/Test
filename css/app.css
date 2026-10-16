@@ -1,9 +1,17 @@
+/* =========================================================
+   APP — шапка, навигация, карточки, модалки
+   + Каскадная анимация карточек
+   ========================================================= */
+
 .app {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
 }
 
+/* =========================================================
+   ШАПКА
+   ========================================================= */
 .app-header {
     background: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(20px);
@@ -29,11 +37,11 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 30px;
-    height: 30px;
+    width: 32px;
+    height: 32px;
     background: var(--txt);
     color: var(--bg);
-    border-radius: var(--r);
+    border-radius: 50%;
     font-weight: 600;
     font-size: 12px;
     letter-spacing: 0.02em;
@@ -68,8 +76,8 @@
 }
 
 .app-avatar {
-    width: 34px;
-    height: 34px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     background: var(--bg-soft);
     color: var(--txt);
@@ -89,15 +97,18 @@
     transform: scale(1.05);
 }
 
+/* =========================================================
+   НАВИГАЦИЯ — таблетки
+   ========================================================= */
 .app-nav {
     background: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border-bottom: 1px solid var(--line);
-    padding: 0 40px;
+    padding: 8px 32px;
     display: flex;
     align-items: center;
-    gap: 2px;
+    gap: 4px;
     overflow-x: auto;
     position: sticky;
     top: 64px;
@@ -112,27 +123,29 @@
     display: inline-flex;
     align-items: center;
     gap: 7px;
-    padding: 18px 14px;
+    padding: 9px 16px;
     font-size: var(--fs-sm);
     color: var(--txt-muted);
-    border-bottom: 2px solid transparent;
-    margin-bottom: -1px;
+    border-radius: var(--r-pill);
     white-space: nowrap;
     transition:
         color var(--t-fast),
-        border-color var(--t-fast),
+        background var(--t-fast),
         transform var(--t-fast);
     background: transparent;
-    font-weight: 400;
+    font-weight: 500;
     letter-spacing: -0.005em;
     position: relative;
+    border: none;
+    margin: 0;
 }
 .app-nav button:hover {
     color: var(--txt);
+    background: var(--bg-soft);
 }
 .app-nav button.active {
-    color: var(--txt);
-    border-bottom-color: var(--txt);
+    color: #fff;
+    background: var(--txt);
     font-weight: 500;
     animation: navPulse 0.4s ease;
 }
@@ -152,41 +165,50 @@
     }
 }
 
+/* Убираем старый подчёркивающий эффект */
 .app-nav button.active::after {
-    content: "";
-    position: absolute;
-    left: 50%;
-    bottom: -1px;
-    width: 100%;
-    height: 2px;
-    background: var(--txt);
-    transform: translateX(-50%) scaleX(0);
-    transform-origin: center;
-    animation: navUnderline 0.4s ease forwards;
-}
-@keyframes navUnderline {
-    0% {
-        transform: translateX(-50%) scaleX(0);
-    }
-    100% {
-        transform: translateX(-50%) scaleX(1);
-    }
+    display: none;
 }
 
+/* Бейдж непрочитанных */
+.app-nav button {
+    position: relative;
+}
+.nav-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 6px;
+    border-radius: var(--r-pill);
+    background: var(--bad);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+}
+.app-nav button.active .nav-badge {
+    background: rgba(255, 255, 255, 0.25);
+    color: #fff;
+}
+
+/* Кнопка «Демонстрация» */
 .demo-launch-btn {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 16px;
+    padding: 8px 18px;
     margin-left: auto;
-    border-radius: 100px;
+    border-radius: var(--r-pill);
     background: var(--txt);
     color: var(--bg);
     font-size: var(--fs-xs);
     font-weight: 500;
     transition: all var(--t-fast);
     white-space: nowrap;
-    height: 32px;
+    height: 34px;
     margin-top: auto;
     margin-bottom: auto;
     border: none;
@@ -195,7 +217,7 @@
 .demo-launch-btn:hover {
     background: var(--accent-hover);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: var(--shadow-sm);
 }
 .demo-launch-btn .pulse-dot {
     width: 6px;
@@ -216,6 +238,9 @@
     }
 }
 
+/* =========================================================
+   КОНТЕНТ
+   ========================================================= */
 .app-main {
     flex: 1;
     padding: 40px 40px;
@@ -237,6 +262,9 @@
     }
 }
 
+/* =========================================================
+   ПЕРЕХОДЫ МЕЖДУ РАЗДЕЛАМИ
+   ========================================================= */
 .view {
     display: block;
 }
@@ -256,42 +284,38 @@
     }
 }
 
+/* =========================================================
+   КАСКАДНОЕ ПОЯВЛЕНИЕ КАРТОЧЕК
+   ========================================================= */
 .view.active > *:nth-child(1) {
     animation: cardEnterTop 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) backwards;
     animation-delay: 0.03s;
 }
-
 .view.active > *:nth-child(2) {
     animation: cardEnterLeft 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) backwards;
     animation-delay: 0.08s;
 }
-
 .view.active > *:nth-child(3) {
     animation: cardEnterRight 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) backwards;
     animation-delay: 0.13s;
 }
-
 .view.active > *:nth-child(4) {
     animation: cardEnterBottom 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) backwards;
     animation-delay: 0.18s;
 }
-
 .view.active > *:nth-child(5) {
     animation: cardEnterTopLeft 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) backwards;
     animation-delay: 0.23s;
 }
-
 .view.active > *:nth-child(6) {
     animation: cardEnterTopRight 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) backwards;
     animation-delay: 0.28s;
 }
-
 .view.active > *:nth-child(7) {
     animation: cardEnterBottomLeft 0.5s cubic-bezier(0.34, 1.2, 0.64, 1)
         backwards;
     animation-delay: 0.33s;
 }
-
 .view.active > *:nth-child(n + 8) {
     animation: cardEnterBottomRight 0.5s cubic-bezier(0.34, 1.2, 0.64, 1)
         backwards;
@@ -308,7 +332,6 @@
         transform: translateY(0) scale(1);
     }
 }
-
 @keyframes cardEnterLeft {
     0% {
         opacity: 0;
@@ -319,7 +342,6 @@
         transform: translateX(0) scale(1);
     }
 }
-
 @keyframes cardEnterRight {
     0% {
         opacity: 0;
@@ -330,7 +352,6 @@
         transform: translateX(0) scale(1);
     }
 }
-
 @keyframes cardEnterBottom {
     0% {
         opacity: 0;
@@ -341,7 +362,6 @@
         transform: translateY(0) scale(1);
     }
 }
-
 @keyframes cardEnterTopLeft {
     0% {
         opacity: 0;
@@ -352,7 +372,6 @@
         transform: translate(0, 0) scale(1);
     }
 }
-
 @keyframes cardEnterTopRight {
     0% {
         opacity: 0;
@@ -363,7 +382,6 @@
         transform: translate(0, 0) scale(1);
     }
 }
-
 @keyframes cardEnterBottomLeft {
     0% {
         opacity: 0;
@@ -374,7 +392,6 @@
         transform: translate(0, 0) scale(1);
     }
 }
-
 @keyframes cardEnterBottomRight {
     0% {
         opacity: 0;
@@ -386,6 +403,7 @@
     }
 }
 
+/* Карточки внутри .grid */
 .view.active > .grid > *:nth-child(1) {
     animation: cardEnterTop 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) backwards;
     animation-delay: 0.05s;
@@ -416,6 +434,9 @@
     animation-delay: 0.35s;
 }
 
+/* =========================================================
+   КАРТОЧКИ
+   ========================================================= */
 .card {
     background: var(--bg-elev);
     border: 1px solid var(--line);
@@ -423,7 +444,8 @@
     padding: 28px;
     transition:
         border-color var(--t-base),
-        box-shadow var(--t-base);
+        box-shadow var(--t-base),
+        transform var(--t-base);
 }
 .card:hover {
     border-color: var(--line-strong);
@@ -431,10 +453,10 @@
 
 .card-title {
     font-size: var(--fs-md);
-    font-weight: 500;
+    font-weight: 600;
     margin-bottom: 20px;
     color: var(--txt);
-    letter-spacing: -0.01em;
+    letter-spacing: -0.015em;
     display: block;
 }
 .card-head {
@@ -449,6 +471,9 @@
     margin-bottom: 0;
 }
 
+/* =========================================================
+   СЕТКИ
+   ========================================================= */
 .grid {
     display: grid;
     gap: 20px;
@@ -478,6 +503,9 @@
     }
 }
 
+/* =========================================================
+   KPI
+   ========================================================= */
 .kpi {
     text-align: left;
     padding: 24px 22px;
@@ -485,6 +513,7 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
+    border-radius: var(--r-lg);
 }
 .kpi-num {
     font-size: var(--fs-3xl);
@@ -501,6 +530,9 @@
     letter-spacing: 0.02em;
 }
 
+/* =========================================================
+   ТАБЛИЦЫ
+   ========================================================= */
 .table {
     width: 100%;
     border-collapse: collapse;
@@ -529,6 +561,9 @@
     background: var(--bg-soft);
 }
 
+/* =========================================================
+   МОДАЛКИ
+   ========================================================= */
 .modal-back {
     position: fixed;
     inset: 0;
@@ -571,17 +606,17 @@
 }
 .modal-head h3 {
     font-size: var(--fs-lg);
-    font-weight: 500;
+    font-weight: 600;
     color: var(--txt);
     letter-spacing: -0.015em;
 }
 .modal-close {
-    width: 32px;
-    height: 32px;
+    width: 34px;
+    height: 34px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: var(--r-sm);
+    border-radius: 50%;
     color: var(--txt-muted);
     font-size: 18px;
     transition: all var(--t-fast);
@@ -589,8 +624,12 @@
 .modal-close:hover {
     background: var(--bg-soft);
     color: var(--txt);
+    transform: rotate(90deg);
 }
 
+/* =========================================================
+   QUICK ACTIONS — карточки-таблетки
+   ========================================================= */
 .quick-actions {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -599,11 +638,10 @@
     margin-top: 16px;
     align-items: stretch;
 }
-
 .quick-action {
     padding: 22px;
-    border: 1px solid var(--line);
-    border-radius: var(--r-md);
+    border-radius: 20px !important; /* ← навязываем */
+
     cursor: pointer;
     transition: all var(--t-base);
     text-align: left;
@@ -621,9 +659,9 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
-    border-radius: var(--r);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
     background: var(--bg-soft);
     color: var(--txt);
     transition: all var(--t-fast);
@@ -631,6 +669,7 @@
 .quick-action:hover .qa-ico {
     background: var(--txt);
     color: var(--bg);
+    transform: scale(1.05);
 }
 .quick-action .qa-ico .icon {
     width: 20px;
@@ -638,7 +677,7 @@
 }
 .quick-action .qa-lbl {
     font-size: var(--fs-base);
-    font-weight: 500;
+    font-weight: 600;
     color: var(--txt);
     letter-spacing: -0.01em;
 }
@@ -649,6 +688,9 @@
     line-height: 1.5;
 }
 
+/* =========================================================
+   ФИЛЬТРЫ
+   ========================================================= */
 .filters {
     display: flex;
     gap: 12px;
@@ -659,22 +701,25 @@
 }
 .filters input,
 .filters select {
-    padding: 8px 0;
+    padding: 10px 18px;
     font-size: var(--fs-base);
-    border: none;
-    border-bottom: 1px solid var(--line);
-    border-radius: 0;
-    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: var(--r-pill);
+    background: var(--bg-elev);
     color: var(--txt);
     outline: none;
     min-width: 140px;
-    transition: border-color var(--t-fast);
+    transition: all var(--t-fast);
 }
 .filters input:focus,
 .filters select:focus {
-    border-bottom-color: var(--txt);
+    border-color: var(--txt);
+    box-shadow: 0 0 0 4px var(--accent-soft);
 }
 
+/* =========================================================
+   ФОРМА-GRID
+   ========================================================= */
 .form-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -689,22 +734,28 @@
     }
 }
 
+/* =========================================================
+   СЧЁТЧИК
+   ========================================================= */
 .count-chip {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 20px;
-    height: 20px;
-    padding: 0 7px;
-    border-radius: 100px;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 8px;
+    border-radius: var(--r-pill);
     background: var(--bg-soft);
     color: var(--txt);
     font-size: var(--fs-xs);
-    font-weight: 500;
+    font-weight: 600;
     margin-left: 8px;
     font-variant-numeric: tabular-nums;
 }
 
+/* =========================================================
+   MISC
+   ========================================================= */
 .placeholder {
     padding: 60px 20px;
     text-align: center;
@@ -715,8 +766,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 56px;
-    height: 56px;
+    width: 60px;
+    height: 60px;
     border-radius: 50%;
     background: var(--bg-soft);
     color: var(--txt-muted);
@@ -732,17 +783,22 @@
     margin-bottom: 14px;
     cursor: pointer;
     transition: color var(--t-fast);
+    border-radius: var(--r-pill);
+    padding: 4px 0;
 }
 .back-link:hover {
     color: var(--txt);
 }
 
+/* =========================================================
+   АДАПТИВ
+   ========================================================= */
 @media (max-width: 900px) {
     .app-header {
         padding: 0 24px;
     }
     .app-nav {
-        padding: 0 24px;
+        padding: 8px 20px;
     }
     .app-main {
         padding: 28px 24px;
@@ -755,7 +811,7 @@
         height: 56px;
     }
     .app-nav {
-        padding: 0 20px;
+        padding: 6px 16px;
         top: 56px;
     }
     .app-main {
@@ -766,9 +822,11 @@
     }
     .modal {
         padding: 24px 20px;
+        border-radius: var(--r-lg);
     }
     .card {
         padding: 20px;
+        border-radius: var(--r-md);
     }
     .quick-actions {
         grid-template-columns: 1fr;
@@ -780,7 +838,6 @@
     .view.active > *,
     .view.active > .grid > *,
     .app-nav button.active,
-    .app-nav button.active::after,
     .modal,
     .modal-back,
     .card,

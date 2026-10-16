@@ -1,32 +1,47 @@
+/* =========================================================
+   ADMIN — пользователи, работы, справочники, аудит, объявления
+   ========================================================= */
+
+/* =========================================================
+   USER ROW — строка пользователя
+   ========================================================= */
 .user-row {
     display: grid;
-    grid-template-columns: 36px 1fr auto auto auto;
-    gap: 12px;
+    grid-template-columns: 40px 1fr auto auto auto;
+    gap: 14px;
     align-items: center;
-    padding: 12px 14px;
+    padding: 14px 18px;
     border: 1px solid var(--line);
-    border-radius: var(--r);
-    margin-bottom: 6px;
+    border-radius: var(--r-md);
+    margin-bottom: 8px;
     background: var(--bg-elev);
     transition: all var(--t-fast);
 }
 .user-row:hover {
     border-color: var(--line-strong);
     background: var(--bg-soft);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
 }
 .user-avatar {
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     background: var(--info-soft);
     color: var(--info);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 600;
-    font-size: 12px;
+    font-weight: 700;
+    font-size: 13px;
     flex-shrink: 0;
     cursor: pointer;
+    border: 1.5px solid transparent;
+    transition: all var(--t-fast);
+}
+.user-avatar:hover {
+    border-color: currentColor;
+    transform: scale(1.05);
 }
 .user-avatar.teacher {
     background: var(--sage-soft);
@@ -38,9 +53,10 @@
 }
 
 .user-name {
-    font-weight: 500;
-    font-size: 13px;
+    font-weight: 600;
+    font-size: 14px;
     color: var(--txt);
+    letter-spacing: -0.005em;
 }
 .user-email {
     font-size: 12px;
@@ -53,132 +69,159 @@
     margin-top: 2px;
 }
 
+/* =========================================================
+   ROLE CHIP — таблетки
+   ========================================================= */
 .role-chip {
     display: inline-block;
-    padding: 3px 10px;
-    border-radius: 20px;
+    padding: 4px 12px;
+    border-radius: var(--r-pill);
     font-size: 11px;
-    font-weight: 500;
+    font-weight: 600;
     border: 1px solid transparent;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
 }
 .role-chip.student {
     background: var(--info-soft);
     color: var(--info);
-    border-color: rgba(42, 92, 184, 0.25);
+    border-color: rgba(42, 92, 184, 0.2);
 }
 .role-chip.teacher {
     background: var(--sage-soft);
     color: var(--sage);
-    border-color: rgba(92, 138, 90, 0.25);
+    border-color: rgba(92, 138, 90, 0.2);
 }
 .role-chip.admin {
     background: var(--bad-soft);
     color: var(--bad);
-    border-color: rgba(194, 58, 47, 0.25);
+    border-color: rgba(194, 58, 47, 0.2);
 }
 
 .blocked-chip {
     display: inline-block;
-    padding: 2px 7px;
-    border-radius: 4px;
+    padding: 3px 10px;
+    border-radius: var(--r-pill);
     font-size: 10px;
-    font-weight: 600;
+    font-weight: 700;
     background: var(--bad-soft);
     color: var(--bad);
-    margin-left: 6px;
+    margin-left: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
 }
 
+/* =========================================================
+   ADMIN FILTERS — таблетки
+   ========================================================= */
 .admin-filters {
     display: flex;
-    gap: 8px;
+    gap: 10px;
     flex-wrap: wrap;
-    margin-bottom: 14px;
+    margin-bottom: 16px;
 }
 .admin-filters input,
 .admin-filters select {
-    padding: 8px 12px;
+    padding: 11px 18px;
     font-size: 13px;
     border: 1px solid var(--line);
-    border-radius: var(--r);
+    border-radius: var(--r-pill);
     background: var(--bg-elev);
     color: var(--txt);
     outline: none;
     min-width: 140px;
-    transition:
-        border-color var(--t-fast),
-        box-shadow var(--t-fast);
+    transition: all var(--t-fast);
 }
 .admin-filters input:focus,
 .admin-filters select:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-soft);
+    border-color: var(--txt);
+    box-shadow: 0 0 0 4px var(--accent-soft);
 }
 
+/* =========================================================
+   WORK LIST ROW
+   ========================================================= */
 .work-list-row {
     display: grid;
-    grid-template-columns: 1fr 140px 90px 90px 70px;
-    gap: 12px;
+    grid-template-columns: 1fr 140px 90px 90px 80px;
+    gap: 14px;
     align-items: center;
-    padding: 12px 14px;
+    padding: 16px 18px;
     border: 1px solid var(--line);
-    border-radius: var(--r);
-    margin-bottom: 6px;
+    border-radius: var(--r-md);
+    margin-bottom: 8px;
     background: var(--bg-elev);
     transition: all var(--t-fast);
 }
 .work-list-row:hover {
     border-color: var(--line-strong);
     background: var(--bg-soft);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
 }
 @media (max-width: 900px) {
     .work-list-row {
         grid-template-columns: 1fr;
-        gap: 6px;
+        gap: 8px;
     }
 }
 .work-list-topic {
-    font-weight: 500;
-    font-size: 13px;
+    font-weight: 600;
+    font-size: 14px;
     color: var(--txt);
+    letter-spacing: -0.005em;
 }
 .work-list-sub {
     font-size: 12px;
     color: var(--txt-muted);
-    margin-top: 2px;
+    margin-top: 3px;
 }
 
+/* =========================================================
+   REF LIST — чипы справочников
+   ========================================================= */
 .ref-list {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 8px;
+    gap: 8px;
+    margin-top: 10px;
 }
 .ref-chip {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 5px 10px;
+    gap: 8px;
+    padding: 6px 14px;
     background: var(--bg-soft);
     border: 1px solid var(--line);
-    border-radius: 20px;
+    border-radius: var(--r-pill);
     font-size: 12px;
-    color: var(--txt-muted);
+    color: var(--txt);
+    font-weight: 500;
+    transition: all var(--t-fast);
+}
+.ref-chip:hover {
+    border-color: var(--line-strong);
+    background: var(--bg-hover);
 }
 .ref-chip button {
     color: var(--txt-muted);
-    font-size: 12px;
+    font-size: 14px;
     padding: 0 2px;
     transition: color var(--t-fast);
+    line-height: 1;
 }
 .ref-chip button:hover {
     color: var(--bad);
 }
 
+/* =========================================================
+   AUDIT ROW
+   ========================================================= */
 .audit-row {
     display: grid;
     grid-template-columns: 140px 160px 1fr 100px;
-    gap: 12px;
-    padding: 10px 12px;
+    gap: 14px;
+    padding: 12px 14px;
     border-bottom: 1px solid var(--line);
     font-size: 12px;
     align-items: center;
@@ -190,12 +233,14 @@
     color: var(--txt-soft);
     font-family: "JetBrains Mono", monospace;
     font-size: 11px;
+    font-variant-numeric: tabular-nums;
 }
 .audit-user {
     color: var(--txt-muted);
+    font-weight: 500;
 }
 .audit-action {
-    font-weight: 500;
+    font-weight: 600;
     color: var(--txt);
 }
 .audit-action.positive {
@@ -208,6 +253,9 @@
     color: var(--warn);
 }
 
+/* =========================================================
+   CHART WRAPPERS
+   ========================================================= */
 .chart-wrap-sm {
     position: relative;
     height: 200px;
@@ -215,4 +263,304 @@
 .chart-wrap-lg {
     position: relative;
     height: 280px;
+}
+
+/* =========================================================
+   ОБЪЯВЛЕНИЯ — карточки для пользователей
+   ========================================================= */
+.announcements-block {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.ann-card {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    padding: 16px 20px;
+    border-radius: var(--r-lg);
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--line);
+    transition: all var(--t-fast);
+}
+
+.ann-card:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.ann-card.ann-normal {
+    border-left-color: var(--info);
+}
+.ann-card.ann-important {
+    border-left-color: var(--warn);
+    background: var(--warn-soft);
+}
+.ann-card.ann-important:hover {
+    background: var(--warn-soft);
+    filter: brightness(0.98);
+}
+.ann-card.ann-urgent {
+    border-left-color: var(--bad);
+    background: var(--bad-soft);
+}
+.ann-card.ann-urgent:hover {
+    background: var(--bad-soft);
+    filter: brightness(0.98);
+}
+
+.ann-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    flex-shrink: 0;
+}
+.ann-normal .ann-icon {
+    color: var(--info);
+}
+.ann-important .ann-icon {
+    color: var(--warn);
+}
+.ann-urgent .ann-icon {
+    color: var(--bad);
+}
+
+.ann-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.ann-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+
+.ann-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--txt);
+    line-height: 1.35;
+    letter-spacing: -0.005em;
+}
+
+.ann-text {
+    font-size: 13px;
+    color: var(--txt);
+    line-height: 1.5;
+    margin-bottom: 8px;
+    white-space: pre-line;
+}
+
+.ann-meta {
+    font-size: 11px;
+    color: var(--txt-muted);
+}
+
+.ann-priority {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: var(--r-pill);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    flex-shrink: 0;
+}
+.ann-priority-normal {
+    background: var(--info-soft);
+    color: var(--info);
+}
+.ann-priority-important {
+    background: var(--warn-soft);
+    color: var(--warn);
+}
+.ann-priority-urgent {
+    background: var(--bad-soft);
+    color: var(--bad);
+}
+
+/* Индикатор непрочитанного */
+.ann-card.unread {
+    background: var(--info-soft);
+    border-left-color: var(--info);
+}
+.ann-card.unread.ann-important {
+    background: var(--warn-soft);
+}
+.ann-card.unread.ann-urgent {
+    background: var(--bad-soft);
+}
+
+.ann-unread-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--bad);
+    margin-right: 8px;
+    vertical-align: middle;
+    animation: pulseDot 1.8s ease-in-out infinite;
+}
+
+.ann-more {
+    text-align: center;
+    padding: 8px 0;
+}
+
+/* =========================================================
+   ОБЪЯВЛЕНИЯ — список в админке
+   ========================================================= */
+.ann-admin-row {
+    display: grid;
+    grid-template-columns: 44px 1fr auto;
+    gap: 16px;
+    align-items: flex-start;
+    padding: 16px 18px;
+    border-radius: var(--r-lg);
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--info);
+    margin-bottom: 10px;
+    transition: all var(--t-fast);
+}
+.ann-admin-row:hover {
+    background: var(--bg-soft);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.ann-admin-row.ann-important {
+    border-left-color: var(--warn);
+}
+.ann-admin-row.ann-urgent {
+    border-left-color: var(--bad);
+}
+
+.ann-admin-row.off {
+    opacity: 0.55;
+}
+
+.ann-admin-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-soft);
+    color: var(--info);
+    flex-shrink: 0;
+}
+.ann-admin-row.ann-important .ann-admin-icon {
+    color: var(--warn);
+    background: var(--warn-soft);
+}
+.ann-admin-row.ann-urgent .ann-admin-icon {
+    color: var(--bad);
+    background: var(--bad-soft);
+}
+
+.ann-admin-body {
+    min-width: 0;
+}
+
+.ann-admin-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+}
+
+.ann-admin-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--txt);
+    line-height: 1.35;
+    flex: 1;
+    min-width: 0;
+    letter-spacing: -0.005em;
+}
+
+.ann-admin-badges {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.ann-admin-text {
+    font-size: 13px;
+    color: var(--txt-muted);
+    line-height: 1.5;
+    margin-bottom: 8px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.ann-admin-meta {
+    font-size: 11px;
+    color: var(--txt-muted);
+}
+
+.ann-admin-actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+/* Пикеры в модалке создания объявления */
+.ann-audience-picker {
+    margin-bottom: 14px;
+}
+.ann-priority-picker {
+    margin-bottom: 14px;
+}
+
+.ann-audience-picker .role-lbl,
+.ann-priority-picker .role-lbl {
+    font-size: 12px;
+}
+
+@media (max-width: 700px) {
+    .ann-admin-row {
+        grid-template-columns: 1fr;
+    }
+    .ann-admin-icon {
+        display: none;
+    }
+    .ann-admin-actions {
+        justify-content: flex-end;
+    }
+    .user-row {
+        grid-template-columns: 40px 1fr;
+    }
+}
+
+/* =========================================================
+   PULSE ANIMATION (для индикатора непрочитанного)
+   ========================================================= */
+@keyframes pulseDot {
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.5;
+        transform: scale(1.15);
+    }
 }

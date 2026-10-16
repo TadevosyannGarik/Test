@@ -44,6 +44,13 @@ const App = (() => {
             order: 30,
         },
         {
+            id: "announcements",
+            icon: SVG.bell,
+            label: "Объявления",
+            roles: ["student"],
+            order: 15,
+        },
+        {
             id: "docx",
             icon: SVG.fileText,
             label: "ГОСТ",
@@ -66,6 +73,13 @@ const App = (() => {
         },
 
         // Преподаватель
+        {
+            id: "announcements",
+            icon: SVG.bell,
+            label: "Объявления",
+            roles: ["teacher"],
+            order: 15,
+        },
         {
             id: "requests",
             icon: SVG.clipboard,
@@ -144,6 +158,13 @@ const App = (() => {
             label: "Демо-данные",
             roles: ["admin"],
             order: 40,
+        },
+        {
+            id: "announcements",
+            icon: SVG.bell,
+            label: "Объявления",
+            roles: ["admin"],
+            order: 42,
         },
         {
             id: "audit",
@@ -320,17 +341,30 @@ const App = (() => {
         const nav = document.getElementById("mainNav");
         if (!nav) return;
         const items = navItems(role);
+        const user = currentUser;
 
         let html = items
-            .map(
-                (it, i) => `
+            .map((it, i) => {
+                let badge = "";
+                if (
+                    it.id === "announcements" &&
+                    user &&
+                    typeof Announcements !== "undefined"
+                ) {
+                    const count = Announcements.unreadCount(user.id);
+                    if (count > 0) {
+                        badge = `<span class="nav-badge">${count > 9 ? "9+" : count}</span>`;
+                    }
+                }
+                return `
         <button data-view="${it.id}" class="${i === 0 ? "active" : ""}"
           onclick="App.navigate('${it.id}')">
           ${it.icon({ cls: "icon icon-sm" })}
           <span>${it.label}</span>
+          ${badge}
         </button>
-      `,
-            )
+      `;
+            })
             .join("");
 
         if (role === "student") {
@@ -367,6 +401,41 @@ const App = (() => {
 
         renderView(viewId, params);
         window.scrollTo(0, 0);
+
+        // Обновляем бейдж непрочитанных объявлений после рендера
+        if (
+            currentUser &&
+            typeof Announcements !== "undefined" &&
+            (currentUser.role === "student" || currentUser.role === "teacher")
+        ) {
+            renderNavBadges();
+        }
+    }
+
+    /**
+     * Обновляет только бейджи в nav без перерисовки всего меню.
+     */
+    function renderNavBadges() {
+        if (!currentUser) return;
+        if (typeof Announcements === "undefined") return;
+
+        const btn = document.querySelector(
+            '#mainNav button[data-view="announcements"]',
+        );
+        if (!btn) return;
+
+        // Убираем старый бейдж
+        const old = btn.querySelector(".nav-badge");
+        if (old) old.remove();
+
+        // Считаем
+        const count = Announcements.unreadCount(currentUser.id);
+        if (count > 0) {
+            const badge = document.createElement("span");
+            badge.className = "nav-badge";
+            badge.textContent = count > 9 ? "9+" : String(count);
+            btn.appendChild(badge);
+        }
     }
 
     /**
@@ -476,24 +545,39 @@ const App = (() => {
 
     function refreshNotifications() {
         if (!currentUser) return;
-        if (typeof Notifications === "undefined") return;
 
+        // 1. Обновляем счётчик обычных уведомлений (колокольчик)
+        if (typeof Notifications !== "undefined") {
+            try {
+                const count = Notifications.unreadCount(currentUser.id);
+                const el = document.getElementById("notifCount");
+                const bell = document.getElementById("notifBell");
+                if (el && bell) {
+                    if (count > 0) {
+                        el.textContent = count > 9 ? "9+" : count;
+                        el.style.display = "";
+                        bell.classList.add("has-new");
+                    } else {
+                        el.style.display = "none";
+                        bell.classList.remove("has-new");
+                    }
+                }
+            } catch (err) {
+                console.warn("[App] refreshNotifications (notif):", err);
+            }
+        }
+
+        // 2. Обновляем бейдж непрочитанных объявлений в nav
         try {
-            const count = Notifications.unreadCount(currentUser.id);
-            const el = document.getElementById("notifCount");
-            const bell = document.getElementById("notifBell");
-            if (!el || !bell) return;
-
-            if (count > 0) {
-                el.textContent = count > 9 ? "9+" : count;
-                el.style.display = "";
-                bell.classList.add("has-new");
-            } else {
-                el.style.display = "none";
-                bell.classList.remove("has-new");
+            if (
+                (currentUser.role === "student" ||
+                    currentUser.role === "teacher") &&
+                typeof Announcements !== "undefined"
+            ) {
+                renderNavBadges();
             }
         } catch (err) {
-            console.warn("[App] refreshNotifications:", err);
+            console.warn("[App] refreshNotifications (ann):", err);
         }
     }
 

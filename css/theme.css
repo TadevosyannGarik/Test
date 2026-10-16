@@ -18,11 +18,7 @@
     --accent-hover: #2a2a2a;
     --accent-glow: rgba(17, 17, 17, 0.15);
 
-    /* =========================================================
-       АКЦЕНТ ДЛЯ ВИЗУАЛИЗАЦИИ АЛГОРИТМА (Мамдани, симулятор, ФП)
-       Отделён от --accent: основной UI строгий и чёрный,
-       а визуализация нечёткой логики — индиго-фиолетовая.
-       ========================================================= */
+    /* Акцент для визуализации (Мамдани, симулятор, ФП) */
     --accent-viz: #6366f1;
     --accent-viz-hover: #4f46e5;
     --accent-viz-soft: rgba(99, 102, 241, 0.1);
@@ -45,18 +41,21 @@
     --info: #2a5cb8;
     --info-soft: #eef3fc;
 
-    --r-xs: 4px;
-    --r-sm: 6px;
-    --r: 8px;
-    --r-md: 10px;
-    --r-lg: 14px;
-    --r-xl: 18px;
+    /* ---------- РАДИУСЫ (увеличены) ---------- */
+    --r-xs: 6px;
+    --r-sm: 10px;
+    --r: 14px;
+    --r-md: 18px;
+    --r-lg: 22px;
+    --r-xl: 28px;
+    --r-pill: 100px;
 
-    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
-    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.05);
-    --shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
-    --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.08);
-    --shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.12);
+    /* ---------- ТЕНИ (мягче) ---------- */
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.03);
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+    --shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.1);
 
     --t-fast: 0.15s ease;
     --t-base: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -213,6 +212,7 @@ h4,
     letter-spacing: -0.01em;
 }
 
+/* ---------- Кнопки — pill-форма ---------- */
 .btn-primary {
     display: inline-flex;
     align-items: center;
@@ -220,8 +220,8 @@ h4,
     gap: 8px;
     background: var(--accent);
     color: #ffffff;
-    padding: 11px 20px;
-    border-radius: var(--r);
+    padding: 11px 22px;
+    border-radius: var(--r-pill);
     font-weight: 500;
     font-size: var(--fs-base);
     transition:
@@ -231,15 +231,16 @@ h4,
     white-space: nowrap;
     border: none;
     letter-spacing: -0.005em;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+    box-shadow: var(--shadow-xs);
 }
 .btn-primary:hover {
     background: var(--accent-hover);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-1px);
 }
 .btn-primary:active {
-    transform: translateY(1px);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+    transform: translateY(0);
+    box-shadow: var(--shadow-xs);
 }
 .btn-primary:disabled {
     opacity: 0.5;
@@ -254,8 +255,8 @@ h4,
     background: transparent;
     color: var(--txt);
     border: 1px solid var(--line);
-    padding: 10px 18px;
-    border-radius: var(--r);
+    padding: 10px 20px;
+    border-radius: var(--r-pill);
     font-size: var(--fs-base);
     font-weight: 400;
     transition: all var(--t-fast);
@@ -264,9 +265,10 @@ h4,
 .btn-ghost:hover {
     border-color: var(--txt);
     background: var(--bg-soft);
+    transform: translateY(-1px);
 }
 .btn-ghost:active {
-    transform: translateY(1px);
+    transform: translateY(0);
 }
 
 .btn-ghost.btn-danger {
@@ -279,7 +281,7 @@ h4,
 }
 
 .btn-sm {
-    padding: 7px 14px;
+    padding: 7px 16px;
     font-size: var(--fs-sm);
 }
 
@@ -287,9 +289,9 @@ h4,
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: var(--r-sm);
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
     color: var(--txt-muted);
     transition: all var(--t-fast);
     border: none;
@@ -298,12 +300,14 @@ h4,
 .btn-icon:hover {
     background: var(--bg-soft);
     color: var(--txt);
+    transform: scale(1.05);
 }
 .btn-icon.danger:hover {
     background: var(--bad-soft);
     color: var(--bad);
 }
 
+/* ---------- Поля ввода ---------- */
 .field {
     margin-bottom: 16px;
 }
@@ -366,7 +370,7 @@ h4,
 .field-boxed textarea {
     border: 1px solid var(--line);
     border-radius: var(--r);
-    padding: 11px 14px;
+    padding: 11px 16px;
     background: var(--bg);
     transition: all var(--t-fast);
 }
@@ -379,7 +383,7 @@ h4,
 .field-boxed select:focus,
 .field-boxed textarea:focus {
     border-color: var(--txt);
-    box-shadow: 0 0 0 3px var(--accent-soft);
+    box-shadow: 0 0 0 4px var(--accent-soft);
 }
 
 .field-err {
@@ -408,6 +412,7 @@ h4,
     }
 }
 
+/* ---------- Иконки ---------- */
 .icon {
     display: inline-block;
     width: 16px;
@@ -441,12 +446,13 @@ h4,
     height: 28px;
 }
 
+/* ---------- Бейджи — pill-форма ---------- */
 .badge {
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    padding: 4px 10px;
-    border-radius: 100px;
+    padding: 4px 12px;
+    border-radius: var(--r-pill);
     font-size: var(--fs-xs);
     font-weight: 500;
     letter-spacing: 0.02em;
@@ -467,7 +473,6 @@ h4,
     background: var(--info-soft);
     color: var(--info);
 }
-/* review — «на проверке» — нейтрально-фиолетовый, уникальный среди статусов */
 .badge.review {
     background: var(--purple-soft);
     color: var(--purple);
@@ -501,8 +506,8 @@ h4,
 .tag {
     display: inline-flex;
     align-items: center;
-    padding: 3px 9px;
-    border-radius: 100px;
+    padding: 3px 12px;
+    border-radius: var(--r-pill);
     border: 1px solid var(--line);
     font-size: var(--fs-xs);
     color: var(--txt-muted);
@@ -522,14 +527,15 @@ h4,
     margin-top: 0;
 }
 
+/* ---------- Toast — pill-форма ---------- */
 .toast {
     position: fixed;
     bottom: 24px;
     right: 24px;
     background: var(--txt);
     color: var(--bg);
-    padding: 14px 20px;
-    border-radius: var(--r);
+    padding: 14px 24px;
+    border-radius: var(--r-pill);
     font-size: var(--fs-base);
     font-weight: 400;
     opacity: 0;

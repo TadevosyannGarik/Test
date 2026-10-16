@@ -1,52 +1,511 @@
 /* =========================================================
-   OVERRIDES — глобальные улучшения поверх всех стилей
-   Фоновые пятна, мягкие тени, hover-эффекты
+   OVERRIDES — Soft Glassmorphism style
+
+   ВАЖНО: этот файл перебивает стили из theme.css/app.css/*.css
+   через !important. Он даёт приложению «стеклянный» воздушный вид.
    ========================================================= */
 
-/* =========================================================
-   1. ФОНОВЫЕ ПЯТНА (индиго-сине-фиолетовые, blur 100px)
-   ========================================================= */
+:root {
+    --bg: #f8f9fa;
+    --card-radius: 24px;
+    --card-radius-sm: 16px;
+    --accent-gradient: linear-gradient(
+        135deg,
+        var(--accent-viz) 0%,
+        #8b5cf6 100%
+    );
+}
+
 body {
     position: relative;
     overflow-x: hidden;
+    background: var(--bg);
 }
 
-/* Контейнер пятен — фиксирован, не скроллится */
-body::before {
-    content: "";
+/* =========================================================
+   SVG-ФИЛЬТР
+   ========================================================= */
+.bg-filter {
+    position: absolute;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+
+/* =========================================================
+   ФОНОВЫЕ ПЯТНА
+   ========================================================= */
+.bg-blobs {
     position: fixed;
     inset: 0;
     z-index: 0;
     pointer-events: none;
-    background:
-        /* Основное пятно — верхний левый угол */
-        radial-gradient(
-            800px circle at 10% 10%,
-            rgba(99, 102, 241, 0.1),
-            transparent 50%
-        ),
-        /* Второе пятно — правый нижний угол */
-        radial-gradient(
-                900px circle at 90% 90%,
-                rgba(139, 92, 246, 0.08),
-                transparent 50%
-            ),
-        /* Третье пятно — правый верхний */
-        radial-gradient(
-                600px circle at 85% 15%,
-                rgba(59, 130, 246, 0.06),
-                transparent 45%
-            ),
-        /* Мягкое свечение в центре */
-        radial-gradient(
-                700px circle at 50% 50%,
-                rgba(79, 70, 229, 0.04),
-                transparent 55%
-            );
-    filter: blur(100px);
+    overflow: hidden;
 }
 
-/* Контент приложения — поверх пятен */
+.bg-blob {
+    position: absolute;
+    filter: url(#blobShape) blur(60px);
+    will-change: transform;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+.bg-blob span {
+    position: absolute;
+    background: currentColor;
+    border-radius: 50%;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+    will-change: transform, border-radius;
+}
+
+/* --- Пятно A --- */
+.bg-blob-a {
+    width: clamp(280px, 30vw, 460px);
+    height: clamp(280px, 30vw, 460px);
+    top: -4%;
+    left: -4%;
+    color: rgba(99, 102, 241, 0.1);
+    animation-name: moveA;
+    animation-duration: 28s;
+}
+.bg-blob-a span:nth-child(1) {
+    width: 62%;
+    height: 55%;
+    top: 6%;
+    left: 4%;
+    border-radius: 55% 45% 42% 58% / 48% 60% 40% 52%;
+    animation-name: morphA1, innerDrift1;
+    animation-duration: 18s, 12s;
+}
+.bg-blob-a span:nth-child(2) {
+    width: 58%;
+    height: 62%;
+    top: 18%;
+    left: 32%;
+    border-radius: 42% 58% 55% 45% / 60% 42% 58% 40%;
+    animation-name: morphA2, innerDrift2;
+    animation-duration: 22s, 15s;
+}
+.bg-blob-a span:nth-child(3) {
+    width: 52%;
+    height: 50%;
+    top: 38%;
+    left: 12%;
+    border-radius: 60% 40% 48% 52% / 45% 55% 45% 55%;
+    animation-name: morphA1, innerDrift3;
+    animation-duration: 25s, 18s;
+}
+.bg-blob-a span:nth-child(4) {
+    width: 48%;
+    height: 52%;
+    top: 32%;
+    left: 44%;
+    border-radius: 50% 50% 58% 42% / 55% 45% 52% 48%;
+    animation-name: morphA2, innerDrift1;
+    animation-duration: 20s, 14s;
+}
+
+/* --- Пятно B --- */
+.bg-blob-b {
+    width: clamp(260px, 28vw, 440px);
+    height: clamp(260px, 28vw, 440px);
+    top: -6%;
+    right: -4%;
+    color: rgba(139, 92, 246, 0.08);
+    animation-name: moveB;
+    animation-duration: 32s;
+}
+.bg-blob-b span:nth-child(1) {
+    width: 58%;
+    height: 60%;
+    top: 6%;
+    left: 8%;
+    border-radius: 48% 52% 62% 38% / 55% 45% 58% 42%;
+    animation-name: morphA2, innerDrift2;
+    animation-duration: 21s, 13s;
+}
+.bg-blob-b span:nth-child(2) {
+    width: 62%;
+    height: 56%;
+    top: 24%;
+    left: 28%;
+    border-radius: 55% 45% 45% 55% / 42% 58% 42% 58%;
+    animation-name: morphA1, innerDrift3;
+    animation-duration: 19s, 16s;
+}
+.bg-blob-b span:nth-child(3) {
+    width: 50%;
+    height: 58%;
+    top: 40%;
+    left: 6%;
+    border-radius: 42% 58% 50% 50% / 60% 40% 55% 45%;
+    animation-name: morphA2, innerDrift1;
+    animation-duration: 24s, 14s;
+}
+.bg-blob-b span:nth-child(4) {
+    width: 54%;
+    height: 48%;
+    top: 34%;
+    left: 42%;
+    border-radius: 58% 42% 52% 48% / 48% 52% 40% 60%;
+    animation-name: morphA1, innerDrift2;
+    animation-duration: 17s, 11s;
+}
+
+/* --- Пятно C --- */
+.bg-blob-c {
+    width: clamp(260px, 28vw, 440px);
+    height: clamp(260px, 28vw, 440px);
+    bottom: -4%;
+    left: -4%;
+    color: rgba(56, 189, 248, 0.1);
+    animation-name: moveC;
+    animation-duration: 30s;
+}
+.bg-blob-c span:nth-child(1) {
+    width: 60%;
+    height: 54%;
+    top: 8%;
+    left: 6%;
+    border-radius: 52% 48% 45% 55% / 58% 42% 55% 45%;
+    animation-name: morphA1, innerDrift3;
+    animation-duration: 23s, 15s;
+}
+.bg-blob-c span:nth-child(2) {
+    width: 54%;
+    height: 62%;
+    top: 26%;
+    left: 34%;
+    border-radius: 45% 55% 60% 40% / 42% 58% 42% 58%;
+    animation-name: morphA2, innerDrift1;
+    animation-duration: 20s, 12s;
+}
+.bg-blob-c span:nth-child(3) {
+    width: 58%;
+    height: 50%;
+    top: 42%;
+    left: 8%;
+    border-radius: 60% 40% 48% 52% / 50% 50% 45% 55%;
+    animation-name: morphA1, innerDrift2;
+    animation-duration: 26s, 17s;
+}
+.bg-blob-c span:nth-child(4) {
+    width: 46%;
+    height: 54%;
+    top: 38%;
+    left: 44%;
+    border-radius: 48% 52% 55% 45% / 58% 42% 52% 48%;
+    animation-name: morphA2, innerDrift3;
+    animation-duration: 18s, 13s;
+}
+
+/* --- Пятно D --- */
+.bg-blob-d {
+    width: clamp(280px, 30vw, 460px);
+    height: clamp(280px, 30vw, 460px);
+    bottom: -6%;
+    right: -6%;
+    color: rgba(168, 85, 247, 0.09);
+    animation-name: moveD;
+    animation-duration: 34s;
+}
+.bg-blob-d span:nth-child(1) {
+    width: 56%;
+    height: 60%;
+    top: 6%;
+    left: 10%;
+    border-radius: 55% 45% 42% 58% / 48% 60% 40% 52%;
+    animation-name: morphA2, innerDrift1;
+    animation-duration: 22s, 14s;
+}
+.bg-blob-d span:nth-child(2) {
+    width: 62%;
+    height: 54%;
+    top: 22%;
+    left: 30%;
+    border-radius: 42% 58% 60% 40% / 55% 45% 58% 42%;
+    animation-name: morphA1, innerDrift2;
+    animation-duration: 20s, 16s;
+}
+.bg-blob-d span:nth-child(3) {
+    width: 52%;
+    height: 58%;
+    top: 40%;
+    left: 12%;
+    border-radius: 48% 52% 50% 50% / 42% 58% 45% 55%;
+    animation-name: morphA2, innerDrift3;
+    animation-duration: 25s, 12s;
+}
+.bg-blob-d span:nth-child(4) {
+    width: 50%;
+    height: 52%;
+    top: 36%;
+    left: 46%;
+    border-radius: 60% 40% 45% 55% / 52% 48% 55% 45%;
+    animation-name: morphA1, innerDrift1;
+    animation-duration: 19s, 15s;
+}
+
+/* --- Пятно E --- */
+.bg-blob-e {
+    width: clamp(180px, 18vw, 280px);
+    height: clamp(180px, 18vw, 280px);
+    top: 36%;
+    left: 40%;
+    color: rgba(59, 130, 246, 0.07);
+    animation-name: moveE;
+    animation-duration: 40s;
+}
+.bg-blob-e span:nth-child(1) {
+    width: 60%;
+    height: 56%;
+    top: 8%;
+    left: 6%;
+    border-radius: 55% 45% 50% 50% / 48% 52% 42% 58%;
+    animation-name: morphA1, innerDrift2;
+    animation-duration: 24s, 13s;
+}
+.bg-blob-e span:nth-child(2) {
+    width: 54%;
+    height: 60%;
+    top: 24%;
+    left: 32%;
+    border-radius: 45% 55% 55% 45% / 58% 42% 52% 48%;
+    animation-name: morphA2, innerDrift3;
+    animation-duration: 21s, 15s;
+}
+.bg-blob-e span:nth-child(3) {
+    width: 58%;
+    height: 52%;
+    top: 40%;
+    left: 10%;
+    border-radius: 52% 48% 45% 55% / 55% 45% 58% 42%;
+    animation-name: morphA1, innerDrift1;
+    animation-duration: 27s, 17s;
+}
+.bg-blob-e span:nth-child(4) {
+    width: 46%;
+    height: 50%;
+    top: 36%;
+    left: 44%;
+    border-radius: 48% 52% 58% 42% / 42% 58% 45% 55%;
+    animation-name: morphA2, innerDrift2;
+    animation-duration: 19s, 11s;
+}
+
+/* =========================================================
+   ДВИЖЕНИЕ ПЯТЕН
+   ========================================================= */
+@keyframes moveA {
+    0% {
+        transform: translate(0, 0) rotate(0deg);
+    }
+    12% {
+        transform: translate(28vw, 8vh) rotate(45deg);
+    }
+    24% {
+        transform: translate(8vw, 32vh) rotate(105deg);
+    }
+    36% {
+        transform: translate(38vw, 22vh) rotate(165deg);
+    }
+    48% {
+        transform: translate(12vw, 10vh) rotate(210deg);
+    }
+    60% {
+        transform: translate(34vw, 38vh) rotate(265deg);
+    }
+    72% {
+        transform: translate(6vw, 20vh) rotate(310deg);
+    }
+    86% {
+        transform: translate(30vw, 4vh) rotate(340deg);
+    }
+    100% {
+        transform: translate(0, 0) rotate(360deg);
+    }
+}
+@keyframes moveB {
+    0% {
+        transform: translate(0, 0) rotate(0deg);
+    }
+    14% {
+        transform: translate(-30vw, 6vh) rotate(-40deg);
+    }
+    28% {
+        transform: translate(-10vw, 30vh) rotate(-95deg);
+    }
+    42% {
+        transform: translate(-38vw, 24vh) rotate(-155deg);
+    }
+    56% {
+        transform: translate(-16vw, 6vh) rotate(-210deg);
+    }
+    70% {
+        transform: translate(-34vw, 40vh) rotate(-270deg);
+    }
+    84% {
+        transform: translate(-8vw, 16vh) rotate(-320deg);
+    }
+    100% {
+        transform: translate(0, 0) rotate(-360deg);
+    }
+}
+@keyframes moveC {
+    0% {
+        transform: translate(0, 0) rotate(0deg);
+    }
+    15% {
+        transform: translate(26vw, -10vh) rotate(50deg);
+    }
+    30% {
+        transform: translate(6vw, -32vh) rotate(110deg);
+    }
+    45% {
+        transform: translate(36vw, -18vh) rotate(170deg);
+    }
+    60% {
+        transform: translate(14vw, -38vh) rotate(225deg);
+    }
+    75% {
+        transform: translate(38vw, -6vh) rotate(285deg);
+    }
+    90% {
+        transform: translate(10vw, -22vh) rotate(330deg);
+    }
+    100% {
+        transform: translate(0, 0) rotate(360deg);
+    }
+}
+@keyframes moveD {
+    0% {
+        transform: translate(0, 0) rotate(0deg);
+    }
+    13% {
+        transform: translate(-28vw, -8vh) rotate(-45deg);
+    }
+    26% {
+        transform: translate(-6vw, -28vh) rotate(-100deg);
+    }
+    39% {
+        transform: translate(-36vw, -22vh) rotate(-160deg);
+    }
+    52% {
+        transform: translate(-14vw, -8vh) rotate(-210deg);
+    }
+    65% {
+        transform: translate(-38vw, -36vh) rotate(-270deg);
+    }
+    78% {
+        transform: translate(-10vw, -14vh) rotate(-320deg);
+    }
+    91% {
+        transform: translate(-30vw, -4vh) rotate(-350deg);
+    }
+    100% {
+        transform: translate(0, 0) rotate(-360deg);
+    }
+}
+@keyframes moveE {
+    0% {
+        transform: translate(0, 0) rotate(0deg);
+    }
+    16% {
+        transform: translate(14vw, 10vh) rotate(60deg);
+    }
+    33% {
+        transform: translate(4vw, 18vh) rotate(130deg);
+    }
+    50% {
+        transform: translate(-14vw, 12vh) rotate(200deg);
+    }
+    66% {
+        transform: translate(-10vw, -8vh) rotate(260deg);
+    }
+    83% {
+        transform: translate(8vw, -12vh) rotate(320deg);
+    }
+    100% {
+        transform: translate(0, 0) rotate(360deg);
+    }
+}
+
+/* =========================================================
+   МОРФИНГ ФОРМ
+   ========================================================= */
+@keyframes morphA1 {
+    0%,
+    100% {
+        border-radius: 55% 45% 42% 58% / 48% 60% 40% 52%;
+    }
+    33% {
+        border-radius: 42% 58% 60% 40% / 55% 45% 58% 42%;
+    }
+    66% {
+        border-radius: 60% 40% 48% 52% / 42% 58% 45% 55%;
+    }
+}
+@keyframes morphA2 {
+    0%,
+    100% {
+        border-radius: 48% 52% 62% 38% / 55% 45% 58% 42%;
+    }
+    33% {
+        border-radius: 58% 42% 45% 55% / 40% 60% 42% 58%;
+    }
+    66% {
+        border-radius: 45% 55% 55% 45% / 60% 40% 52% 48%;
+    }
+}
+
+/* =========================================================
+   ВНУТРЕННЕЕ ДВИЖЕНИЕ КРУГОВ
+   ========================================================= */
+@keyframes innerDrift1 {
+    0%,
+    100% {
+        transform: translate(0, 0) scale(1);
+    }
+    25% {
+        transform: translate(8%, 12%) scale(1.15);
+    }
+    50% {
+        transform: translate(-6%, 8%) scale(0.9);
+    }
+    75% {
+        transform: translate(10%, -6%) scale(1.1);
+    }
+}
+@keyframes innerDrift2 {
+    0%,
+    100% {
+        transform: translate(0, 0) scale(1);
+    }
+    20% {
+        transform: translate(-10%, 6%) scale(0.9);
+    }
+    45% {
+        transform: translate(8%, -10%) scale(1.12);
+    }
+    70% {
+        transform: translate(-6%, 12%) scale(1.05);
+    }
+}
+@keyframes innerDrift3 {
+    0%,
+    100% {
+        transform: translate(0, 0) scale(1);
+    }
+    30% {
+        transform: translate(12%, -8%) scale(1.1);
+    }
+    60% {
+        transform: translate(-10%, 10%) scale(0.92);
+    }
+}
+
 .app,
 .auth-screen {
     position: relative;
@@ -54,49 +513,93 @@ body::before {
 }
 
 /* =========================================================
-   2. ФОН — сделаем чуть тёплее и воздушнее
-   ========================================================= */
-:root {
-    --bg: #fafaf9;
-}
-
-/* =========================================================
-   3. КАРТОЧКИ — мягкие тени и hover-подъём
-   ========================================================= */
-.card {
-    box-shadow:
-        0 1px 2px rgba(0, 0, 0, 0.02),
-        0 2px 8px rgba(0, 0, 0, 0.02);
-    transition:
-        border-color var(--t-base),
-        box-shadow var(--t-base),
-        transform var(--t-base);
-}
-
-.card:hover {
-    box-shadow:
-        0 2px 4px rgba(0, 0, 0, 0.03),
-        0 8px 24px rgba(0, 0, 0, 0.04);
-}
-
-/* =========================================================
-   4. HEADER / NAV — полупрозрачный над пятнами
+   ШАПКА И НАВИГАЦИЯ
    ========================================================= */
 .app-header {
-    background: rgba(255, 255, 255, 0.7) !important;
-    backdrop-filter: blur(24px) saturate(180%);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    background: rgba(255, 255, 255, 0.45) !important;
+    backdrop-filter: blur(30px) saturate(180%);
+    -webkit-backdrop-filter: blur(30px) saturate(180%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.3) !important;
+    box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.4) !important;
 }
 
 .app-nav {
-    background: rgba(255, 255, 255, 0.7) !important;
-    backdrop-filter: blur(24px) saturate(180%);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    background: rgba(255, 255, 255, 0.45) !important;
+    backdrop-filter: blur(30px) saturate(180%);
+    -webkit-backdrop-filter: blur(30px) saturate(180%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.3) !important;
+    box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.4) !important;
 }
 
 /* =========================================================
-   5. МИНИ-ПРОЕКТЫ И СТРОКИ — hover-подъём
+   КАРТОЧКИ — мягкое стекло
    ========================================================= */
+.card {
+    background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.55),
+        rgba(255, 255, 255, 0.35)
+    ) !important;
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.45) !important;
+    border-radius: var(--card-radius) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.6),
+        0 4px 24px rgba(0, 0, 0, 0.03) !important;
+    transition:
+        border-color var(--t-base),
+        transform var(--t-base),
+        background var(--t-base),
+        box-shadow var(--t-base);
+}
+
+.card:hover {
+    background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.65),
+        rgba(255, 255, 255, 0.45)
+    ) !important;
+    border-color: rgba(255, 255, 255, 0.6) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.7),
+        0 8px 32px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* =========================================================
+   ОСТАЛЬНЫЕ ПОВЕРХНОСТИ
+   ========================================================= */
+.kpi,
+.metric,
+.work-hero,
+.student-hero,
+.profile-hero,
+.request-card,
+.consult-card,
+.mini-project,
+.user-row,
+.work-list-row,
+.student-row,
+.version-row,
+.task-card,
+.stage-item,
+.rule-box,
+.pipeline-step,
+.algo-card,
+.mf-var-card,
+.fuzzy-out,
+.docx-score {
+    background: rgba(255, 255, 255, 0.4) !important;
+    backdrop-filter: blur(24px) saturate(170%);
+    -webkit-backdrop-filter: blur(24px) saturate(170%);
+    border: 1px solid rgba(255, 255, 255, 0.45) !important;
+    border-radius: var(--card-radius-sm) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+    transition: all var(--t-base);
+}
+
+.kpi:hover,
+.metric:hover,
 .mini-project:hover,
 .student-row:hover,
 .request-card:hover,
@@ -107,61 +610,316 @@ body::before {
 .version-row:hover,
 .rule-box:hover,
 .stage-item:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
-}
-
-/* =========================================================
-   6. МЕТРИКИ — hover-подъём
-   ========================================================= */
-.metric {
-    transition:
-        border-color var(--t-fast),
-        transform var(--t-fast),
-        box-shadow var(--t-fast);
-}
-.metric:hover {
+    background: rgba(255, 255, 255, 0.6) !important;
     transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.6),
+        0 6px 20px rgba(0, 0, 0, 0.04) !important;
 }
 
 /* =========================================================
-   7. КНОПКИ — чуть глубже hover
+   МОДАЛКИ
+   ========================================================= */
+.modal-back {
+    background: rgba(17, 17, 17, 0.2) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+}
+
+.modal {
+    background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.8),
+        rgba(255, 255, 255, 0.6)
+    ) !important;
+    backdrop-filter: blur(40px) saturate(180%);
+    -webkit-backdrop-filter: blur(40px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.55) !important;
+    border-radius: var(--card-radius) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.7),
+        0 12px 48px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* =========================================================
+   УВЕДОМЛЕНИЯ
+   ========================================================= */
+.notif-panel {
+    background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.8),
+        rgba(255, 255, 255, 0.6)
+    ) !important;
+    backdrop-filter: blur(36px) saturate(180%);
+    -webkit-backdrop-filter: blur(36px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.55) !important;
+    border-radius: var(--card-radius-sm) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.7),
+        0 12px 48px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* =========================================================
+   TOAST
+   ========================================================= */
+.toast {
+    background: rgba(17, 17, 17, 0.85) !important;
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-radius: 100px !important;
+    box-shadow: none !important;
+}
+
+/* =========================================================
+   АВТОРИЗАЦИЯ
+   ========================================================= */
+.auth-card {
+    background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.6),
+        rgba(255, 255, 255, 0.4)
+    ) !important;
+    backdrop-filter: blur(36px) saturate(180%);
+    -webkit-backdrop-filter: blur(36px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.55) !important;
+    border-radius: var(--card-radius) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.7),
+        0 16px 56px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* =========================================================
+   КНОПКИ — мягкие и скруглённые
    ========================================================= */
 .btn-primary {
-    transition:
-        background var(--t-fast),
-        transform var(--t-fast),
-        box-shadow var(--t-fast);
+    border-radius: 100px !important;
+    background: var(--accent-gradient) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.2),
+        0 2px 8px rgba(99, 102, 241, 0.25) !important;
+    font-weight: 500;
 }
 .btn-primary:hover {
     transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(17, 17, 17, 0.15);
-}
-
-/* =========================================================
-   8. TOAST — тень глубже
-   ========================================================= */
-.toast {
     box-shadow:
-        0 4px 16px rgba(0, 0, 0, 0.12),
-        0 24px 48px rgba(0, 0, 0, 0.15);
+        inset 0 1px 0 rgba(255, 255, 255, 0.25),
+        0 6px 16px rgba(99, 102, 241, 0.35) !important;
+}
+
+.btn-ghost {
+    background: rgba(255, 255, 255, 0.35) !important;
+    backdrop-filter: blur(10px) saturate(150%);
+    -webkit-backdrop-filter: blur(10px) saturate(150%);
+    border: 1px solid rgba(255, 255, 255, 0.5) !important;
+    border-radius: 100px !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+}
+.btn-ghost:hover {
+    background: rgba(255, 255, 255, 0.55) !important;
+    border-color: rgba(255, 255, 255, 0.65) !important;
+}
+
+.btn-icon {
+    border-radius: 50% !important;
+    background: rgba(255, 255, 255, 0.3) !important;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+.btn-icon:hover {
+    background: rgba(255, 255, 255, 0.5) !important;
+}
+
+.app-avatar,
+.demo-launch-btn,
+.quick-action,
+.role-picker button,
+.demo-btn,
+.calendar-day.today {
+    box-shadow: none !important;
+    border-radius: 100px;
 }
 
 /* =========================================================
-   9. АДАПТИВ — пятна меньше на мобильных
+   ФОРМЫ И ПОЛЯ
+   ========================================================= */
+.field input,
+.field select,
+.field textarea {
+    background: transparent;
+}
+.field-boxed input,
+.field-boxed select,
+.field-boxed textarea {
+    background: rgba(255, 255, 255, 0.4) !important;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: var(--card-radius-sm) !important;
+}
+
+.filters input,
+.filters select,
+.admin-filters input,
+.admin-filters select {
+    background: rgba(255, 255, 255, 0.45) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.5) !important;
+    border-radius: 100px !important;
+    padding: 8px 16px !important;
+}
+
+.review-search,
+.review-sort,
+.mamdani-select,
+.sim-select {
+    background: rgba(255, 255, 255, 0.5) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.5) !important;
+    border-radius: 100px !important;
+}
+
+/* =========================================================
+   БЕЙДЖИ, ТЕГИ, ЧИПЫ
+   ========================================================= */
+.badge,
+.tag,
+.role-chip,
+.count-chip,
+.blocked-chip,
+.version-tag {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    border-radius: 100px !important;
+}
+
+.count-chip {
+    background: rgba(255, 255, 255, 0.5) !important;
+    border: 1px solid rgba(255, 255, 255, 0.5) !important;
+}
+
+/* =========================================================
+   КАНБАН, СПИСКИ, TIMELINE
+   ========================================================= */
+.kanban-col {
+    background: rgba(255, 255, 255, 0.3) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: var(--card-radius-sm) !important;
+}
+
+.comment {
+    background: rgba(255, 255, 255, 0.45) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 0 var(--card-radius-sm) var(--card-radius-sm) 0 !important;
+}
+
+.notice {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 0 var(--card-radius-sm) var(--card-radius-sm) 0 !important;
+}
+
+/* Прогресс-бары */
+.progress-bar,
+.pbar-fill,
+.fuzzy-progress-fill {
+    border-radius: 100px !important;
+}
+
+/* =========================================================
+   МОБИЛЬНЫЕ
    ========================================================= */
 @media (max-width: 700px) {
-    body::before {
-        filter: blur(60px);
-        opacity: 0.7;
+    .bg-blob {
+        filter: url(#blobShape) blur(30px);
+        opacity: 0.6;
+    }
+
+    .card,
+    .metric,
+    .mini-project,
+    .student-row,
+    .request-card,
+    .consult-card,
+    .user-row,
+    .work-list-row,
+    .kpi,
+    .work-hero,
+    .student-hero,
+    .profile-hero,
+    .task-card,
+    .stage-item,
+    .version-row,
+    .rule-box,
+    .pipeline-step,
+    .algo-card,
+    .mf-var-card,
+    .fuzzy-out,
+    .docx-score,
+    .kanban-col,
+    .comment {
+        background: rgba(255, 255, 255, 0.85) !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+
+    .app-header,
+    .app-nav {
+        background: rgba(255, 255, 255, 0.92) !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+
+    .modal {
+        background: rgba(255, 255, 255, 0.98) !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+
+    .notif-panel {
+        background: rgba(255, 255, 255, 0.98) !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+
+    .auth-card {
+        background: rgba(255, 255, 255, 0.92) !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+
+    .btn-ghost,
+    .btn-icon,
+    .filters input,
+    .filters select,
+    .admin-filters input,
+    .admin-filters select,
+    .review-search,
+    .review-sort {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        background: rgba(255, 255, 255, 0.9) !important;
+    }
+
+    .modal-back {
+        backdrop-filter: blur(4px) !important;
+        -webkit-backdrop-filter: blur(4px) !important;
     }
 }
 
 /* =========================================================
-   10. ПРЕДПОЧТЕНИЯ ПО ДВИЖЕНИЮ
+   ПРЕДПОЧТЕНИЯ СИСТЕМЫ
    ========================================================= */
 @media (prefers-reduced-motion: reduce) {
+    .bg-blob,
+    .bg-blob span {
+        animation: none !important;
+    }
+
     .card:hover,
     .mini-project:hover,
     .metric:hover,

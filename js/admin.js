@@ -2571,6 +2571,357 @@ const Admin = (() => {
     VIEWS.consultations = function () {
         return Consult.renderPage(getUser());
     };
+    VIEWS.announcements = function () {
+        const list = Announcements.getAll().sort(
+            (a, b) => (b.createdAt || 0) - (a.createdAt || 0),
+        );
+
+        const activeCount = list.filter(
+            (a) =>
+                a.active !== false &&
+                (!a.expiresAt || a.expiresAt > Date.now()),
+        ).length;
+
+        return `
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title" style="margin-bottom:0;">
+            Объявления
+            <span class="count-chip">${list.length}</span>
+          </div>
+          <button class="btn-primary btn-sm" onclick="Admin.openCreateAnnouncement()">
+            ${SVG.plus({ cls: "icon icon-sm" })}
+            <span>Создать</span>
+          </button>
+        </div>
+
+        <div class="metric-grid" style="margin-bottom:16px;">
+          <div class="metric">
+            <div class="metric-lbl">Всего</div>
+            <div class="metric-val">${list.length}</div>
+          </div>
+          <div class="metric">
+            <div class="metric-lbl">Активных</div>
+            <div class="metric-val" style="color:var(--ok)">${activeCount}</div>
+          </div>
+          <div class="metric">
+            <div class="metric-lbl">Отключено</div>
+            <div class="metric-val" style="color:var(--txt-muted)">
+              ${list.length - activeCount}
+            </div>
+          </div>
+        </div>
+
+        ${
+            list.length === 0
+                ? emptyState(
+                      "Объявлений пока нет",
+                      "Создайте объявление — оно появится у выбранных пользователей на дашборде.",
+                      SVG.bell,
+                  )
+                : list.map((a) => renderAnnouncementRow(a)).join("")
+        }
+      </div>
+    `;
+    };
+
+    function renderAnnouncementRow(a) {
+        const isActive =
+            a.active !== false && (!a.expiresAt || a.expiresAt > Date.now());
+        const isExpired = a.expiresAt && a.expiresAt <= Date.now();
+
+        const IconFn =
+            a.priority === "urgent"
+                ? SVG.alertTriangle
+                : a.priority === "important"
+                  ? SVG.info
+                  : SVG.bell;
+
+        const priorityLabel = Announcements.PRIORITY_LABELS[a.priority] || "";
+
+        return `
+      <div class="ann-admin-row ${isActive ? "" : "off"} ann-${a.priority}">
+        <div class="ann-admin-icon">
+          ${IconFn({ cls: "icon icon-lg" })}
+        </div>
+        <div class="ann-admin-body">
+          <div class="ann-admin-head">
+            <div class="ann-admin-title">${escapeHtml(a.title)}</div>
+            <div class="ann-admin-badges">
+              <span class="ann-priority ann-priority-${a.priority}">${priorityLabel}</span>
+              ${
+                  isExpired
+                      ? '<span class="badge rejected" style="font-size:10px;">истекло</span>'
+                      : isActive
+                        ? '<span class="badge approved" style="font-size:10px;">активно</span>'
+                        : '<span class="badge draft" style="font-size:10px;">выключено</span>'
+              }
+            </div>
+          </div>
+          <div class="ann-admin-text">${escapeHtml(a.text)}</div>
+          <div class="ann-admin-meta">
+            ${escapeHtml(Announcements.describeAudience(a))}
+            · создано ${fmtDateTime(a.createdAt)}
+            ${a.expiresAt ? ` · до ${fmtDate(a.expiresAt)}` : ""}
+          </div>
+        </div>
+        <div class="ann-admin-actions">
+          <button class="btn-ghost btn-sm"
+            onclick="Admin.toggleAnnouncementActive('${a.id}')">
+            ${isActive ? SVG.x({ cls: "icon icon-sm" }) : SVG.check({ cls: "icon icon-sm" })}
+            <span>${isActive ? "Выключить" : "Включить"}</span>
+          </button>
+          <button class="btn-icon danger"
+            onclick="Admin.deleteAnnouncement('${a.id}')" title="Удалить">
+            ${SVG.trash({ cls: "icon icon-sm" })}
+          </button>
+        </div>
+      </div>
+    `;
+    }
+
+    let annAudience = "all";
+
+    function openCreateAnnouncement() {
+        annAudience = "all";
+        renderCreateAnnouncementModal();
+    }
+
+    function renderCreateAnnouncementModal() {
+        const teachers = Storage.getTeachers();
+        const students = Storage.getStudents();
+        const refs = Storage.get("fp_refs", { groups: [] });
+        const groups = Array.isArray(refs.groups) ? refs.groups : [];
+
+        const html = `
+      <div class="modal-back" onclick="if(event.target===this) Admin.closeModal()">
+        <div class="modal" style="max-width:560px;">
+          <div class="modal-head">
+            <h3>Новое объявление</h3>
+            <button class="modal-close" onclick="Admin.closeModal()">
+              ${SVG.x({ cls: "icon icon-sm" })}
+            </button>
+          </div>
+
+          <div class="field">
+            <label>Заголовок <span class="req">*</span></label>
+            <input type="text" id="ann_title" placeholder="Например: Перенос даты защиты">
+          </div>
+
+          <div class="field">
+            <label>Текст объявления <span class="req">*</span></label>
+            <textarea id="ann_text" rows="4"
+              placeholder="Опишите подробности — все выбранные пользователи увидят это на дашборде"></textarea>
+          </div>
+
+          <div class="section-label">Кому показать</div>
+          <div class="role-picker ann-audience-picker">
+            <button type="button" data-aud="all"
+              class="${annAudience === "all" ? "active" : ""}"
+              onclick="Admin.pickAnnAudience('all')">
+              ${SVG.users({ cls: "icon icon-xl" })}
+              <span class="role-lbl">Всем</span>
+            </button>
+            <button type="button" data-aud="students"
+              class="${annAudience === "students" ? "active" : ""}"
+              onclick="Admin.pickAnnAudience('students')">
+              ${SVG.graduation({ cls: "icon icon-xl" })}
+              <span class="role-lbl">Студентам</span>
+            </button>
+            <button type="button" data-aud="teachers"
+              class="${annAudience === "teachers" ? "active" : ""}"
+              onclick="Admin.pickAnnAudience('teachers')">
+              ${SVG.users({ cls: "icon icon-xl" })}
+              <span class="role-lbl">Преподавателям</span>
+            </button>
+          </div>
+
+          <div class="role-picker ann-audience-picker" style="grid-template-columns:1fr 1fr;">
+            <button type="button" data-aud="user"
+              class="${annAudience === "user" ? "active" : ""}"
+              onclick="Admin.pickAnnAudience('user')">
+              ${SVG.user({ cls: "icon icon-xl" })}
+              <span class="role-lbl">Пользователю</span>
+            </button>
+            <button type="button" data-aud="group"
+              class="${annAudience === "group" ? "active" : ""}"
+              onclick="Admin.pickAnnAudience('group')">
+              ${SVG.grid({ cls: "icon icon-xl" })}
+              <span class="role-lbl">Группе</span>
+            </button>
+          </div>
+
+          <div id="ann_audienceFields"></div>
+
+          <div class="section-label">Приоритет</div>
+          <div class="role-picker ann-priority-picker">
+            <button type="button" data-pri="normal"
+              class="active"
+              onclick="Admin.pickAnnPriority('normal')">
+              ${SVG.bell({ cls: "icon icon-xl" })}
+              <span class="role-lbl">Обычное</span>
+            </button>
+            <button type="button" data-pri="important"
+              onclick="Admin.pickAnnPriority('important')">
+              ${SVG.info({ cls: "icon icon-xl" })}
+              <span class="role-lbl">Важное</span>
+            </button>
+            <button type="button" data-pri="urgent"
+              onclick="Admin.pickAnnPriority('urgent')">
+              ${SVG.alertTriangle({ cls: "icon icon-xl" })}
+              <span class="role-lbl">Срочное</span>
+            </button>
+          </div>
+
+          <div class="field">
+            <label>Действует до (необязательно)</label>
+            <input type="date" id="ann_expires">
+          </div>
+
+          <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+            <button class="btn-ghost" onclick="Admin.closeModal()">Отмена</button>
+            <button class="btn-primary" onclick="Admin.createAnnouncement()">
+              ${SVG.check({ cls: "icon icon-sm" })}
+              <span>Опубликовать</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+        App.openModal(html);
+        renderAnnAudienceFields();
+    }
+
+    function pickAnnAudience(aud) {
+        annAudience = aud;
+        document
+            .querySelectorAll(".ann-audience-picker button")
+            .forEach((b) => {
+                b.classList.toggle("active", b.dataset.aud === aud);
+            });
+        renderAnnAudienceFields();
+    }
+
+    let annPriority = "normal";
+    function pickAnnPriority(pri) {
+        annPriority = pri;
+        document
+            .querySelectorAll(".ann-priority-picker button")
+            .forEach((b) => {
+                b.classList.toggle("active", b.dataset.pri === pri);
+            });
+    }
+
+    function renderAnnAudienceFields() {
+        const box = document.getElementById("ann_audienceFields");
+        if (!box) return;
+
+        if (annAudience === "user") {
+            const users = Storage.getUsers().sort((a, b) =>
+                a.fio.localeCompare(b.fio),
+            );
+            box.innerHTML = `
+        <div class="field">
+          <label>Выберите пользователя <span class="req">*</span></label>
+          <select id="ann_audienceId">
+            <option value="">— выберите —</option>
+            ${users
+                .map(
+                    (u) =>
+                        `<option value="${u.id}">${escapeHtml(u.fio)} (${ROLE_LABELS[u.role] || u.role})</option>`,
+                )
+                .join("")}
+          </select>
+        </div>
+      `;
+        } else if (annAudience === "group") {
+            const refs = Storage.get("fp_refs", { groups: [] });
+            const groups = Array.isArray(refs.groups) ? refs.groups : [];
+            box.innerHTML = `
+        <div class="field">
+          <label>Выберите группу <span class="req">*</span></label>
+          <select id="ann_audienceId">
+            <option value="">— выберите —</option>
+            ${groups
+                .map(
+                    (g) =>
+                        `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`,
+                )
+                .join("")}
+          </select>
+        </div>
+      `;
+        } else {
+            box.innerHTML = "";
+        }
+    }
+
+    function createAnnouncement() {
+        const title = document.getElementById("ann_title")?.value.trim();
+        const text = document.getElementById("ann_text")?.value.trim();
+        const expires = document.getElementById("ann_expires")?.value || null;
+        const audienceId =
+            document.getElementById("ann_audienceId")?.value || null;
+
+        if (!title) {
+            App.toast("Введите заголовок");
+            return;
+        }
+        if (!text) {
+            App.toast("Введите текст объявления");
+            return;
+        }
+        if (
+            (annAudience === "user" || annAudience === "group") &&
+            !audienceId
+        ) {
+            App.toast("Выберите получателя");
+            return;
+        }
+
+        const expiresAt = expires
+            ? new Date(expires).getTime() + 86400000 - 1
+            : null;
+
+        Announcements.add({
+            title,
+            text,
+            audience: annAudience,
+            audienceId,
+            priority: annPriority,
+            expiresAt,
+        });
+
+        if (typeof Audit !== "undefined") {
+            Audit.log(
+                "Создано объявление",
+                title,
+                Announcements.AUDIENCE_LABELS[annAudience] || annAudience,
+                annPriority === "urgent" ? "warning" : "info",
+            );
+        }
+
+        closeModal();
+        App.toast("Объявление опубликовано");
+        App.navigate("announcements");
+    }
+
+    function toggleAnnouncementActive(id) {
+        Announcements.toggleActive(id);
+        App.toast("Статус объявления изменён");
+        App.navigate("announcements");
+    }
+
+    function deleteAnnouncement(id) {
+        if (!confirm("Удалить объявление?")) return;
+        Announcements.remove(id);
+        if (typeof Audit !== "undefined") {
+            Audit.log("Удалено объявление", "", `ID: ${id}`, "negative");
+        }
+        App.toast("Объявление удалено");
+        App.navigate("announcements");
+    }
 
     function closeModal() {
         App.closeModal();
@@ -2877,6 +3228,13 @@ const Admin = (() => {
 
         saveSettings,
         fullReset,
+
+        openCreateAnnouncement,
+        pickAnnAudience,
+        pickAnnPriority,
+        createAnnouncement,
+        toggleAnnouncementActive,
+        deleteAnnouncement,
 
         closeModal,
     };

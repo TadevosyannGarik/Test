@@ -1,6 +1,6 @@
 .chart-box {
     position: relative;
-    background: var(--bg-elev);
+    background: rgba(255, 255, 255, 0.5);
     border-radius: var(--r);
     padding: 4px;
     width: 100%;

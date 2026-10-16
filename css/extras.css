@@ -1,20 +1,27 @@
+/* =========================================================
+   EXTRAS — прогресс, метрики, календарь, notice, mini-project
+   ========================================================= */
+
+/* =========================================================
+   PROGRESS BARS — таблетки
+   ========================================================= */
 .pbar {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     font-size: 12px;
 }
 .pbar-track {
     flex: 1;
-    height: 6px;
+    height: 8px;
     background: var(--bg-soft);
-    border-radius: 3px;
+    border-radius: var(--r-pill);
     overflow: hidden;
 }
 .pbar-fill {
     height: 100%;
     background: var(--accent);
-    border-radius: 3px;
+    border-radius: var(--r-pill);
     transition: width var(--t-slow);
 }
 .pbar-fill.ok {
@@ -27,8 +34,8 @@
     background: var(--bad);
 }
 .pbar-val {
-    font-weight: 500;
-    min-width: 40px;
+    font-weight: 600;
+    min-width: 44px;
     text-align: right;
     color: var(--txt-muted);
     font-size: 12px;
@@ -36,14 +43,15 @@
 }
 
 .progress {
-    height: 6px;
+    height: 8px;
     background: var(--bg-soft);
-    border-radius: 3px;
+    border-radius: var(--r-pill);
     overflow: hidden;
 }
 .progress > div {
     height: 100%;
     background: var(--accent);
+    border-radius: var(--r-pill);
     transition: width var(--t-slow);
 }
 .progress.low > div {
@@ -56,32 +64,39 @@
     background: var(--ok);
 }
 
+/* =========================================================
+   METRIC — карточки-таблетки
+   ========================================================= */
 .metric-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 16px;
 }
 .metric {
-    padding: 20px 18px;
+    padding: 22px 20px;
     border: 1px solid var(--line);
-    border-radius: var(--r);
+    border-radius: var(--r-lg);
     background: var(--bg-elev);
-    transition: border-color var(--t-fast);
+    transition:
+        border-color var(--t-fast),
+        transform var(--t-fast);
 }
 .metric:hover {
     border-color: var(--line-strong);
+    transform: translateY(-2px);
 }
 .metric-lbl {
     font-size: 12px;
     color: var(--txt-muted);
-    margin-bottom: 8px;
+    margin-bottom: 10px;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.06em;
+    font-weight: 600;
 }
 .metric-val {
-    font-size: 28px;
+    font-size: 30px;
     font-weight: 600;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.025em;
     color: var(--txt);
     font-variant-numeric: tabular-nums;
     line-height: 1.1;
@@ -89,9 +104,12 @@
 .metric-sub {
     font-size: 11px;
     color: var(--txt-soft);
-    margin-top: 6px;
+    margin-top: 8px;
 }
 
+/* =========================================================
+   EMPTY STATES
+   ========================================================= */
 .empty {
     padding: 30px 20px;
     text-align: center;
@@ -111,28 +129,31 @@
     width: 100px;
     height: 100px;
     margin-bottom: 20px;
-    opacity: 0.6;
+    opacity: 0.5;
 }
 .empty-state h3 {
-    font-size: 16px;
+    font-size: 17px;
     font-weight: 600;
     margin-bottom: 8px;
     color: var(--txt);
-    letter-spacing: -0.01em;
+    letter-spacing: -0.015em;
 }
 .empty-state p {
     color: var(--txt-muted);
     font-size: 13px;
-    max-width: 380px;
+    max-width: 400px;
     margin: 0 auto 20px;
     line-height: 1.6;
 }
 
+/* =========================================================
+   STATUS STRIP — полоски уведомлений
+   ========================================================= */
 .status-strip {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 14px 16px;
+    padding: 14px 18px;
     border-radius: var(--r);
     margin-bottom: 16px;
     font-size: 13px;
@@ -167,10 +188,13 @@
     height: 18px;
 }
 
+/* =========================================================
+   NOTICE — полоски-подсказки
+   ========================================================= */
 .notice {
     background: var(--accent-soft);
     border-left: 3px solid var(--accent);
-    padding: 14px 16px;
+    padding: 14px 18px;
     border-radius: 0 var(--r) var(--r) 0;
     font-size: 13px;
     line-height: 1.55;
@@ -178,13 +202,16 @@
     color: var(--txt);
 }
 
+/* =========================================================
+   MINI PROJECT — таблетки-строки
+   ========================================================= */
 .mini-project {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 14px 16px;
+    padding: 16px 18px;
     border: 1px solid var(--line);
-    border-radius: var(--r);
+    border-radius: var(--r-md);
     margin-bottom: 8px;
     cursor: pointer;
     transition: all var(--t-fast);
@@ -198,15 +225,19 @@
 }
 .mini-project-title {
     font-size: 13px;
-    font-weight: 500;
+    font-weight: 600;
     color: var(--txt);
+    letter-spacing: -0.005em;
 }
 .mini-project-sub {
     font-size: 12px;
     color: var(--txt-muted);
-    margin-top: 2px;
+    margin-top: 3px;
 }
 
+/* =========================================================
+   DANGER ZONE
+   ========================================================= */
 .danger-zone {
     border: 1px solid rgba(194, 58, 47, 0.2);
     background: var(--bad-soft);
@@ -217,6 +248,9 @@
     color: var(--bad);
 }
 
+/* =========================================================
+   CALENDAR — сетка месяца
+   ========================================================= */
 .calendar-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
@@ -229,7 +263,7 @@
     font-size: 11px;
     font-weight: 600;
     color: var(--txt-muted);
-    padding: 8px 0;
+    padding: 10px 0;
     text-transform: uppercase;
     letter-spacing: 0.06em;
 }
@@ -243,7 +277,7 @@
     font-size: 13px;
     font-weight: 500;
     color: var(--txt);
-    border-radius: var(--r-sm);
+    border-radius: var(--r);
     cursor: pointer;
     background: var(--bg-elev);
     border: 1px solid var(--line);
@@ -257,6 +291,7 @@
     background: var(--accent-soft);
     color: var(--accent);
     transform: scale(1.05);
+    border-radius: var(--r);
 }
 
 .calendar-day.today {
@@ -320,6 +355,58 @@
     visibility: hidden;
 }
 
+/* Выбранный день */
+.calendar-day.selected {
+    background: var(--accent-viz);
+    color: #fff;
+    border-color: var(--accent-viz);
+    font-weight: 600;
+    box-shadow: 0 4px 12px var(--accent-viz-glow);
+    transform: scale(1.05);
+}
+.calendar-day.selected::after {
+    background: #fff !important;
+}
+.calendar-day.selected:hover {
+    background: var(--accent-viz-hover);
+    color: #fff;
+}
+
+/* Точки событий */
+.calendar-day-num {
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1;
+}
+.calendar-day-dots {
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 2px;
+}
+.cal-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+}
+.cal-dot.stage {
+    background: var(--accent-viz);
+}
+.cal-dot.task {
+    background: var(--info);
+}
+.cal-dot.defense {
+    background: var(--ok);
+}
+.calendar-day.selected .cal-dot {
+    background: #fff !important;
+}
+
+/* =========================================================
+   CALENDAR LEGEND
+   ========================================================= */
 .calendar-legend {
     display: flex;
     gap: 16px;
@@ -351,22 +438,143 @@
     background: var(--bad);
 }
 
+/* =========================================================
+   FILTER TABS — таблетки (используется в заявках, проверке, задачах)
+   ========================================================= */
+.filter-tabs {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    padding: 4px;
+    background: var(--bg-soft);
+    border-radius: var(--r-pill);
+    margin-bottom: 14px;
+}
+.filter-tab {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 16px;
+    border-radius: var(--r-pill);
+    font-size: 13px;
+    color: var(--txt-muted);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: all var(--t-fast);
+    font-weight: 500;
+    white-space: nowrap;
+}
+.filter-tab:hover {
+    background: var(--bg-hover);
+    color: var(--txt);
+}
+.filter-tab.active {
+    background: var(--bg-elev);
+    color: var(--txt);
+    font-weight: 600;
+    box-shadow: var(--shadow-xs);
+}
+.filter-tab .count-chip {
+    background: var(--bg-soft);
+    color: var(--txt-muted);
+    margin-left: 6px;
+    min-width: 20px;
+    height: 20px;
+    font-size: 10px;
+}
+.filter-tab.active .count-chip {
+    background: var(--txt);
+    color: #fff;
+}
+
+/* =========================================================
+   TIMELINE
+   ========================================================= */
+.timeline {
+    position: relative;
+    padding-left: 22px;
+}
+.timeline::before {
+    content: "";
+    position: absolute;
+    left: 6px;
+    top: 6px;
+    bottom: 6px;
+    width: 1px;
+    background: var(--line);
+}
+.timeline-item {
+    position: relative;
+    padding-bottom: 16px;
+}
+.timeline-item::before {
+    content: "";
+    position: absolute;
+    left: -21px;
+    top: 5px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--bg-elev);
+    border: 2px solid var(--accent);
+    box-shadow: 0 0 0 3px var(--bg-elev);
+}
+.timeline-item.done::before {
+    border-color: var(--ok);
+    background: var(--ok);
+}
+.timeline-item.warn::before {
+    border-color: var(--warn);
+    background: var(--warn);
+}
+.timeline-item.bad::before {
+    border-color: var(--bad);
+    background: var(--bad);
+}
+.timeline-time {
+    font-size: 11px;
+    color: var(--txt-soft);
+}
+.timeline-title {
+    font-size: 13px;
+    font-weight: 500;
+    margin-top: 2px;
+    color: var(--txt);
+}
+.timeline-text {
+    font-size: 12px;
+    color: var(--txt-muted);
+    margin-top: 3px;
+    line-height: 1.5;
+}
+
+/* =========================================================
+   АДАПТИВ
+   ========================================================= */
 @media (max-width: 640px) {
     .calendar-grid {
         gap: 4px;
     }
     .calendar-day {
         font-size: 12px;
-        border-radius: 4px;
+        border-radius: var(--r-sm);
     }
     .calendar-head {
         font-size: 10px;
-        padding: 4px 0;
+        padding: 6px 0;
     }
     .calendar-day.has-deadline::after,
     .calendar-day.urgent::after {
         width: 3px;
         height: 3px;
         bottom: 3px;
+    }
+    .filter-tabs {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        scrollbar-width: none;
+    }
+    .filter-tabs::-webkit-scrollbar {
+        display: none;
     }
 }

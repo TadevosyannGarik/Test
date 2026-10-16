@@ -35,6 +35,63 @@
         <link rel="stylesheet" href="css/overrides.css" />
     </head>
     <body>
+        <svg
+            class="bg-filter"
+            aria-hidden="true"
+            width="0"
+            height="0"
+            style="position: absolute; width: 0; height: 0"
+        >
+            <defs>
+                <filter
+                    id="blobShape"
+                    x="-50%"
+                    y="-50%"
+                    width="200%"
+                    height="200%"
+                >
+                    <feTurbulence
+                        type="fractalNoise"
+                        baseFrequency="0.015"
+                        numOctaves="2"
+                        seed="5"
+                        result="noise"
+                    >
+                        <animate
+                            attributeName="baseFrequency"
+                            dur="40s"
+                            values="0.015;0.022;0.012;0.018;0.015"
+                            repeatCount="indefinite"
+                        />
+                    </feTurbulence>
+                    <feDisplacementMap
+                        in="SourceGraphic"
+                        in2="noise"
+                        scale="70"
+                        xChannelSelector="R"
+                        yChannelSelector="G"
+                    />
+                </filter>
+            </defs>
+        </svg>
+
+        <div class="bg-blobs" aria-hidden="true">
+            <div class="bg-blob bg-blob-a">
+                <span></span><span></span><span></span><span></span>
+            </div>
+            <div class="bg-blob bg-blob-b">
+                <span></span><span></span><span></span><span></span>
+            </div>
+            <div class="bg-blob bg-blob-c">
+                <span></span><span></span><span></span><span></span>
+            </div>
+            <div class="bg-blob bg-blob-d">
+                <span></span><span></span><span></span><span></span>
+            </div>
+            <div class="bg-blob bg-blob-e">
+                <span></span><span></span><span></span><span></span>
+            </div>
+        </div>
         <noscript>
             <div
                 style="
@@ -475,6 +532,7 @@
         <script src="js/fuzzy.js"></script>
         <script src="js/auth.js"></script>
         <script src="js/notifications.js"></script>
+        <script src="js/announcements.js"></script>
         <script src="js/charts.js"></script>
         <script src="js/audit.js"></script>
         <script src="js/consult.js"></script>
