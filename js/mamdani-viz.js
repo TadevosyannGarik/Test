@@ -241,17 +241,784 @@ const MamdaniViz = (() => {
         if (!result)
             return emptyState("Не удалось посчитать", "", SVG.alertTriangle);
 
-        const avg = computeAverage(user, selectedWorkId);
-
         return `
       ${renderWorkSelector(works, work)}
-      ${renderHero(result, avg)}
-      ${renderActions(work)}
-      ${renderMainResult(result)}
-      ${renderTodo(inputs, result)}
+      ${renderStatusBanner(result, work, inputs)}
+      ${renderThreeNumbers(result)}
+      ${renderQuickActions(result, work, inputs)}
       ${renderFactors(inputs)}
       ${renderDetailedAnalysis(inputs, result, work)}
       ${renderHistory(work)}
+    `;
+    }
+
+    function renderStatusBanner(result, work, inputs) {
+        const risk = result.risk.value;
+        const riskTerm = result.risk.term;
+
+        let status = {};
+        if (riskTerm === "low") {
+            status = {
+                icon: SVG.checkCircle,
+                cls: "ok",
+                title: "Всё идёт хорошо",
+                text: "Вы успеваете к дедлайну. Продолжайте в том же темпе.",
+            };
+        } else if (riskTerm === "med") {
+            status = {
+                icon: SVG.alertTriangle,
+                cls: "warn",
+                title: "Стоит ускориться",
+                text: "Работа идёт, но есть отставание. Уделите ей больше времени — и всё будет в порядке.",
+            };
+        } else {
+            status = {
+                icon: SVG.zap,
+                cls: "bad",
+                title: "Нужно действовать срочно",
+                text: "Работа может не успеть к дедлайну. Посмотрите шаги ниже и начните с самого важного.",
+            };
+        }
+
+        // Дней до дедлайна
+        const daysLeft = work.deadline ? daysUntil(work.deadline) : null;
+        const daysText =
+            daysLeft === null
+                ? ""
+                : daysLeft < 0
+                  ? `Дедлайн прошёл ${Math.abs(daysLeft)} дней назад`
+                  : daysLeft === 0
+                    ? "Дедлайн — сегодня"
+                    : `До дедлайна ${daysLeft} ${daysLeft === 1 ? "день" : daysLeft < 5 ? "дня" : "дней"}`;
+
+        return `
+      <div class="status-banner status-${status.cls}">
+        <div class="status-icon">
+          ${status.icon({ cls: "icon icon-xl" })}
+        </div>
+        <div class="status-body">
+          <div class="status-title">${status.title}</div>
+          <div class="status-text">${status.text}</div>
+          ${daysText ? `<div class="status-days">${daysText}</div>` : ""}
+        </div>
+      </div>
+    `;
+    }
+
+    /* =========================================================
+       ТРИ ГЛАВНЫЕ ЦИФРЫ — с объяснением
+       ========================================================= */
+    function renderThreeNumbers(result) {
+        const riskTerm = result.risk.term;
+        const readyTerm = result.ready.term;
+        const ratingTerm = result.rating.term;
+
+        const riskColor = Utils.riskClass(riskTerm);
+        const readyColor = Utils.readyClass(readyTerm);
+        const ratingColor = Utils.readyClass(ratingTerm);
+
+        // Подписи-объяснения
+        const riskExplain =
+            riskTerm === "low"
+                ? "Успеваете вовремя"
+                : riskTerm === "med"
+                  ? "Можете не успеть"
+                  : "Скорее всего, не успеете";
+
+        const readyExplain =
+            readyTerm === "low"
+                ? "Готово меньше половины"
+                : readyTerm === "med"
+                  ? "Готова наполовину"
+                  : "Почти всё готово";
+
+        const ratingExplain =
+            ratingTerm === "low"
+                ? "Ниже среднего"
+                : ratingTerm === "med"
+                  ? "Среднее качество"
+                  : "Качественная работа";
+
+        return `
+      <div class="three-numbers">
+
+        <div class="number-card ${riskColor}">
+          <div class="number-label">Риск срыва</div>
+          <div class="number-value" style="color:var(--${riskColor});">
+            ${result.risk.value.toFixed(0)}
+          </div>
+          <div class="number-term">
+            ${escapeHtml(Fuzzy.termLabel(riskTerm, "risk"))}
+          </div>
+          <div class="number-bar">
+            <div class="number-bar-fill" style="width:${result.risk.value}%;background:var(--${riskColor});"></div>
+          </div>
+          <div class="number-explain">${riskExplain}</div>
+        </div>
+
+        <div class="number-card ${readyColor}">
+          <div class="number-label">Готовность</div>
+          <div class="number-value" style="color:var(--${readyColor});">
+            ${result.ready.value.toFixed(0)}
+          </div>
+          <div class="number-term">
+            ${escapeHtml(Fuzzy.termLabel(readyTerm, "ready"))}
+          </div>
+          <div class="number-bar">
+            <div class="number-bar-fill" style="width:${result.ready.value}%;background:var(--${readyColor});"></div>
+          </div>
+          <div class="number-explain">${readyExplain}</div>
+        </div>
+
+        <div class="number-card ${ratingColor}">
+          <div class="number-label">Оценка качества</div>
+          <div class="number-value" style="color:var(--${ratingColor});">
+            ${result.rating.value.toFixed(0)}
+          </div>
+          <div class="number-term">
+            ${escapeHtml(Fuzzy.termLabel(ratingTerm, "rating"))}
+          </div>
+          <div class="number-bar">
+            <div class="number-bar-fill" style="width:${result.rating.value}%;background:var(--${ratingColor});"></div>
+          </div>
+          <div class="number-explain">${ratingExplain}</div>
+        </div>
+
+      </div>
+    `;
+    }
+
+    /* =========================================================
+       БЫСТРЫЕ ДЕЙСТВИЯ — что делать прямо сейчас
+       ========================================================= */
+    function renderQuickActions(result, work, inputs) {
+        const actions = [];
+
+        // 1. Прогресс низкий → ускориться
+        if (inputs.progress < 50) {
+            actions.push({
+                icon: SVG.trending,
+                title: "Ускорить темп работы",
+                text: `Сейчас прогресс ${inputs.progress}%. Закройте этапы и задачи — прогресс вырастет.`,
+                btnText: "Открыть мою работу",
+                onclick: `App.navigate('my-work')`,
+                cls: "warn",
+            });
+        }
+
+        // 2. ГОСТ низкий
+        if (
+            inputs.gost === null ||
+            inputs.gost === undefined ||
+            inputs.gost < 70
+        ) {
+            actions.push({
+                icon: SVG.fileText,
+                title:
+                    inputs.gost === null || inputs.gost === undefined
+                        ? "Проверить оформление ГОСТ"
+                        : "Доработать оформление ГОСТ",
+                text:
+                    inputs.gost === null || inputs.gost === undefined
+                        ? "Загрузите .docx — система проверит по 8 пунктам."
+                        : `Сейчас соответствие ${inputs.gost}%. Проверьте замечания.`,
+                btnText: "Проверить ГОСТ",
+                onclick: `App.navigate('docx')`,
+                cls: "warn",
+            });
+        }
+
+        // 3. Мало дней
+        if (work.deadline && daysUntil(work.deadline) <= 14) {
+            actions.push({
+                icon: SVG.clock,
+                title: "Сроки поджимают",
+                text: `До дедлайна ${daysUntil(work.deadline)} дн. Запишитесь на консультацию к руководителю.`,
+                btnText: "Записаться на консультацию",
+                onclick: `App.navigate('consultations')`,
+                cls: "bad",
+            });
+        }
+
+        // 4. Низкая активность
+        if (inputs.activity < 4) {
+            actions.push({
+                icon: SVG.activity,
+                title: "Повысить активность",
+                text: "Давно не было действий по работе. Продолжите с ближайшей задачи.",
+                btnText: "Открыть задачи",
+                onclick: `App.navigate('my-work')`,
+                cls: "warn",
+            });
+        }
+
+        // 5. Оценка руководителя отсутствует
+        if (inputs.supScore === null || inputs.supScore === undefined) {
+            actions.push({
+                icon: SVG.messageCircle,
+                title: "Проверка руководителя",
+                text: "Руководитель ещё не проверял работу. Напишите ему.",
+                btnText: "Написать руководителю",
+                onclick: `App.navigate('consultations')`,
+                cls: "info",
+            });
+        }
+
+        // Если ничего — поздравление
+        if (actions.length === 0) {
+            return `
+        <div class="card quick-actions-card">
+          <div class="qa-empty">
+            ${SVG.checkCircle({ cls: "icon icon-xl" })}
+            <div>
+              <div class="qa-empty-title">Всё в порядке</div>
+              <div class="qa-empty-text">
+                Работа идёт по плану. Продолжайте в том же темпе — вы успеваете к защите.
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+        }
+
+        return `
+      <div class="quick-actions-card">
+        <div class="qa-head">
+          ${SVG.zap({ cls: "icon icon-sm" })}
+          <span>Что делать сейчас</span>
+        </div>
+        <div class="qa-list">
+          ${actions
+              .slice(0, 4)
+              .map(
+                  (a) => `
+            <div class="qa-item qa-item-${a.cls}">
+              <div class="qa-item-icon">
+                ${a.icon({ cls: "icon icon-lg" })}
+              </div>
+              <div class="qa-item-body">
+                <div class="qa-item-title">${escapeHtml(a.title)}</div>
+                <div class="qa-item-text">${escapeHtml(a.text)}</div>
+              </div>
+              <button class="btn-ghost btn-sm qa-item-btn"
+                onclick="${a.onclick}">
+                <span>${escapeHtml(a.btnText)}</span>
+                ${SVG.arrowRight({ cls: "icon icon-xs" })}
+              </button>
+            </div>
+          `,
+              )
+              .join("")}
+        </div>
+      </div>
+    `;
+    }
+
+    function renderFactors(inputs) {
+        const vars = ["progress", "days", "activity", "edits"];
+
+        return `
+      <div class="card factors-card">
+        <div class="factors-head">
+          ${SVG.info({ cls: "icon icon-sm" })}
+          <span>Что повлияло на оценку</span>
+        </div>
+        <div class="factors-sub">
+          Система смотрит на 4 главных показателя вашей работы:
+        </div>
+        <div class="factors-grid">
+          ${vars
+              .map((v) => {
+                  const val = inputs[v] ?? 0;
+                  const dt = Fuzzy.dominantTerm(v, val);
+                  const meaning = FACTOR_MEANING[v]?.[dt.term] || "";
+
+                  const iconFn =
+                      v === "progress"
+                          ? SVG.trending
+                          : v === "days"
+                            ? SVG.calendar
+                            : v === "activity"
+                              ? SVG.activity
+                              : SVG.edit;
+
+                  return `
+              <div class="factor-card factor-card-${dt.term}">
+                <div class="factor-card-icon">
+                  ${iconFn({ cls: "icon icon-lg" })}
+                </div>
+                <div class="factor-card-body">
+                  <div class="factor-card-name">${escapeHtml(VAR_NAMES[v])}</div>
+                  <div class="factor-card-value">${val}${v === "days" ? " дн." : v === "progress" ? "%" : ""}</div>
+                  <div class="factor-card-term">${escapeHtml(TERM_LABELS[dt.term])}</div>
+                  <div class="factor-card-meaning">${escapeHtml(meaning)}</div>
+                </div>
+              </div>
+            `;
+              })
+              .join("")}
+        </div>
+      </div>
+    `;
+    }
+
+    /* =========================================================
+       КАК СЧИТАЛАСЬ ОЦЕНКА — разбор по шагам
+       ========================================================= */
+    function renderDetailedAnalysis(inputs, result, work) {
+        return `
+      <div class="card mt-16">
+        <div class="factors-head">
+          ${SVG.brain({ cls: "icon icon-sm" })}
+          <span>Как считалась оценка</span>
+        </div>
+        <div class="factors-sub">
+          Разберём по шагам, как система пришла к этим цифрам.
+          Нажмите на любой шаг — увидите детали.
+        </div>
+
+        <div class="mamdani-tabs" style="margin-top:16px;">
+          ${renderTab("all", "Кратко")}
+          ${renderTab("fuzz", "1. Ваши данные")}
+          ${renderTab("rules", "2. Проверка правил")}
+          ${renderTab("aggr", "3. Объединение")}
+          ${renderTab("defuzz", "4. Итоговое число")}
+          ${renderTab("compare", "Сравнение методов")}
+        </div>
+
+        <div class="pipeline-v2">
+          ${pipelineStepV2(1, "Ваши данные", "цифры и факты", currentStep === "fuzz")}
+          ${pipelineStepV2(2, "Проверка правил", "что подходит", currentStep === "rules")}
+          ${pipelineStepV2(3, "Объединение", "собираем вместе", currentStep === "aggr")}
+          ${pipelineStepV2(4, "Итоговое число", "0 — 100", currentStep === "defuzz")}
+          ${pipelineStepV2(5, "Готово", "результат", false)}
+        </div>
+
+        <div id="vizBody">
+          ${renderStep(inputs, result, work)}
+        </div>
+      </div>
+    `;
+    }
+
+    function pipelineStepV2(num, title, sub, active) {
+        return `
+      <div class="pipeline-step-v2 ${active ? "active" : ""}">
+        <div class="pipeline-step-v2-num">${num}</div>
+        <div class="pipeline-step-v2-title">${escapeHtml(title)}</div>
+        <div class="pipeline-step-v2-sub">${escapeHtml(sub)}</div>
+      </div>
+    `;
+    }
+
+    /* =========================================================
+       ИСТОРИЯ РАБОТЫ
+       ========================================================= */
+    function renderHistory(work) {
+        const comments = Storage.getCommentsByWork(work.id);
+        const stages = Storage.getStagesByWork(work.id);
+
+        const events = [
+            { time: work.createdAt, label: "Работа создана", icon: SVG.folder },
+            ...stages
+                .filter((s) => s.completedAt)
+                .map((s) => ({
+                    time: s.completedAt,
+                    label: `Этап выполнен: ${s.name}`,
+                    icon: SVG.check,
+                })),
+            ...comments.map((c) => ({
+                time: c.createdAt,
+                label: "Новое замечание руководителя",
+                icon: SVG.messageCircle,
+            })),
+        ].sort((a, b) => a.time - b.time);
+
+        if (events.length < 2) return "";
+
+        const shown = events.slice(-6).reverse();
+
+        return `
+      <div class="card mt-16">
+        <div class="factors-head">
+          ${SVG.activity({ cls: "icon icon-sm" })}
+          <span>Что происходило с работой</span>
+        </div>
+        <div class="factors-sub">
+          Последние ${shown.length} ${shown.length === 1 ? "событие" : shown.length < 5 ? "события" : "событий"}:
+        </div>
+        <div class="history-list-v2">
+          ${shown
+              .map(
+                  (e, i) => `
+            <div class="history-item-v2">
+              <div class="history-item-icon">
+                ${e.icon({ cls: "icon icon-sm" })}
+              </div>
+              <div class="history-item-body">
+                <div class="history-item-label">${escapeHtml(e.label)}</div>
+                <div class="history-item-time">${fmtDateTime(e.time)}</div>
+              </div>
+            </div>
+          `,
+              )
+              .join("")}
+        </div>
+      </div>
+    `;
+    }
+
+    /* =========================================================
+       ВНУТРЕННИЕ ВКЛАДКИ — понятные объяснения
+       ========================================================= */
+
+    function renderOverview(inputs, result) {
+        return `
+      <div class="explain-box">
+        <div class="explain-box-title">Коротко о вашей работе</div>
+        <p>
+          Система взяла данные вашей работы и через
+          <b>${Fuzzy.getRules().length} правил</b> посчитала
+          <b>риск срыва</b>, <b>готовность</b> и <b>оценку качества</b>.
+        </p>
+        <p style="margin-top:10px;">
+          Нажмите на любую вкладку выше, чтобы увидеть, как это работает по шагам.
+        </p>
+      </div>
+    `;
+    }
+
+    /* =========================================================
+       ВКЛАДКА 1: ВАШИ ДАННЫЕ
+       ========================================================= */
+    function renderFuzzDetail(inputs) {
+        const vars = [
+            "progress",
+            "days",
+            "activity",
+            "edits",
+            "volume",
+            "orig",
+            "supScore",
+            "gost",
+        ];
+
+        return `
+      <div class="explain-box">
+        <div class="explain-box-title">Шаг 1. Система смотрит на ваши данные</div>
+        <p>
+          Для каждого показателя система определяет, к какой категории он относится:
+          <b>низкий</b>, <b>средний</b> или <b>высокий</b>.
+          Число показывает, насколько система уверена в этой категории (от 0 до 1).
+        </p>
+      </div>
+
+      <div class="fuzz-table">
+        ${vars
+            .map((v) => {
+                const raw = inputs[v];
+                const isEmpty = raw === null || raw === undefined;
+                const val = isEmpty
+                    ? v === "orig"
+                        ? 65
+                        : v === "supScore"
+                          ? 5
+                          : v === "gost"
+                            ? 70
+                            : 0
+                    : raw;
+
+                const terms = ["low", "med", "high"].map((t) => ({
+                    t,
+                    mu: isEmpty ? 0 : safeMF(v, t, val),
+                }));
+                const maxTerm = terms.reduce((a, b) => (a.mu > b.mu ? a : b));
+                const explanation = isEmpty
+                    ? "Руководитель ещё не проверял этот показатель"
+                    : TERM_EXPLAIN[v]?.[maxTerm.t] || "";
+
+                return `
+            <div class="fuzz-row-v2 ${isEmpty ? "empty" : ""}">
+              <div class="fuzz-row-v2-head">
+                <div class="fuzz-row-v2-name">${escapeHtml(VAR_NAMES[v])}</div>
+                <div class="fuzz-row-v2-value">${isEmpty ? "—" : val}</div>
+                ${
+                    isEmpty
+                        ? `<span class="fuzz-row-v2-badge" style="background:var(--bg-soft);color:var(--txt-muted);">нет данных</span>`
+                        : `<span class="fuzz-row-v2-badge fuzz-badge-${maxTerm.t}">
+                             ${escapeHtml(TERM_LABELS[maxTerm.t])}
+                           </span>`
+                }
+              </div>
+              <div class="fuzz-row-v2-explain">${escapeHtml(explanation)}</div>
+              <div class="fuzz-row-v2-bars">
+                ${terms
+                    .map(
+                        (x) => `
+                  <div class="fuzz-bar-v2-row">
+                    <span class="fuzz-bar-v2-lbl">${escapeHtml(TERM_LABELS[x.t])}</span>
+                    <div class="fuzz-bar-v2-track">
+                      <div class="fuzz-bar-v2-fill fuzz-${x.t}" style="width:${x.mu * 100}%"></div>
+                    </div>
+                    <span class="fuzz-bar-v2-val">${x.mu.toFixed(2)}</span>
+                  </div>
+                `,
+                    )
+                    .join("")}
+              </div>
+            </div>
+          `;
+            })
+            .join("")}
+      </div>
+    `;
+    }
+
+    /* =========================================================
+       ВКЛАДКА 2: ПРОВЕРКА ПРАВИЛ
+       ========================================================= */
+    function renderRulesDetail(inputs, result) {
+        const allFired = [
+            ...(result.risk.fired || []),
+            ...(result.ready.fired || []),
+            ...(result.rating.fired || []),
+        ];
+
+        const uniq = {};
+        allFired.forEach((f) => {
+            const id = f.rule?.id;
+            if (id === undefined) return;
+            if (!uniq[id] || uniq[id].strength < f.strength) uniq[id] = f;
+        });
+        const fired = Object.values(uniq).sort(
+            (a, b) => b.strength - a.strength,
+        );
+
+        return `
+      <div class="explain-box">
+        <div class="explain-box-title">Шаг 2. Система проверяет правила</div>
+        <p>
+          В системе <b>${Fuzzy.getRules().length} правил</b> вида
+          «ЕСЛИ что-то ТО результат».
+          Для вашей работы сработало <b>${fired.length}</b>
+          ${fired.length === 1 ? "правило" : fired.length < 5 ? "правила" : "правил"}.
+          Чем сильнее сработало правило — тем больше оно влияет на результат.
+        </p>
+      </div>
+
+      ${
+          fired.length === 0
+              ? `<div class="empty" style="padding:30px;text-align:center;">
+                  Ни одно правило не сработало для вашей работы
+                 </div>`
+              : fired.map((f) => renderRuleCardV2(f)).join("")
+      }
+    `;
+    }
+
+    function renderRuleCardV2(f) {
+        const strength = f.strength;
+        const level = strength > 0.7 ? "high" : strength > 0.4 ? "med" : "low";
+        const word =
+            strength > 0.7 ? "сильно" : strength > 0.4 ? "умеренно" : "слабо";
+
+        const ifStr = f.rule.if
+            .map((c) => {
+                const [v, t] = c.split("=");
+                return `${VAR_NAMES[v] || v} — ${TERM_LABELS[t] || t}`;
+            })
+            .join(" И ");
+        const [rv, rt] = f.rule.then.split("=");
+        const thenStr = `${VAR_NAMES[rv] || rv} — ${TERM_LABELS[rt] || rt}`;
+
+        return `
+      <div class="rule-v2">
+        <div class="rule-v2-strength rule-strength-${level}">
+          ${(strength * 100).toFixed(0)}%
+        </div>
+        <div class="rule-v2-body">
+          <div class="rule-v2-line">
+            <span class="rule-v2-tag">ЕСЛИ</span>
+            <span>${escapeHtml(ifStr)}</span>
+          </div>
+          <div class="rule-v2-line">
+            <span class="rule-v2-tag rule-v2-tag-then">ТО</span>
+            <span><b>${escapeHtml(thenStr)}</b></span>
+          </div>
+          <div class="rule-v2-footer">
+            Сработало ${word}
+            ${f.rule.desc ? ` · ${escapeHtml(f.rule.desc)}` : ""}
+          </div>
+        </div>
+      </div>
+    `;
+    }
+
+    /* =========================================================
+       ВКЛАДКА 3: ОБЪЕДИНЕНИЕ
+       ========================================================= */
+    function renderAggrDetail(result) {
+        const acc = result.risk.acc;
+        const maxAcc = Math.max(acc.low, acc.med, acc.high, 0.01);
+
+        return `
+      <div class="explain-box">
+        <div class="explain-box-title">Шаг 3. Система объединяет результаты</div>
+        <p>
+          Правил много, и некоторые дают разные ответы. Система берёт
+          <b>самое сильное сработавшее правило</b> для каждого варианта:
+          «риск низкий», «риск средний» или «риск высокий».
+        </p>
+      </div>
+
+      <div class="aggr-grid-v2">
+        ${renderAggrCardV2("Низкий риск", acc.low, maxAcc, "low")}
+        ${renderAggrCardV2("Средний риск", acc.med, maxAcc, "med")}
+        ${renderAggrCardV2("Высокий риск", acc.high, maxAcc, "high")}
+      </div>
+
+      <div class="explain-box" style="margin-top:16px;">
+        <div class="explain-box-title">График</div>
+        <p>
+          Три тонкие линии — это три возможных исхода. <b>Жирная линия</b> —
+          итог, который получился после объединения всех правил.
+        </p>
+      </div>
+      <div class="chart-box h-260" style="margin-top:12px;">
+        <canvas id="vizAggrChart"></canvas>
+      </div>
+    `;
+    }
+
+    function renderAggrCardV2(label, value, maxAcc, cls) {
+        const pct = maxAcc > 0 ? (value / maxAcc) * 100 : 0;
+        const active = value > 0.05;
+        const word =
+            value > 0.5 ? "Сильно" : value > 0 ? "Слабо" : "Не сработало";
+
+        return `
+      <div class="aggr-card-v2 aggr-v2-${cls} ${active ? "active" : ""}">
+        <div class="aggr-card-v2-label">${escapeHtml(label)}</div>
+        <div class="aggr-card-v2-value">${(value * 100).toFixed(0)}%</div>
+        <div class="aggr-card-v2-bar">
+          <div class="aggr-card-v2-fill" style="width:${pct}%"></div>
+        </div>
+        <div class="aggr-card-v2-word">${word}</div>
+      </div>
+    `;
+    }
+
+    /* =========================================================
+       ВКЛАДКА 4: ИТОГОВОЕ ЧИСЛО
+       ========================================================= */
+    function renderDefuzzDetail(result) {
+        return `
+      <div class="explain-box">
+        <div class="explain-box-title">Шаг 4. Система получает итоговое число</div>
+        <p>
+          Из графика система находит <b>среднюю точку</b> — это и есть итоговое число риска.
+          Оно всегда от 0 до 100.
+        </p>
+      </div>
+
+      <div class="defuzz-grid-v2">
+        ${renderDefuzzCardV2("Риск срыва", result.risk, "risk")}
+        ${renderDefuzzCardV2("Готовность", result.ready, "ready")}
+        ${renderDefuzzCardV2("Оценка качества", result.rating, "rating")}
+      </div>
+
+      <div class="explain-box" style="margin-top:16px;">
+        <div class="explain-box-title">График</div>
+        <p>
+          Красная линия — <b>итоговое число риска = ${result.risk.value.toFixed(0)}</b>.
+          Это точка, где уверенность системы максимальна.
+        </p>
+      </div>
+      <div class="chart-box h-260" style="margin-top:12px;">
+        <canvas id="vizDefuzzChart"></canvas>
+      </div>
+    `;
+    }
+
+    function renderDefuzzCardV2(label, data, kind) {
+        const color =
+            kind === "risk"
+                ? Utils.riskClass(data.term)
+                : kind === "ready"
+                  ? Utils.readyClass(data.term)
+                  : Utils.readyClass(data.term);
+
+        return `
+      <div class="defuzz-card-v2">
+        <div class="defuzz-card-v2-label">${escapeHtml(label)}</div>
+        <div class="defuzz-card-v2-value" style="color:var(--${color});">
+          ${data.value.toFixed(0)}
+        </div>
+        <div class="defuzz-card-v2-bar">
+          <div class="defuzz-card-v2-fill" style="width:${data.value}%;background:var(--${color});"></div>
+        </div>
+        <div class="defuzz-card-v2-term">${escapeHtml(Fuzzy.termLabel(data.term, kind))}</div>
+      </div>
+    `;
+    }
+
+    /* =========================================================
+       ВКЛАДКА 5: СРАВНЕНИЕ МЕТОДОВ
+       ========================================================= */
+    function renderCompareDetail(inputs, mamdani) {
+        const sugeno = Fuzzy.sugenoInfer(inputs);
+        const crisp = Fuzzy.crispInfer(inputs);
+
+        return `
+      <div class="explain-box">
+        <div class="explain-box-title">Сравнение методов оценки</div>
+        <p>
+          Одну работу можно оценить <b>тремя способами</b>.
+          Meridian использует <b>Мамдани</b> — самый точный метод.
+          Сравните с другими:
+        </p>
+      </div>
+
+      <div class="algo-compare-v2">
+        <div class="algo-card-v2 selected">
+          <div class="algo-card-v2-badge">Мы используем</div>
+          <div class="algo-card-v2-title">Мамдани</div>
+          <div class="algo-card-v2-value" style="color:var(--accent-viz);">
+            ${mamdani.risk.value.toFixed(0)}
+          </div>
+          <div class="algo-card-v2-desc">
+            Каждое правило можно прочитать и понять. Самый прозрачный метод.
+          </div>
+        </div>
+        <div class="algo-card-v2">
+          <div class="algo-card-v2-title">Сугено</div>
+          <div class="algo-card-v2-value" style="color:var(--warn);">
+            ${sugeno.risk.value.toFixed(0)}
+          </div>
+          <div class="algo-card-v2-desc">
+            Упрощённая версия. Быстрее, но менее точная.
+          </div>
+        </div>
+        <div class="algo-card-v2">
+          <div class="algo-card-v2-title">Обычная формула</div>
+          <div class="algo-card-v2-value" style="color:var(--txt-muted);">
+            ${crisp.risk.value.toFixed(0)}
+          </div>
+          <div class="algo-card-v2-desc">
+            Без правил. Считается по одной формуле.
+          </div>
+        </div>
+      </div>
+
+      <div class="explain-box" style="margin-top:16px;">
+        <div class="explain-box-title">Почему Мамдани лучше?</div>
+        <ul class="explain-list">
+          <li><b>Понятно.</b> Каждое правило — обычными словами.</li>
+          <li><b>Прозрачно.</b> Видно, какие правила сработали и почему.</li>
+          <li><b>Плавно.</b> Небольшие изменения не дают резких скачков.</li>
+          <li><b>Гибко.</b> Правила можно менять без переписывания программы.</li>
+        </ul>
+      </div>
     `;
     }
 
@@ -326,20 +1093,49 @@ const MamdaniViz = (() => {
     }
 
     function renderActions(work) {
-        return `
-      <div class="mamdani-actions">
-        <button class="action-btn" onclick="MamdaniViz.contactStudent('${work.id}')">
-          ${SVG.messageCircle({ cls: "icon icon-sm" })}
-          <span>Написать студенту</span>
+        const user = Auth.getUser();
+        const role = user?.role || "student";
+
+        const actions = [];
+
+        // Студент — консультация + PDF
+        if (role === "student") {
+            actions.push(`
+        <button class="action-btn" onclick="App.navigate('consultations')">
+          ${SVG.calendar({ cls: "icon icon-sm" })}
+          <span>Записаться на консультацию</span>
         </button>
-        <button class="action-btn" onclick="MamdaniViz.openCommentModal('${work.id}')">
-          ${SVG.edit({ cls: "icon icon-sm" })}
-          <span>Добавить комментарий</span>
-        </button>
+      `);
+            actions.push(`
         <button class="action-btn" onclick="PdfReport.exportStudent('${work.id}')">
           ${SVG.fileText({ cls: "icon icon-sm" })}
           <span>Скачать PDF</span>
         </button>
+      `);
+        } else {
+            actions.push(`
+        <button class="action-btn" onclick="MamdaniViz.contactStudent('${work.id}')">
+          ${SVG.messageCircle({ cls: "icon icon-sm" })}
+          <span>Написать студенту</span>
+        </button>
+      `);
+            actions.push(`
+        <button class="action-btn" onclick="MamdaniViz.openCommentModal('${work.id}')">
+          ${SVG.edit({ cls: "icon icon-sm" })}
+          <span>Добавить комментарий</span>
+        </button>
+      `);
+            actions.push(`
+        <button class="action-btn" onclick="PdfReport.exportStudent('${work.id}')">
+          ${SVG.fileText({ cls: "icon icon-sm" })}
+          <span>Скачать PDF</span>
+        </button>
+      `);
+        }
+
+        return `
+      <div class="mamdani-actions" style="grid-template-columns:repeat(${actions.length}, 1fr);">
+        ${actions.join("")}
       </div>
     `;
     }

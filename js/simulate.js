@@ -2,8 +2,7 @@ const Simulate = (() => {
     let workId = null;
     let currentWork = null;
     let baseCache = null;
-    /** Список «пустых» переменных — тех, где руководитель ещё не оценивал */
-    let missingVars = [];
+    let baseRealInputs = null; // реальные данные работы (с null для orig/supScore/gost)
 
     const escapeHtml = Utils.escapeHtml;
     const emptyState = Utils.emptyState;
@@ -19,13 +18,18 @@ const Simulate = (() => {
         s_gost: SVG.fileText,
     };
 
-    /**
-     * Дефолтные значения для отсутствующих данных.
-     * Симулятор — это «что если», поэтому мы даём пользователю
-     * возможность задать значения ползунками, даже если
-     * руководитель ещё не оценивал работу.
-     */
-    const DISPLAY_DEFAULTS = {
+    const SLIDER_LABELS = {
+        s_progress: "Прогресс",
+        s_days: "Дней до дедлайна",
+        s_activity: "Активность",
+        s_edits: "Число правок",
+        s_volume: "Объём",
+        s_orig: "Оригинальность",
+        s_supScore: "Оценка руководителя",
+        s_gost: "Соответствие ГОСТу",
+    };
+
+    const DEFAULTS = {
         orig: 65,
         supScore: 5,
         gost: 70,
@@ -42,31 +46,25 @@ const Simulate = (() => {
         return Storage.getWorks();
     }
 
-    function getBaseInputs(work) {
+    function getRealInputs(work) {
         if (!work) return null;
-
         const inputs = Utils.buildFuzzyInputs(work);
         if (!inputs) return null;
+        return inputs; // с null для orig/supScore/gost
+    }
 
-        // Запоминаем, каких данных нет
-        missingVars = [];
-        if (inputs.orig === null || inputs.orig === undefined)
-            missingVars.push("orig");
-        if (inputs.supScore === null || inputs.supScore === undefined)
-            missingVars.push("supScore");
-        if (inputs.gost === null || inputs.gost === undefined)
-            missingVars.push("gost");
-
+    function getBaseInputs(work) {
+        const real = getRealInputs(work);
+        if (!real) return null;
         return {
-            progress: inputs.progress ?? 0,
-            days: inputs.days ?? 30,
-            activity: inputs.activity ?? 5,
-            edits: inputs.edits ?? 0,
-            volume: inputs.volume ?? 0,
-            // Для симулятора подставляем дефолт, если данных нет:
-            orig: inputs.orig ?? DISPLAY_DEFAULTS.orig,
-            supScore: inputs.supScore ?? DISPLAY_DEFAULTS.supScore,
-            gost: inputs.gost ?? DISPLAY_DEFAULTS.gost,
+            progress: real.progress ?? 0,
+            days: real.days ?? 30,
+            activity: real.activity ?? 5,
+            edits: real.edits ?? 0,
+            volume: real.volume ?? 0,
+            orig: real.orig ?? DEFAULTS.orig,
+            supScore: real.supScore ?? DEFAULTS.supScore,
+            gost: real.gost ?? DEFAULTS.gost,
         };
     }
 
@@ -85,7 +83,7 @@ const Simulate = (() => {
             );
         }
 
-        if (params?.workId) workId = +params.workId;
+        if (params?.workId) workId = params.workId;
         if (!workId || !works.find((w) => Storage.sameId(w.id, workId))) {
             workId = works[0].id;
         }
@@ -103,6 +101,7 @@ const Simulate = (() => {
             );
 
         baseCache = { ...base };
+        baseRealInputs = getRealInputs(currentWork);
         const baseResult = Utils.safeFuzzyInfer(base);
         const currentResult = baseResult;
 
@@ -112,26 +111,12 @@ const Simulate = (() => {
         <div class="sim-hero-body">
           <div class="sim-hero-title">Симулятор «Что если»</div>
           <div class="sim-hero-text">
-            Двигайте ползунки — результат <b>пересчитывается мгновенно</b>.
-            Можно понять, что будет, если студент ускорится или пропустит неделю.
+            Данные взяты из вашей работы. Двигайте ползунки —
+            результат <b>пересчитывается мгновенно</b>. Так можно
+            понять, что будет, если вы ускоритесь или пропустите неделю.
           </div>
         </div>
       </div>
-
-      ${
-          missingVars.length > 0
-              ? `
-        <div class="notice" style="background:var(--warn-soft);border-left:3px solid var(--warn);margin-bottom:20px;">
-          ${SVG.info({ cls: "icon icon-sm" })}
-          <span>
-            Руководитель ещё не проверял работу. Для
-            <b>${missingVars.map((v) => VAR_LABELS_SIM[v] || v).join(", ")}</b>
-            подставлены средние значения. Их можно менять ползунками.
-          </span>
-        </div>
-      `
-              : ""
-      }
 
       <div class="sim-work">
         <div class="sim-work-info">
@@ -151,6 +136,105 @@ const Simulate = (() => {
         </select>
       </div>
 
+      ${renderWorkDataBlock()}
+      ${renderScenarios()}
+
+      <div class="sim-grid">
+        <div class="sim-controls">
+          <div class="sim-controls-title">
+            ${SVG.sliders({ cls: "icon icon-sm" })}
+            Что изменить
+          </div>
+          ${slider("s_progress", 0, 100, base.progress, "%")}
+          ${slider("s_days", 0, 60, base.days, "")}
+          ${slider("s_activity", 0, 10, base.activity, "")}
+          ${slider("s_edits", 0, 20, base.edits, "")}
+          ${slider("s_volume", 0, 100, base.volume, "%")}
+          ${slider("s_orig", 0, 100, base.orig, "%")}
+          ${slider("s_supScore", 0, 10, base.supScore, "")}
+          ${slider("s_gost", 0, 100, base.gost, "%")}
+
+          <button class="btn-ghost sim-reset" onclick="Simulate.reset()">
+            ${SVG.refresh({ cls: "icon icon-sm" })}
+            <span>Сбросить к данным работы</span>
+          </button>
+        </div>
+
+        <div class="sim-result-panel">
+          <div class="sim-result-title">
+            ${SVG.target({ cls: "icon icon-sm" })}
+            Результат
+          </div>
+          <div id="simResult">
+            ${renderResult(base, baseResult, currentResult)}
+          </div>
+        </div>
+      </div>
+    `;
+    }
+
+    /* =========================================================
+       БЛОК «ДАННЫЕ ИЗ РАБОТЫ»
+       ========================================================= */
+    function renderWorkDataBlock() {
+        if (!baseRealInputs) return "";
+
+        const real = baseRealInputs;
+
+        const item = (lbl, val, unit) => {
+            const isEmpty = val === null || val === undefined;
+            return `
+        <div class="swd-item ${isEmpty ? "empty" : ""}">
+          <div class="swd-lbl">${escapeHtml(lbl)}</div>
+          <div class="swd-val">
+            ${isEmpty ? "—" : `${val}${unit || ""}`}
+          </div>
+        </div>
+      `;
+        };
+
+        const hasEmpty = ["orig", "supScore", "gost"].some(
+            (k) => real[k] === null || real[k] === undefined,
+        );
+
+        return `
+      <div class="card sim-work-data">
+        <div class="sim-work-data-head">
+          <span class="sim-work-data-icon">
+            ${SVG.folder({ cls: "icon icon-sm" })}
+          </span>
+          <span>Данные из вашей работы</span>
+        </div>
+        <div class="sim-work-data-grid">
+          ${item("Прогресс", real.progress, "%")}
+          ${item("Дней до дедлайна", real.days)}
+          ${item("Активность", real.activity)}
+          ${item("Правок", real.edits)}
+          ${item("Объём", real.volume, "%")}
+          ${item("Оригинальность", real.orig, "%")}
+          ${item("Оценка рук.", real.supScore)}
+          ${item("ГОСТ", real.gost, "%")}
+        </div>
+        ${
+            hasEmpty
+                ? `
+          <div class="sim-work-data-note">
+            ${SVG.info({ cls: "icon icon-xs" })}
+            Прочерк — руководитель ещё не проверял этот показатель.
+            Для симуляции подставлено среднее значение.
+          </div>
+        `
+                : ""
+        }
+      </div>
+    `;
+    }
+
+    /* =========================================================
+       СЦЕНАРИИ
+       ========================================================= */
+    function renderScenarios() {
+        return `
       <div class="sim-scenarios">
         <div class="sim-scenarios-label">
           ${SVG.zap({ cls: "icon icon-sm" })}
@@ -180,63 +264,45 @@ const Simulate = (() => {
           </button>
         </div>
       </div>
-
-      <div class="sim-grid">
-        <div class="sim-controls">
-          <div class="sim-controls-title">
-            ${SVG.sliders({ cls: "icon icon-sm" })}
-            Входные параметры
-          </div>
-          ${slider("s_progress", "Прогресс", 0, 100, base.progress, "%", false)}
-          ${slider("s_days", "Дней до дедлайна", 0, 60, base.days, "", false)}
-          ${slider("s_activity", "Активность", 0, 10, base.activity, "", false)}
-          ${slider("s_edits", "Число правок", 0, 20, base.edits, "", false)}
-          ${slider("s_volume", "Объём", 0, 100, base.volume, "%", false)}
-          ${slider("s_orig", "Оригинальность", 0, 100, base.orig, "%", missingVars.includes("orig"))}
-          ${slider("s_supScore", "Оценка руководителя", 0, 10, base.supScore, "", missingVars.includes("supScore"))}
-          ${slider("s_gost", "Соответствие ГОСТу", 0, 100, base.gost, "%", missingVars.includes("gost"))}
-
-          <button class="btn-ghost sim-reset" onclick="Simulate.reset()">
-            ${SVG.refresh({ cls: "icon icon-sm" })}
-            <span>Сбросить к исходным</span>
-          </button>
-        </div>
-
-        <div class="sim-result-panel">
-          <div class="sim-result-title">
-            ${SVG.target({ cls: "icon icon-sm" })}
-            Результат
-          </div>
-          <div id="simResult">
-            ${renderResult(base, baseResult, currentResult)}
-          </div>
-        </div>
-      </div>
     `;
     }
 
-    function slider(id, label, min, max, val, unit, isMissing) {
+    /* =========================================================
+       СЛАЙДЕР
+       ========================================================= */
+    function slider(id, min, max, val, unit) {
         const IconFn = SLIDER_ICONS[id];
-        const missingNote = isMissing
-            ? '<span class="sim-slider-missing">нет данных</span>'
-            : "";
+        const label = SLIDER_LABELS[id];
+        const key = id.replace("s_", "");
+        const realVal = baseRealInputs ? baseRealInputs[key] : null;
+        const isEmptyReal = realVal === null || realVal === undefined;
+        const isChanged = !isEmptyReal && val !== realVal;
+
+        const realHint = isEmptyReal
+            ? `<span class="sim-slider-real empty">нет данных</span>`
+            : isChanged
+              ? `<span class="sim-slider-real">из работы: ${realVal}${unit}</span>`
+              : "";
 
         return `
-      <div class="sim-slider ${isMissing ? "sim-slider-missing-wrap" : ""}">
+      <div class="sim-slider ${isChanged ? "changed" : ""} ${isEmptyReal ? "no-real" : ""}">
         <div class="sim-slider-head">
           <span class="sim-slider-label">
             ${IconFn ? IconFn({ cls: "icon icon-sm" }) : ""}
             ${escapeHtml(label)}
-            ${missingNote}
           </span>
           <span class="sim-slider-val" id="v_${id}">${val}${unit}</span>
         </div>
         <input type="range" id="${id}" min="${min}" max="${max}" value="${val}"
           oninput="Simulate.onChange()">
+        ${realHint ? `<div class="sim-slider-foot">${realHint}</div>` : ""}
       </div>
     `;
     }
 
+    /* =========================================================
+       РЕЗУЛЬТАТ
+       ========================================================= */
     function renderResult(inputs, baseResult, result) {
         if (!baseResult || !result) return "";
 
@@ -254,7 +320,7 @@ const Simulate = (() => {
       <div class="sim-compare">
         <div class="sim-compare-title">
           ${SVG.barChart({ cls: "icon icon-sm" })}
-          Сравнение «до / после»
+          Сравнение: сейчас / в симуляции
         </div>
         ${diffRow("Риск", baseResult.risk.value, result.risk.value, riskDiff, false)}
         ${diffRow("Готовность", baseResult.ready.value, result.ready.value, readyDiff, true)}
@@ -275,11 +341,7 @@ const Simulate = (() => {
     function renderMetricCard(label, data, diff, higherIsBetter) {
         const term = data.term;
         const valueColor =
-            label === "Риск"
-                ? Utils.riskClass(term)
-                : label === "Готовность"
-                  ? Utils.readyClass(term)
-                  : Utils.readyClass(term);
+            label === "Риск" ? Utils.riskClass(term) : Utils.readyClass(term);
 
         const diffArrow = diff > 2 ? "up" : diff < -2 ? "down" : "";
         const diffClass =
@@ -375,7 +437,7 @@ const Simulate = (() => {
         }
 
         if (changes.length === 0) {
-            return "Изменений нет — значения совпадают с исходными.";
+            return "Изменений нет — значения совпадают с данными работы.";
         }
 
         let verdict = "";
@@ -386,6 +448,9 @@ const Simulate = (() => {
         return `${verdict} Изменения: ${changes.join(", ")}.`;
     }
 
+    /* =========================================================
+       ОБРАБОТЧИКИ
+       ========================================================= */
     function onChange() {
         const sliderIds = [
             "s_progress",
@@ -416,6 +481,27 @@ const Simulate = (() => {
             inputs[key] = +el.value;
             const lbl = document.getElementById("v_" + id);
             if (lbl) lbl.textContent = el.value + (units[id] || "");
+
+            // Обновляем индикатор изменения
+            const sliderEl = el.closest(".sim-slider");
+            if (sliderEl && baseRealInputs) {
+                const realVal = baseRealInputs[key];
+                const isEmpty = realVal === null || realVal === undefined;
+                const changed = !isEmpty && +el.value !== realVal;
+                sliderEl.classList.toggle("changed", changed);
+
+                // Обновляем «из работы: X»
+                const foot = sliderEl.querySelector(".sim-slider-foot");
+                if (foot) {
+                    if (isEmpty) {
+                        foot.innerHTML = `<span class="sim-slider-real empty">нет данных</span>`;
+                    } else if (changed) {
+                        foot.innerHTML = `<span class="sim-slider-real">из работы: ${realVal}${units[id] || ""}</span>`;
+                    } else {
+                        foot.innerHTML = "";
+                    }
+                }
+            }
         });
 
         if (!baseCache && currentWork) {
@@ -479,9 +565,9 @@ const Simulate = (() => {
         onChange();
 
         const labels = {
-            faster: "Сценарий применён: студент ускорился",
-            miss: "Сценарий применён: пропуск недели",
-            better: "Сценарий применён: лучшее оформление",
+            faster: "Сценарий: студент ускорился",
+            miss: "Сценарий: пропуск недели",
+            better: "Сценарий: лучшее оформление",
         };
         if (typeof App !== "undefined" && App.toast) {
             App.toast(labels[type] || "Сценарий применён");
@@ -517,20 +603,24 @@ const Simulate = (() => {
             el.value = baseCache[key];
             const lbl = document.getElementById("v_" + id);
             if (lbl) lbl.textContent = baseCache[key] + (units[id] || "");
+
+            const sliderEl = el.closest(".sim-slider");
+            if (sliderEl) sliderEl.classList.remove("changed");
+            const foot = sliderEl?.querySelector(".sim-slider-foot");
+            if (foot) foot.innerHTML = "";
         });
 
         onChange();
         if (typeof App !== "undefined" && App.toast) {
-            App.toast("Значения сброшены");
+            App.toast("Значения сброшены к данным работы");
         }
     }
 
     function selectWork(id) {
-        const num = +id;
-        if (isNaN(num)) return;
-        workId = num;
+        if (!id) return;
+        workId = id;
         baseCache = null;
-        missingVars = [];
+        baseRealInputs = null;
         renderView();
     }
 
@@ -539,12 +629,6 @@ const Simulate = (() => {
         if (!root) return;
         root.innerHTML = `<div class="view active">${render()}</div>`;
     }
-
-    const VAR_LABELS_SIM = {
-        orig: "Оригинальность",
-        supScore: "Оценка руководителя",
-        gost: "Соответствие ГОСТу",
-    };
 
     return {
         render,
