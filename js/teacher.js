@@ -48,6 +48,9 @@ const Teacher = (() => {
 
     const VIEWS = {};
 
+    /* =========================================================
+       ДАШБОРД
+       ========================================================= */
     VIEWS.dashboard = function () {
         const u = getUser();
         if (!u) return "";
@@ -80,6 +83,17 @@ const Teacher = (() => {
               )
             : 0;
 
+        const avgRisk = withRisk.length
+            ? Math.round(
+                  withRisk.reduce((a, x) => a + x.res.risk.value, 0) /
+                      withRisk.length,
+              )
+            : 0;
+
+        const tasksReview = getTasksForReview();
+        const pendingConsults = getPendingConsults();
+        const upcoming = getUpcomingDeadlines(5);
+
         return `
       <div class="grid grid-4">
         <div class="card kpi">
@@ -87,16 +101,55 @@ const Teacher = (() => {
           <div class="kpi-lbl">Студентов</div>
         </div>
         <div class="card kpi">
-          <div class="kpi-num" style="color:var(--warn)">${requests.length}</div>
+          <div class="kpi-num" style="color:${requests.length > 0 ? "var(--warn)" : "var(--txt-muted)"}">
+            ${requests.length}
+          </div>
           <div class="kpi-lbl">Новых заявок</div>
         </div>
         <div class="card kpi">
-          <div class="kpi-num" style="color:var(--bad)">${highRisk}</div>
-          <div class="kpi-lbl">Высокий риск</div>
+          <div class="kpi-num" style="color:${tasksReview.length > 0 ? "var(--accent-viz)" : "var(--txt-muted)"}">
+            ${tasksReview.length}
+          </div>
+          <div class="kpi-lbl">Задач на проверке</div>
         </div>
         <div class="card kpi">
-          <div class="kpi-num">${avgProgress}%</div>
-          <div class="kpi-lbl">Ср. прогресс</div>
+          <div class="kpi-num" style="color:${highRisk > 0 ? "var(--bad)" : "var(--txt-muted)"}">
+            ${highRisk}
+          </div>
+          <div class="kpi-lbl">Высокий риск</div>
+        </div>
+      </div>
+
+      <div class="metric-grid mt-16">
+        <div class="metric">
+          <div class="metric-lbl">Активных работ</div>
+          <div class="metric-val">${active.length}</div>
+          <div class="metric-sub">в работе и на проверке</div>
+        </div>
+        <div class="metric">
+          <div class="metric-lbl">Ср. прогресс</div>
+          <div class="metric-val" style="color:var(--${Utils.progressClass(avgProgress)})">
+            ${avgProgress}%
+          </div>
+          <div class="metric-sub">по активным студентам</div>
+        </div>
+        <div class="metric">
+          <div class="metric-lbl">Ср. риск</div>
+          <div class="metric-val" style="color:var(--${Utils.riskClass(Fuzzy.classify(avgRisk))})">
+            ${avgRisk}
+          </div>
+          <div class="metric-sub">${Fuzzy.termLabel(Fuzzy.classify(avgRisk), "risk")}</div>
+        </div>
+        <div class="metric">
+          <div class="metric-lbl">Загрузка</div>
+          <div class="metric-val">
+            ${currentLoad}<span style="font-size:14px;font-weight:400;color:var(--txt-muted);">/${maxLoad}</span>
+          </div>
+          <div class="metric-sub">
+            <div class="progress ${loadPct > 90 ? "low" : loadPct > 70 ? "med" : "high"}" style="margin-top:6px;">
+              <div style="width:${loadPct}%"></div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -112,49 +165,80 @@ const Teacher = (() => {
       </div>
 
       <div class="card mt-16">
-        <div class="card-title">Загрузка</div>
-        <div class="stat-row">
-          <span class="stat-lbl">${currentLoad} из ${maxLoad} работ</span>
-          <span class="stat-val">${loadPct}%</span>
-        </div>
-        <div class="progress ${loadPct > 90 ? "low" : loadPct > 70 ? "med" : "high"}">
-          <div style="width:${loadPct}%"></div>
+        <div class="card-title">Быстрые действия</div>
+        <div class="quick-actions">
+          <div class="quick-action" onclick="App.navigate('requests')">
+            <div class="qa-ico">${SVG.clipboard({ cls: "icon" })}</div>
+            <div class="qa-lbl">Заявки</div>
+            <div class="qa-desc">${requests.length > 0 ? `<b style="color:var(--warn)">${requests.length} новых</b>` : "Нет новых"}</div>
+          </div>
+          <div class="quick-action" onclick="App.navigate('students')">
+            <div class="qa-ico">${SVG.users({ cls: "icon" })}</div>
+            <div class="qa-lbl">Студенты</div>
+            <div class="qa-desc">${active.length} активных</div>
+          </div>
+          <div class="quick-action" onclick="App.navigate('tasks-review')">
+            <div class="qa-ico">${SVG.check({ cls: "icon" })}</div>
+            <div class="qa-lbl">Задачи</div>
+            <div class="qa-desc">${tasksReview.length > 0 ? `<b style="color:var(--accent-viz)">${tasksReview.length} на проверке</b>` : "Нет на проверке"}</div>
+          </div>
+          <div class="quick-action" onclick="App.navigate('review')">
+            <div class="qa-ico">${SVG.checkCircle({ cls: "icon" })}</div>
+            <div class="qa-lbl">Проверка</div>
+            <div class="qa-desc">Работы студентов</div>
+          </div>
+          <div class="quick-action" onclick="App.navigate('consultations')">
+            <div class="qa-ico">${SVG.calendar({ cls: "icon" })}</div>
+            <div class="qa-lbl">Консультации</div>
+            <div class="qa-desc">${pendingConsults.length > 0 ? `<b style="color:var(--warn)">${pendingConsults.length} новых</b>` : "Нет новых"}</div>
+          </div>
+          <div class="quick-action" onclick="App.navigate('rankings')">
+            <div class="qa-ico">${SVG.award({ cls: "icon" })}</div>
+            <div class="qa-lbl">Рейтинги</div>
+            <div class="qa-desc">Топ и антитоп</div>
+          </div>
         </div>
       </div>
 
       ${
-          requests.length > 0
+          tasksReview.length > 0
               ? `
         <div class="card mt-16">
           <div class="card-head">
-            <div class="card-title">
-              Новые заявки <span class="count-chip">${requests.length}</span>
+            <div class="card-title" style="margin-bottom:0;">
+              ${SVG.check({ cls: "icon icon-sm" })}
+              Задачи на проверке (${tasksReview.length})
             </div>
-            <button class="btn-ghost btn-sm" onclick="App.navigate('requests')">Все →</button>
+            <button class="btn-ghost btn-sm" onclick="App.navigate('tasks-review')">
+              Все →
+            </button>
           </div>
-          ${requests
-              .slice(0, 3)
-              .map((x) => renderRequestMini(x))
+          ${tasksReview
+              .slice(0, 5)
+              .map((t) => renderTaskReviewMini(t))
               .join("")}
         </div>
       `
               : ""
       }
 
-      <div class="card mt-16">
-        <div class="card-head">
-          <div class="card-title">Студенты в зоне риска</div>
-          <button class="btn-ghost btn-sm" onclick="App.navigate('students')">Все →</button>
+      ${
+          upcoming.length > 0
+              ? `
+        <div class="card mt-16">
+          <div class="card-head">
+            <div class="card-title" style="margin-bottom:0;">
+              ${SVG.clock({ cls: "icon icon-sm" })}
+              Ближайшие дедлайны
+            </div>
+          </div>
+          ${upcoming.map((e) => renderUpcomingRow(e)).join("")}
         </div>
-        ${
-            withRisk
-                .filter((x) => x.res.risk.term !== "low")
-                .sort((a, b) => b.res.risk.value - a.res.risk.value)
-                .slice(0, 5)
-                .map((x) => renderRiskRow(x))
-                .join("") || '<div class="empty">Никто не в зоне риска</div>'
-        }
-      </div>
+      `
+              : ""
+      }
+
+      ${renderTeacherAttention(requests, pendingConsults, tasksReview, withRisk)}
     `;
     };
 
@@ -195,76 +279,385 @@ const Teacher = (() => {
         }
     };
 
-    function renderRequestMini(x) {
+    /* =========================================================
+       ДАШБОРД — хелперы
+       ========================================================= */
+    function getTasksForReview() {
+        const u = getUser();
+        if (!u) return [];
+        const myWorks = Storage.getWorksByTeacher(u.id);
+        const myWorkIds = myWorks.map((w) => w.id);
+
+        const tasks = Storage.getTasks().filter(
+            (t) =>
+                myWorkIds.some((id) => Storage.sameId(id, t.workId)) &&
+                t.col === "review",
+        );
+
+        return tasks
+            .map((t) => {
+                const work = Storage.getWorkById(t.workId);
+                const student = work
+                    ? Storage.getUserById(work.studentId)
+                    : null;
+                return { t, work, student };
+            })
+            .sort((a, b) => (b.t.updatedAt || 0) - (a.t.updatedAt || 0));
+    }
+
+    function getPendingConsults() {
+        const u = getUser();
+        if (!u || typeof Consult === "undefined") return [];
+
+        return Consult.getAll()
+            .filter(
+                (c) =>
+                    Storage.sameId(c.teacherId, u.id) && c.status === "pending",
+            )
+            .sort((a, b) => b.createdAt - a.createdAt);
+    }
+
+    function getUpcomingDeadlines(limit = 5) {
+        const u = getUser();
+        if (!u) return [];
+
+        const active = getMyActiveStudents();
+        const events = [];
+
+        active.forEach((x) => {
+            const stages = Storage.getStagesByWork(x.work.id);
+            stages
+                .filter((s) => s.deadline && !s.done)
+                .forEach((s) => {
+                    const days = daysUntil(s.deadline);
+                    if (days >= -30 && days <= 90) {
+                        events.push({
+                            date: s.deadline,
+                            days,
+                            title: s.name,
+                            student: x.student,
+                            kind: "stage",
+                        });
+                    }
+                });
+
+            if (x.work.deadline) {
+                const days = daysUntil(x.work.deadline);
+                if (days >= -30 && days <= 365) {
+                    events.push({
+                        date: x.work.deadline,
+                        days,
+                        title: "Защита работы",
+                        student: x.student,
+                        kind: "defense",
+                    });
+                }
+            }
+        });
+
+        return events
+            .filter((e) => e.days >= 0)
+            .sort((a, b) => a.days - b.days)
+            .slice(0, limit);
+    }
+
+    function renderTaskReviewMini({ t, student }) {
         return `
-      <div class="request-card">
-        <div class="request-head">
-          <div style="flex:1;min-width:200px;">
-            <div class="request-topic">${escapeHtml(x.work.topic)}</div>
-            <div class="request-meta">
-              ${escapeHtml(x.student.fio)} · ${escapeHtml(x.student.group || "")} · ${escapeHtml(x.student.faculty || "")}
-              · ${escapeHtml(Utils.workTypeLabel(x.work.type))}
-            </div>
+      <div class="mini-project" onclick="App.navigate('tasks-review')">
+        <div style="flex:1;min-width:0;">
+          <div class="mini-project-title" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+            ${escapeHtml(t.title)}
           </div>
-          <div>${statusBadge(x.work.status)}</div>
+          <div class="mini-project-sub">
+            ${escapeHtml(student?.fio || "—")}
+            ${t.deadline ? ` · до ${escapeHtml(t.deadline)}` : ""}
+          </div>
         </div>
-        <div class="request-actions">
-          <button class="btn-ghost btn-sm"
-            onclick="App.navigate('request-detail', {id: ${x.work.id}})">
-            Подробнее
-          </button>
+        <span class="badge review" style="font-size:10px;">Проверка</span>
+      </div>
+    `;
+    }
+
+    function renderUpcomingRow(e) {
+        const urgencyClass = e.days <= 3 ? "bad" : e.days <= 7 ? "warn" : "";
+        const urgencyLabel =
+            e.days === 0
+                ? "сегодня"
+                : e.days === 1
+                  ? "завтра"
+                  : `через ${e.days} дн.`;
+
+        return `
+      <div class="mini-project">
+        <div style="flex:1;min-width:0;">
+          <div class="mini-project-title">
+            ${e.kind === "defense" ? SVG.award({ cls: "icon icon-xs" }) : SVG.clock({ cls: "icon icon-xs" })}
+            ${escapeHtml(e.title)}
+          </div>
+          <div class="mini-project-sub">
+            ${escapeHtml(e.student?.fio || "—")} · ${fmtDate(e.date)}
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-size:12px;font-weight:600;color:var(--${urgencyClass || "txt-muted"});">
+            ${urgencyLabel}
+          </div>
         </div>
       </div>
     `;
     }
 
-    function renderRiskRow(x) {
-        const cls = x.res.risk.term;
-        const lbl = Fuzzy.termLabel(cls, "risk");
-        return `
-      <div class="student-row"
-        onclick="App.navigate('student-detail', {id: ${x.student.id}, workId: ${x.work.id}})">
-        <div>
-          <div class="student-name">${escapeHtml(x.student.fio)}</div>
-          <div class="student-sub">${escapeHtml(x.work.topic)}</div>
+    function renderTeacherAttention(requests, consults, tasks, withRisk) {
+        const highRiskList = withRisk
+            .filter((x) => x.res.risk.term === "high")
+            .sort((a, b) => b.res.risk.value - a.res.risk.value);
+
+        const items = [];
+
+        if (requests.length > 0) {
+            items.push(`
+        <div class="mini-project" onclick="App.navigate('requests')">
+          <div style="flex:1;min-width:0;">
+            <div class="mini-project-title">
+              ${SVG.clipboard({ cls: "icon icon-xs" })}
+              Заявок на утверждение: ${requests.length}
+            </div>
+            <div class="mini-project-sub">Требуется ваше решение</div>
+          </div>
+          <span style="color:var(--txt-muted);font-size:18px;">›</span>
         </div>
-        <div class="progress-mini">
-          <div style="font-size:11px;color:var(--txt-muted);margin-bottom:3px;">${x.progress}%</div>
-          <div class="progress ${Utils.progressClass(x.progress)}">
-            <div style="width:${x.progress}%"></div>
+      `);
+        }
+
+        if (tasks.length > 0) {
+            items.push(`
+        <div class="mini-project" onclick="App.navigate('tasks-review')">
+          <div style="flex:1;min-width:0;">
+            <div class="mini-project-title">
+              ${SVG.check({ cls: "icon icon-xs" })}
+              Задач на проверке: ${tasks.length}
+            </div>
+            <div class="mini-project-sub">Студенты ждут решения</div>
+          </div>
+          <span style="color:var(--txt-muted);font-size:18px;">›</span>
+        </div>
+      `);
+        }
+
+        if (consults.length > 0) {
+            items.push(`
+        <div class="mini-project" onclick="App.navigate('consultations')">
+          <div style="flex:1;min-width:0;">
+            <div class="mini-project-title">
+              ${SVG.calendar({ cls: "icon icon-xs" })}
+              Консультаций ожидают: ${consults.length}
+            </div>
+            <div class="mini-project-sub">Ответьте студентам</div>
+          </div>
+          <span style="color:var(--txt-muted);font-size:18px;">›</span>
+        </div>
+      `);
+        }
+
+        if (highRiskList.length > 0) {
+            items.push(`
+        <div class="mini-project" onclick="App.navigate('students')">
+          <div style="flex:1;min-width:0;">
+            <div class="mini-project-title">
+              ${SVG.alertTriangle({ cls: "icon icon-xs" })}
+              Высокий риск: ${highRiskList.length}
+            </div>
+            <div class="mini-project-sub">Свяжитесь со студентами</div>
+          </div>
+          <span style="color:var(--txt-muted);font-size:18px;">›</span>
+        </div>
+      `);
+        }
+
+        if (items.length === 0) {
+            return `
+        <div class="card mt-16">
+          <div class="empty-state" style="padding:40px 20px;">
+            ${SVG.checkCircle({ cls: "icon icon-2xl" })}
+            <h3 style="margin-top:12px;">Всё в порядке</h3>
+            <p style="color:var(--txt-muted);font-size:13px;">
+              Нет задач, требующих вашего внимания.
+            </p>
           </div>
         </div>
-        <div><span class="badge risk-${cls}">${lbl}</span></div>
-        <div style="color:var(--txt-muted);font-size:18px;">›</div>
+      `;
+        }
+
+        return `
+      <div class="card mt-16">
+        <div class="card-head">
+          <div class="card-title" style="margin-bottom:0;">
+            ${SVG.alertTriangle({ cls: "icon icon-sm" })}
+            Требуют внимания
+          </div>
+        </div>
+        ${items.join("")}
       </div>
     `;
     }
+
+    /* =========================================================
+       ЗАЯВКИ
+       ========================================================= */
+    let requestFilter = "all";
 
     VIEWS.requests = function () {
         const students = getMyStudents();
-        const requests = students.filter((x) => x.work.status === "pending");
+
+        const requests = students.filter((x) =>
+            [
+                "pending",
+                "active",
+                "review",
+                "approved",
+                "done",
+                "rejected",
+            ].includes(x.work.status),
+        );
+
+        const pending = requests.filter((x) => x.work.status === "pending");
+        const approved = requests.filter((x) =>
+            ["active", "review", "approved", "done"].includes(x.work.status),
+        );
+        const rejected = requests.filter((x) => x.work.status === "rejected");
+
+        let filtered = requests;
+        if (requestFilter === "pending") {
+            filtered = pending;
+        } else if (requestFilter === "approved") {
+            filtered = approved;
+        } else if (requestFilter === "rejected") {
+            filtered = rejected;
+        } else if (requestFilter === "active") {
+            filtered = requests.filter((x) =>
+                ["active", "review"].includes(x.work.status),
+            );
+        }
+
+        filtered = [...filtered].sort(
+            (a, b) =>
+                (b.work.updatedAt || b.work.createdAt || 0) -
+                (a.work.updatedAt || a.work.createdAt || 0),
+        );
 
         return `
-      <div class="card">
-        <div class="card-title">Входящие заявки (${requests.length})</div>
+      <div class="grid grid-4">
+        <div class="card kpi">
+          <div class="kpi-num">${requests.length}</div>
+          <div class="kpi-lbl">Всего заявок</div>
+        </div>
+        <div class="card kpi">
+          <div class="kpi-num" style="color:${pending.length > 0 ? "var(--warn)" : "var(--txt-muted)"}">
+            ${pending.length}
+          </div>
+          <div class="kpi-lbl">На утверждении</div>
+        </div>
+        <div class="card kpi">
+          <div class="kpi-num" style="color:var(--ok)">
+            ${approved.length}
+          </div>
+          <div class="kpi-lbl">Одобрено</div>
+        </div>
+        <div class="card kpi">
+          <div class="kpi-num" style="color:${rejected.length > 0 ? "var(--bad)" : "var(--txt-muted)"}">
+            ${rejected.length}
+          </div>
+          <div class="kpi-lbl">Отклонено</div>
+        </div>
+      </div>
+
+      <div class="card mt-16">
+        <div class="card-head">
+          <div class="card-title" style="margin-bottom:0;">
+            ${getRequestFilterLabel(requestFilter)}
+            <span class="count-chip">${filtered.length}</span>
+          </div>
+        </div>
+
+        <div class="filter-tabs" style="margin-bottom:16px;">
+          ${renderRequestTab("all", "Все", requests.length)}
+          ${renderRequestTab("pending", "На утверждении", pending.length)}
+          ${renderRequestTab("approved", "Одобрено", approved.length)}
+          ${renderRequestTab("rejected", "Отклонено", rejected.length)}
+        </div>
+
         ${
-            requests.length === 0
+            filtered.length === 0
                 ? emptyState(
-                      "Новых заявок нет",
-                      "Когда студент отправит заявку на утверждение, она появится здесь.",
+                      requestFilter === "all"
+                          ? "Заявок пока нет"
+                          : "Нет заявок в этой категории",
+                      "Когда студенты будут отправлять заявки, они появятся здесь.",
                       SVG.clipboard,
                   )
-                : requests.map((x) => renderRequestCard(x)).join("")
+                : filtered.map((x) => renderRequestCard(x)).join("")
         }
       </div>
     `;
     };
 
+    function getRequestFilterLabel(filter) {
+        const labels = {
+            all: "Все заявки",
+            pending: "Заявки на утверждении",
+            approved: "Одобренные заявки",
+            rejected: "Отклонённые заявки",
+        };
+        return labels[filter] || "Все заявки";
+    }
+
+    function renderRequestTab(id, label, count) {
+        const active = requestFilter === id ? "active" : "";
+        return `
+      <button class="filter-tab ${active}" onclick="Teacher.setRequestFilter('${id}')">
+        ${escapeHtml(label)}
+        <span class="count-chip" style="margin-left:6px;">${count}</span>
+      </button>
+    `;
+    }
+
+    function setRequestFilter(filter) {
+        requestFilter = filter;
+        App.navigate("requests");
+    }
+
     function renderRequestCard(x) {
         const w = x.work;
         const s = x.student;
+        const isPending = w.status === "pending";
+        const isRejected = w.status === "rejected";
+        const isApproved = ["active", "review", "approved", "done"].includes(
+            w.status,
+        );
+
+        const rejectReason = w.rejectReason
+            ? `<div class="notice" style="margin-top:12px;background:var(--bad-soft);border-left:3px solid var(--bad);font-size:12px;">
+            <b>Причина отклонения:</b> ${escapeHtml(w.rejectReason)}
+          </div>`
+            : "";
+
+        const decisionInfo = (() => {
+            if (isPending) return "";
+            if (isRejected && w.updatedAt) {
+                return `<span style="font-size:11px;color:var(--txt-muted);">
+                Отклонена: ${fmtDateTime(w.updatedAt)}
+              </span>`;
+            }
+            if (isApproved && w.approvedAt) {
+                return `<span style="font-size:11px;color:var(--txt-muted);">
+                Утверждена: ${fmtDateTime(w.approvedAt)}
+              </span>`;
+            }
+            return "";
+        })();
+
         return `
-      <div class="request-card">
+      <div class="request-card" style="${isRejected ? "border-left:3px solid var(--bad);" : isApproved ? "border-left:3px solid var(--ok);" : "border-left:3px solid var(--warn);"}">
         <div class="request-head">
           <div style="flex:1;min-width:220px;">
             <div class="request-topic">${escapeHtml(w.topic)}</div>
@@ -280,19 +673,33 @@ const Teacher = (() => {
         ${w.goal ? `<div class="request-body"><b>Цель:</b> ${escapeHtml(w.goal)}</div>` : ""}
         ${w.deadline ? `<div class="request-meta">Планируемая защита: ${escapeHtml(w.deadline)}</div>` : ""}
 
+        ${rejectReason}
+
+        ${
+            decisionInfo
+                ? `<div style="margin-top:8px;">${decisionInfo}</div>`
+                : ""
+        }
+
         <div class="request-actions">
           <button class="btn-ghost btn-sm"
-            onclick="App.navigate('request-detail', {id: ${w.id}})">
+            onclick="App.navigate('request-detail', {id: '${w.id}'})">
             Подробнее
           </button>
-          <button class="btn-ghost btn-sm" onclick="Teacher.openRejectModal(${w.id})">
-            ${SVG.x({ cls: "icon icon-sm" })}
-            <span>Отклонить</span>
-          </button>
-          <button class="btn-primary btn-sm" onclick="Teacher.approveWork(${w.id})">
-            ${SVG.check({ cls: "icon icon-sm" })}
-            <span>Утвердить</span>
-          </button>
+          ${
+              isPending
+                  ? `
+            <button class="btn-ghost btn-sm" onclick="Teacher.openRejectModal('${w.id}')">
+              ${SVG.x({ cls: "icon icon-sm" })}
+              <span>Отклонить</span>
+            </button>
+            <button class="btn-primary btn-sm" onclick="Teacher.approveWork('${w.id}')">
+              ${SVG.check({ cls: "icon icon-sm" })}
+              <span>Утвердить</span>
+            </button>
+          `
+                  : ""
+          }
         </div>
       </div>
     `;
@@ -347,11 +754,11 @@ const Teacher = (() => {
         <div class="card mt-16">
           <div class="card-title">Решение</div>
           <div class="request-actions" style="justify-content:flex-start;">
-            <button class="btn-ghost" onclick="Teacher.openRejectModal(${w.id})">
+            <button class="btn-ghost" onclick="Teacher.openRejectModal('${w.id}')">
               ${SVG.x({ cls: "icon icon-sm" })}
               <span>Отклонить</span>
             </button>
-            <button class="btn-primary" onclick="Teacher.approveWork(${w.id})">
+            <button class="btn-primary" onclick="Teacher.approveWork('${w.id}')">
               ${SVG.check({ cls: "icon icon-sm" })}
               <span>Утвердить заявку</span>
             </button>
@@ -423,7 +830,7 @@ const Teacher = (() => {
           </div>
           <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
             <button class="btn-ghost" onclick="Teacher.closeModal()">Отмена</button>
-            <button class="btn-primary" onclick="Teacher.rejectWork(${workId})">Отклонить</button>
+            <button class="btn-primary" onclick="Teacher.rejectWork('${workId}')">Отклонить</button>
           </div>
         </div>
       </div>
@@ -481,6 +888,275 @@ const Teacher = (() => {
         App.toast("Заявка отклонена");
         App.navigate("requests");
     }
+
+    /* =========================================================
+       МОИ РАБОТЫ — все работы преподавателя
+       ========================================================= */
+    let myWorksShowActive = false;
+    let myWorksType = "";
+    let myWorksSearch = "";
+    let myWorksSort = "date";
+
+    VIEWS["my-works"] = function () {
+        const u = getUser();
+        if (!u) return "";
+
+        const allWorks = Storage.getWorksByTeacher(u.id);
+
+        const archived = allWorks.filter((w) =>
+            ["done", "rejected"].includes(w.status),
+        );
+        const activeList = allWorks.filter(
+            (w) => !["done", "rejected"].includes(w.status),
+        );
+
+        let list = myWorksShowActive ? allWorks : archived;
+
+        if (myWorksType) {
+            list = list.filter((w) => w.type === myWorksType);
+        }
+
+        if (myWorksSearch) {
+            const q = myWorksSearch.toLowerCase();
+            list = list.filter((w) => {
+                const student = Storage.getUserById(w.studentId);
+                const studentName = (student?.fio || "").toLowerCase();
+                const group = (student?.group || "").toLowerCase();
+                return (
+                    w.topic.toLowerCase().includes(q) ||
+                    studentName.includes(q) ||
+                    group.includes(q)
+                );
+            });
+        }
+
+        list = [...list].sort((a, b) => {
+            if (myWorksSort === "date")
+                return (
+                    (b.updatedAt || b.createdAt || 0) -
+                    (a.updatedAt || a.createdAt || 0)
+                );
+            if (myWorksSort === "grade")
+                return (b.finalGrade || 0) - (a.finalGrade || 0);
+            if (myWorksSort === "progress")
+                return calcProgress(b.id) - calcProgress(a.id);
+            if (myWorksSort === "rating") {
+                const ra = getFuzzyResult(a);
+                const rb = getFuzzyResult(b);
+                return (rb?.rating.value || 0) - (ra?.rating.value || 0);
+            }
+            return 0;
+        });
+
+        const doneCount = archived.filter((w) => w.status === "done").length;
+        const rejectedCount = archived.filter(
+            (w) => w.status === "rejected",
+        ).length;
+        const withGrades = archived.filter(
+            (w) => w.status === "done" && w.finalGrade,
+        );
+        const avgGrade = withGrades.length
+            ? (
+                  withGrades.reduce((a, w) => a + w.finalGrade, 0) /
+                  withGrades.length
+              ).toFixed(1)
+            : "—";
+
+        return `
+      <div class="grid grid-4">
+        <div class="card kpi">
+          <div class="kpi-num">${allWorks.length}</div>
+          <div class="kpi-lbl">Всего работ</div>
+        </div>
+        <div class="card kpi">
+          <div class="kpi-num" style="color:var(--ok)">${doneCount}</div>
+          <div class="kpi-lbl">Защищено</div>
+        </div>
+        <div class="card kpi">
+          <div class="kpi-num" style="color:${rejectedCount > 0 ? "var(--bad)" : "var(--txt-muted)"}">${rejectedCount}</div>
+          <div class="kpi-lbl">Отклонено</div>
+        </div>
+        <div class="card kpi">
+          <div class="kpi-num" style="color:var(--accent-viz)">${avgGrade}</div>
+          <div class="kpi-lbl">Ср. оценка</div>
+        </div>
+      </div>
+
+      <div class="card mt-16">
+        <div class="card-head">
+          <div class="card-title" style="margin-bottom:0;">
+            ${myWorksShowActive ? "Все работы" : "Завершённые работы"}
+            <span class="count-chip">${list.length}</span>
+          </div>
+          <button class="btn-ghost btn-sm" onclick="Teacher.toggleMyWorksActive()">
+            ${
+                myWorksShowActive
+                    ? SVG.x({ cls: "icon icon-sm" }) +
+                      "<span>Скрыть активные</span>"
+                    : SVG.eye({ cls: "icon icon-sm" }) +
+                      `<span>Показать активные (${activeList.length})</span>`
+            }
+          </button>
+        </div>
+
+        <div class="review-toolbar" style="margin-top:14px;">
+          <input type="text"
+            class="review-search"
+            placeholder="Поиск по студенту, теме, группе…"
+            value="${escapeHtml(myWorksSearch)}"
+            oninput="Teacher.setMyWorksSearch(this.value)">
+          <select class="review-sort" onchange="Teacher.setMyWorksType(this.value)">
+            <option value="">Все типы</option>
+            ${Object.entries(Utils.WORK_TYPES)
+                .map(
+                    ([k, v]) =>
+                        `<option value="${k}" ${myWorksType === k ? "selected" : ""}>${v.title}</option>`,
+                )
+                .join("")}
+          </select>
+          <select class="review-sort" onchange="Teacher.setMyWorksSort(this.value)">
+            <option value="date" ${myWorksSort === "date" ? "selected" : ""}>По дате</option>
+            <option value="grade" ${myWorksSort === "grade" ? "selected" : ""}>По оценке</option>
+            <option value="progress" ${myWorksSort === "progress" ? "selected" : ""}>По прогрессу</option>
+            <option value="rating" ${myWorksSort === "rating" ? "selected" : ""}>По рейтингу</option>
+          </select>
+        </div>
+
+        ${
+            list.length === 0
+                ? emptyState(
+                      !myWorksShowActive && archived.length === 0
+                          ? "Завершённых работ пока нет"
+                          : "Ничего не найдено",
+                      !myWorksShowActive && archived.length === 0
+                          ? "Когда студенты защитят или отклонят работы, они появятся здесь."
+                          : "Измените фильтр или запрос.",
+                      SVG.folder,
+                  )
+                : list.map((w) => renderMyWorkCard(w)).join("")
+        }
+      </div>
+    `;
+    };
+
+    function renderMyWorkCard(w) {
+        const student = Storage.getUserById(w.studentId);
+        const progress = calcProgress(w.id);
+        const res = getFuzzyResult(w);
+        const isDone = w.status === "done";
+        const isRejected = w.status === "rejected";
+
+        const accentColor = isDone
+            ? "var(--ok)"
+            : isRejected
+              ? "var(--bad)"
+              : "var(--info)";
+
+        const gradeLabel = (g) => {
+            if (g === 5) return "отлично";
+            if (g === 4) return "хорошо";
+            if (g === 3) return "удовлетв.";
+            if (g === 2) return "неудовлетв.";
+            return "";
+        };
+
+        return `
+      <div class="review-item" style="border-left-color:${accentColor};">
+        <div class="review-item-head">
+          <div class="review-item-title">${escapeHtml(w.topic)}</div>
+          ${statusBadge(w.status)}
+        </div>
+
+        <div class="review-item-meta">
+          ${escapeHtml(student?.fio || "—")}
+          ${student?.group ? " · " + escapeHtml(student.group) : ""}
+          · ${escapeHtml(Utils.workTypeLabel(w.type))}
+        </div>
+
+        ${
+            isDone && w.finalGrade
+                ? `
+          <div class="review-item-grade">
+            <span class="review-grade-num" style="color:var(--ok);">${w.finalGrade}</span>
+            <span class="review-grade-label">${gradeLabel(w.finalGrade)}</span>
+            ${w.defendedAt ? `<span class="review-info-dot">·</span><span style="font-size:11px;color:var(--txt-muted);">защищена ${fmtDate(w.defendedAt)}</span>` : ""}
+          </div>
+        `
+                : ""
+        }
+
+        ${
+            isRejected && w.rejectReason
+                ? `
+          <div style="margin:10px 0;padding:10px 12px;background:var(--bad-soft);border-left:3px solid var(--bad);border-radius:0 var(--r-sm) var(--r-sm) 0;font-size:12px;">
+            <b>Причина:</b> ${escapeHtml(w.rejectReason)}
+          </div>
+        `
+                : ""
+        }
+
+        <div class="review-item-stats">
+          <span class="review-stat">
+            <span class="review-stat-label">Прогресс</span>
+            <span class="review-stat-value" style="color:var(--${Utils.progressClass(progress)});">${progress}%</span>
+          </span>
+          <span class="review-stat">
+            <span class="review-stat-label">Риск</span>
+            <span class="review-stat-value" style="color:var(--${Utils.riskClass(res.risk.term)});">${res.risk.value.toFixed(0)}</span>
+          </span>
+          <span class="review-stat">
+            <span class="review-stat-label">Рейтинг</span>
+            <span class="review-stat-value" style="color:var(--accent-viz);">${res.rating.value.toFixed(0)}</span>
+          </span>
+        </div>
+
+        <div class="review-item-actions">
+          <button class="btn-ghost btn-sm"
+            onclick="App.navigate('student-detail', {id: '${student?.id || ""}', workId: '${w.id}'})">
+            ${SVG.eye({ cls: "icon icon-sm" })}
+            <span>Карточка</span>
+          </button>
+          <button class="btn-ghost btn-sm"
+            onclick="PdfReport.exportStudent('${w.id}')">
+            ${SVG.fileText({ cls: "icon icon-sm" })}
+            <span>PDF</span>
+          </button>
+        </div>
+      </div>
+    `;
+    }
+
+    function toggleMyWorksActive() {
+        myWorksShowActive = !myWorksShowActive;
+        App.navigate("my-works");
+    }
+
+    function setMyWorksType(type) {
+        myWorksType = type;
+        App.navigate("my-works");
+    }
+
+    function setMyWorksSearch(q) {
+        myWorksSearch = q;
+        App.navigate("my-works");
+        setTimeout(() => {
+            const input = document.querySelector(".review-search");
+            if (input) {
+                input.focus();
+                const len = input.value.length;
+                input.setSelectionRange(len, len);
+            }
+        }, 0);
+    }
+
+    function setMyWorksSort(sort) {
+        myWorksSort = sort;
+        App.navigate("my-works");
+    }
+
+    /* =========================================================
+       СТУДЕНТЫ
+       ========================================================= */
     VIEWS.students = function () {
         const students = getMyStudents();
         const active = students.filter((x) =>
@@ -526,7 +1202,7 @@ const Teacher = (() => {
         const lbl = Fuzzy.termLabel(cls, "risk");
 
         return `
-      <div class="student-row" onclick="App.navigate('student-profile', {id: ${x.student.id}})">
+      <div class="student-row" onclick="App.navigate('student-profile', {id: '${x.student.id}'})">
         <div>
           <div class="student-name">${escapeHtml(x.student.fio)}</div>
           <div class="student-sub">${escapeHtml(x.work.topic)}</div>
@@ -695,7 +1371,7 @@ const Teacher = (() => {
               <div class="version-date">${fmtDateTime(v.createdAt)}${v.filename ? " · " + escapeHtml(v.filename) : ""}</div>
             </div>
             <button class="btn-ghost btn-sm"
-              onclick="Teacher.openVersionCommentModal(${v.id})">
+              onclick="Teacher.openVersionCommentModal('${v.id}')">
               ${SVG.messageCircle({ cls: "icon icon-sm" })}
               <span>Замечание</span>
             </button>
@@ -721,7 +1397,7 @@ const Teacher = (() => {
         <div class="card mt-16">
           <div class="card-title">Проверка работы</div>
           <div class="request-actions" style="justify-content:flex-start;">
-            <button class="btn-primary" onclick="Teacher.openReviewModal(${w.id})">
+            <button class="btn-primary" onclick="Teacher.openReviewModal('${w.id}')">
               ${SVG.checkCircle({ cls: "icon icon-sm" })}
               <span>Перейти к проверке</span>
             </button>
@@ -740,11 +1416,11 @@ const Teacher = (() => {
             Работа допущена к защите. После успешной защиты отметьте её как защищённую.
           </p>
           <div style="display:flex;gap:10px;flex-wrap:wrap;">
-            <button class="btn-primary" onclick="Teacher.markAsDone(${w.id})">
+            <button class="btn-primary" onclick="Teacher.markAsDone('${w.id}')">
               ${SVG.check({ cls: "icon icon-sm" })}
               <span>Отметить защищённой</span>
             </button>
-            <button class="btn-ghost" onclick="Teacher.returnFromApproved(${w.id})">
+            <button class="btn-ghost" onclick="Teacher.returnFromApproved('${w.id}')">
               ${SVG.refresh({ cls: "icon icon-sm" })}
               <span>Вернуть на доработку</span>
             </button>
@@ -860,7 +1536,7 @@ const Teacher = (() => {
           <div class="card-head">
             <div class="card-title">Текущая работа</div>
             <button class="btn-ghost btn-sm"
-              onclick="App.navigate('student-detail', {id: ${s.id}, workId: ${activeWork.id}})">
+              onclick="App.navigate('student-detail', {id: '${s.id}', workId: '${activeWork.id}'})">
               Полная карточка →
             </button>
           </div>
@@ -882,7 +1558,7 @@ const Teacher = (() => {
                 const res = getFuzzyResult(w);
                 return `
             <div class="mini-project"
-              onclick="App.navigate('student-detail', {id: ${s.id}, workId: ${w.id}})">
+              onclick="App.navigate('student-detail', {id: '${s.id}', workId: '${w.id}'})">
               <div>
                 <div class="mini-project-title">${escapeHtml(w.topic)}</div>
                 <div class="mini-project-sub">
@@ -973,7 +1649,7 @@ const Teacher = (() => {
           </div>
           <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
             <button class="btn-ghost" onclick="Teacher.closeModal()">Отмена</button>
-            <button class="btn-primary" onclick="Teacher.saveVersionComment(${versionId})">Добавить</button>
+            <button class="btn-primary" onclick="Teacher.saveVersionComment('${versionId}')">Добавить</button>
           </div>
         </div>
       </div>
@@ -1035,74 +1711,1281 @@ const Teacher = (() => {
         App.toast("Замечание добавлено");
     }
 
+    /* =========================================================
+       ПРОВЕРКА РАБОТ
+       ========================================================= */
+    let reviewFilter = "all";
+    let reviewSearch = "";
+    let reviewSort = "risk";
+
     VIEWS.review = function () {
         const students = getMyStudents();
-        const inReview = students.filter(
-            (x) =>
-                x.work.status === "active" ||
-                x.work.status === "review" ||
-                x.work.status === "approved",
+
+        const all = students.filter((x) =>
+            ["active", "review", "approved"].includes(x.work.status),
         );
+
+        const enriched = all.map((x) => {
+            const progress = calcProgress(x.work.id);
+            const res = getFuzzyResult(x.work);
+            const tasksReview = Storage.getTasksByWork(x.work.id).filter(
+                (t) => t.col === "review",
+            );
+            const versions = Storage.getVersionsByWork(x.work.id);
+            const comments = Storage.getCommentsByWork(x.work.id);
+
+            return {
+                ...x,
+                progress,
+                res,
+                tasksReview,
+                versions,
+                comments,
+                hasTeacherCheck: res && res.hasAnyTeacherCheck,
+            };
+        });
+
+        const active = enriched.filter((e) => e.work.status === "active");
+        const review = enriched.filter((e) => e.work.status === "review");
+        const approved = enriched.filter((e) => e.work.status === "approved");
+
+        let filtered = enriched;
+        if (reviewFilter === "active") filtered = active;
+        else if (reviewFilter === "review") filtered = review;
+        else if (reviewFilter === "approved") filtered = approved;
+
+        if (reviewSearch) {
+            const q = reviewSearch.toLowerCase();
+            filtered = filtered.filter(
+                (e) =>
+                    e.student.fio.toLowerCase().includes(q) ||
+                    e.work.topic.toLowerCase().includes(q) ||
+                    (e.student.group || "").toLowerCase().includes(q),
+            );
+        }
+
+        filtered = [...filtered].sort((a, b) => {
+            if (reviewSort === "risk")
+                return b.res.risk.value - a.res.risk.value;
+            if (reviewSort === "progress") return b.progress - a.progress;
+            if (reviewSort === "date")
+                return (b.work.updatedAt || 0) - (a.work.updatedAt || 0);
+            if (reviewSort === "name")
+                return a.student.fio.localeCompare(b.student.fio);
+            return 0;
+        });
 
         return `
       <div class="card">
-        <div class="card-title">Работы на проверку (${inReview.length})</div>
+        <div class="card-head">
+          <div class="card-title" style="margin-bottom:0;">
+            Работы для проверки
+            <span class="count-chip">${all.length}</span>
+          </div>
+        </div>
+
+        <div class="filter-tabs" style="margin-bottom:14px;">
+          ${renderReviewTab("all", "Все", all.length)}
+          ${renderReviewTab("active", "В работе", active.length)}
+          ${renderReviewTab("review", "На проверке", review.length)}
+          ${renderReviewTab("approved", "Допущено", approved.length)}
+        </div>
+
+        <div class="review-toolbar">
+          <input type="text"
+            class="review-search"
+            placeholder="Поиск по студенту, теме, группе…"
+            value="${escapeHtml(reviewSearch)}"
+            oninput="Teacher.setReviewSearch(this.value)">
+          <select class="review-sort" onchange="Teacher.setReviewSort(this.value)">
+            <option value="risk" ${reviewSort === "risk" ? "selected" : ""}>По риску</option>
+            <option value="progress" ${reviewSort === "progress" ? "selected" : ""}>По прогрессу</option>
+            <option value="date" ${reviewSort === "date" ? "selected" : ""}>По дате</option>
+            <option value="name" ${reviewSort === "name" ? "selected" : ""}>По ФИО</option>
+          </select>
+        </div>
+
         ${
-            inReview.length === 0
+            filtered.length === 0
                 ? emptyState(
-                      "Нет работ, ожидающих проверки",
-                      "Работы появятся здесь, когда студенты начнут работу.",
+                      all.length === 0
+                          ? "Нет работ для проверки"
+                          : "Ничего не найдено",
+                      all.length === 0
+                          ? "Работы появятся, когда студенты начнут работать."
+                          : "Измените фильтр или запрос.",
                       SVG.fileText,
                   )
-                : inReview
-                      .map((x) => {
-                          const progress = calcProgress(x.work.id);
-                          const isApproved = x.work.status === "approved";
-                          return `
-            <div style="border:1px solid var(--line);border-radius:var(--r-md);padding:14px;margin-bottom:10px;background:var(--bg-elev);">
-              <div class="student-row" style="border:none;padding:0;margin:0;cursor:pointer;"
-                onclick="Teacher.openReviewModal(${x.work.id})">
-                <div>
-                  <div class="student-name">${escapeHtml(x.student.fio)}</div>
-                  <div class="student-sub">${escapeHtml(x.work.topic)}</div>
-                </div>
-                <div class="progress-mini">
-                  <div style="font-size:11px;color:var(--txt-muted);margin-bottom:3px;">${progress}%</div>
-                  <div class="progress ${Utils.progressClass(progress)}">
-                    <div style="width:${progress}%"></div>
-                  </div>
-                </div>
-                <div>${statusBadge(x.work.status)}</div>
-                <div style="color:var(--txt-muted);font-size:18px;">›</div>
-              </div>
-
-              ${
-                  isApproved
-                      ? `
-                <div style="display:flex;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);">
-                  <button class="btn-primary btn-sm"
-                    onclick="event.stopPropagation(); Teacher.markAsDone(${x.work.id})">
-                    ${SVG.check({ cls: "icon icon-sm" })}
-                    <span>Отметить защищённой</span>
-                  </button>
-                  <button class="btn-ghost btn-sm"
-                    onclick="event.stopPropagation(); Teacher.returnFromApproved(${x.work.id})">
-                    ${SVG.refresh({ cls: "icon icon-sm" })}
-                    <span>Вернуть на доработку</span>
-                  </button>
-                </div>
-              `
-                      : ""
-              }
-            </div>
-          `;
-                      })
-                      .join("")
+                : filtered.map((e) => renderReviewCard(e)).join("")
         }
       </div>
     `;
     };
 
+    function renderReviewTab(id, label, count) {
+        const active = reviewFilter === id ? "active" : "";
+        return `
+      <button class="filter-tab ${active}" onclick="Teacher.setReviewFilter('${id}')">
+        ${escapeHtml(label)}
+        <span class="count-chip" style="margin-left:6px;">${count}</span>
+      </button>
+    `;
+    }
+
+    function setReviewFilter(filter) {
+        reviewFilter = filter;
+        App.navigate("review");
+    }
+
+    function setReviewSearch(q) {
+        reviewSearch = q;
+        App.navigate("review");
+        setTimeout(() => {
+            const newInput = document.querySelector(".review-search");
+            if (newInput) {
+                newInput.focus();
+                const len = newInput.value.length;
+                newInput.setSelectionRange(len, len);
+            }
+        }, 0);
+    }
+
+    function setReviewSort(sort) {
+        reviewSort = sort;
+        App.navigate("review");
+    }
+
+    function renderReviewCard(e) {
+        const {
+            work: w,
+            student: s,
+            progress,
+            res,
+            tasksReview,
+            versions,
+            comments,
+            hasTeacherCheck,
+        } = e;
+
+        const isApproved = w.status === "approved";
+        const isPending = w.status === "review";
+
+        const accentColor = isApproved
+            ? "var(--ok)"
+            : isPending
+              ? "var(--purple)"
+              : "var(--info)";
+
+        const taskAlert =
+            tasksReview.length > 0
+                ? `
+      <button class="review-alert" onclick="App.navigate('tasks-review')">
+        ${SVG.check({ cls: "icon icon-xs" })}
+        <span>${tasksReview.length} ${tasksReview.length === 1 ? "задача" : "задач"} ждёт проверки</span>
+        ${SVG.chevronRight({ cls: "icon icon-xs" })}
+      </button>
+    `
+                : "";
+
+        return `
+      <div class="review-item" style="border-left-color:${accentColor};">
+
+        <div class="review-item-head">
+          <div class="review-item-title">${escapeHtml(w.topic)}</div>
+          ${statusBadge(w.status)}
+        </div>
+
+        <div class="review-item-meta">
+          ${escapeHtml(s.fio)}
+          ${s.group ? " · " + escapeHtml(s.group) : ""}
+          · ${escapeHtml(Utils.workTypeLabel(w.type))}
+        </div>
+
+        <div class="review-item-stats">
+          <span class="review-stat">
+            <span class="review-stat-label">Прогресс</span>
+            <span class="review-stat-value" style="color:var(--${Utils.progressClass(progress)});">
+              ${progress}%
+            </span>
+          </span>
+          <span class="review-stat">
+            <span class="review-stat-label">Риск</span>
+            <span class="review-stat-value" style="color:var(--${Utils.riskClass(res.risk.term)});">
+              ${res.risk.value.toFixed(0)}
+            </span>
+          </span>
+          <span class="review-stat">
+            <span class="review-stat-label">Готовность</span>
+            <span class="review-stat-value" style="color:var(--${Utils.readyClass(res.ready.term)});">
+              ${res.ready.value.toFixed(0)}
+            </span>
+          </span>
+          <span class="review-stat">
+            <span class="review-stat-label">Рейтинг</span>
+            <span class="review-stat-value" style="color:var(--accent-viz);">
+              ${res.rating.value.toFixed(0)}
+            </span>
+          </span>
+        </div>
+
+        <div class="review-item-info">
+          <span>${versions.length} ${versions.length === 1 ? "версия" : "версий"}</span>
+          <span class="review-info-dot">·</span>
+          <span>${comments.length} ${comments.length === 1 ? "замечание" : "замечаний"}</span>
+          <span class="review-info-dot">·</span>
+          <span>обновлено ${fmtDate(w.updatedAt || w.createdAt)}</span>
+          <span class="review-info-dot">·</span>
+          <span style="color:var(--${hasTeacherCheck ? "ok" : "warn"});">
+            ${hasTeacherCheck ? "проверено" : "не проверено"}
+          </span>
+        </div>
+
+        ${taskAlert}
+
+        <div class="review-item-actions">
+          ${
+              !isApproved
+                  ? `
+            <button class="btn-primary btn-sm" onclick="Teacher.openReviewModal('${w.id}')">
+              ${SVG.checkCircle({ cls: "icon icon-sm" })}
+              <span>Проверить</span>
+            </button>
+          `
+                  : `
+            <button class="btn-primary btn-sm" onclick="Teacher.markAsDone('${w.id}')">
+              ${SVG.check({ cls: "icon icon-sm" })}
+              <span>Защищена</span>
+            </button>
+            <button class="btn-ghost btn-sm" onclick="Teacher.returnFromApproved('${w.id}')">
+              ${SVG.refresh({ cls: "icon icon-sm" })}
+              <span>На доработку</span>
+            </button>
+          `
+          }
+          <button class="btn-ghost btn-sm" onclick="App.navigate('student-detail', {id: '${s.id}', workId: '${w.id}'})">
+            ${SVG.eye({ cls: "icon icon-sm" })}
+            <span>Карточка</span>
+          </button>
+        </div>
+      </div>
+    `;
+    }
+
+    /* =========================================================
+       ЗАДАЧИ — полный список по всем работам
+       ========================================================= */
+    let taskFilter = "all";
+    let taskSearch = "";
+    let taskSort = "date";
+
+    VIEWS["tasks-review"] = function () {
+        const u = getUser();
+        if (!u) return "";
+
+        const myWorks = Storage.getWorksByTeacher(u.id);
+        const myWorkIds = myWorks.map((w) => w.id);
+
+        const allTasks = Storage.getTasks().filter((t) =>
+            myWorkIds.some((id) => Storage.sameId(id, t.workId)),
+        );
+
+        const enriched = allTasks.map((t) => {
+            const work = Storage.getWorkById(t.workId);
+            const student = work ? Storage.getUserById(work.studentId) : null;
+            const reviewer = t.reviewedBy
+                ? Storage.getUserById(t.reviewedBy)
+                : null;
+            const deadlineDays = t.deadline ? daysUntil(t.deadline) : null;
+            return { t, work, student, reviewer, deadlineDays };
+        });
+
+        const review = enriched.filter((e) => e.t.col === "review");
+        const progress = enriched.filter((e) => e.t.col === "progress");
+        const todo = enriched.filter((e) => e.t.col === "todo");
+        const done = enriched.filter((e) => e.t.col === "done");
+
+        let filtered = enriched;
+        if (taskFilter !== "all") {
+            filtered = filtered.filter((e) => e.t.col === taskFilter);
+        }
+
+        if (taskSearch) {
+            const q = taskSearch.toLowerCase();
+            filtered = filtered.filter(
+                (e) =>
+                    e.t.title.toLowerCase().includes(q) ||
+                    (e.student?.fio || "").toLowerCase().includes(q) ||
+                    (e.work?.topic || "").toLowerCase().includes(q),
+            );
+        }
+
+        filtered = [...filtered].sort((a, b) => {
+            if (taskSort === "deadline") {
+                if (!a.t.deadline) return 1;
+                if (!b.t.deadline) return -1;
+                return (a.deadlineDays ?? 0) - (b.deadlineDays ?? 0);
+            }
+            if (taskSort === "title") return a.t.title.localeCompare(b.t.title);
+            if (taskSort === "student")
+                return (a.student?.fio || "").localeCompare(
+                    b.student?.fio || "",
+                );
+            const priority = { review: 0, progress: 1, todo: 2, done: 3 };
+            const pa = priority[a.t.col] ?? 9;
+            const pb = priority[b.t.col] ?? 9;
+            if (pa !== pb) return pa - pb;
+            return (b.t.updatedAt || 0) - (a.t.updatedAt || 0);
+        });
+
+        return `
+      <div class="grid grid-4">
+        <div class="card kpi">
+          <div class="kpi-num">${allTasks.length}</div>
+          <div class="kpi-lbl">Всего задач</div>
+        </div>
+        <div class="card kpi">
+          <div class="kpi-num" style="color:${review.length > 0 ? "var(--accent-viz)" : "var(--txt-muted)"}">${review.length}</div>
+          <div class="kpi-lbl">На проверке</div>
+        </div>
+        <div class="card kpi">
+          <div class="kpi-num" style="color:var(--info)">${progress.length}</div>
+          <div class="kpi-lbl">В работе</div>
+        </div>
+        <div class="card kpi">
+          <div class="kpi-num" style="color:var(--ok)">${done.length}</div>
+          <div class="kpi-lbl">Готово</div>
+        </div>
+      </div>
+
+      <div class="card mt-16">
+        <div class="card-head">
+          <div class="card-title" style="margin-bottom:0;">
+            Задачи
+            <span class="count-chip">${allTasks.length}</span>
+          </div>
+        </div>
+
+        <div class="filter-tabs" style="margin-bottom:14px;">
+          ${renderTaskTab("all", "Все", allTasks.length)}
+          ${renderTaskTab("review", "На проверке", review.length)}
+          ${renderTaskTab("progress", "В работе", progress.length)}
+          ${renderTaskTab("todo", "К выполнению", todo.length)}
+          ${renderTaskTab("done", "Готово", done.length)}
+        </div>
+
+        <div class="review-toolbar">
+          <input type="text"
+            class="review-search"
+            placeholder="Поиск по задаче, студенту, работе…"
+            value="${escapeHtml(taskSearch)}"
+            oninput="Teacher.setTaskSearch(this.value)">
+          <select class="review-sort" onchange="Teacher.setTaskSort(this.value)">
+            <option value="date" ${taskSort === "date" ? "selected" : ""}>Сначала на проверке</option>
+            <option value="deadline" ${taskSort === "deadline" ? "selected" : ""}>По дедлайну</option>
+            <option value="title" ${taskSort === "title" ? "selected" : ""}>По названию</option>
+            <option value="student" ${taskSort === "student" ? "selected" : ""}>По студенту</option>
+          </select>
+        </div>
+
+        ${
+            filtered.length === 0
+                ? emptyState(
+                      allTasks.length === 0
+                          ? "Задач пока нет"
+                          : "Ничего не найдено",
+                      allTasks.length === 0
+                          ? "Задачи появятся, когда студенты начнут работать."
+                          : "Измените фильтр или запрос.",
+                      SVG.check,
+                  )
+                : filtered.map((e) => renderTaskCard(e)).join("")
+        }
+      </div>
+    `;
+    };
+
+    function renderTaskTab(id, label, count) {
+        const active = taskFilter === id ? "active" : "";
+        return `
+      <button class="filter-tab ${active}" onclick="Teacher.setTaskFilter('${id}')">
+        ${escapeHtml(label)}
+        <span class="count-chip" style="margin-left:6px;">${count}</span>
+      </button>
+    `;
+    }
+
+    function setTaskFilter(filter) {
+        taskFilter = filter;
+        App.navigate("tasks-review");
+    }
+
+    function setTaskSearch(q) {
+        taskSearch = q;
+        App.navigate("tasks-review");
+        setTimeout(() => {
+            const input = document.querySelector(".review-search");
+            if (input) {
+                input.focus();
+                const len = input.value.length;
+                input.setSelectionRange(len, len);
+            }
+        }, 0);
+    }
+
+    function setTaskSort(sort) {
+        taskSort = sort;
+        App.navigate("tasks-review");
+    }
+
+    function renderTaskCard({ t, work, student, reviewer, deadlineDays }) {
+        const colLabels = {
+            todo: "К выполнению",
+            progress: "В работе",
+            review: "На проверке",
+            done: "Готово",
+        };
+        const colBadges = {
+            todo: "draft",
+            progress: "active",
+            review: "review",
+            done: "approved",
+        };
+        const colBorder = {
+            todo: "var(--txt-muted)",
+            progress: "var(--info)",
+            review: "var(--accent-viz)",
+            done: "var(--ok)",
+        };
+
+        const isReview = t.col === "review";
+        const isDone = t.col === "done";
+
+        const deadlineHtml = t.deadline
+            ? `
+        <div class="task-deadline" style="color:var(--${
+            deadlineDays < 0 ? "bad" : deadlineDays <= 3 ? "warn" : "txt-muted"
+        });">
+            Дедлайн: ${escapeHtml(t.deadline)}
+            ${
+                deadlineDays >= 0
+                    ? ` · осталось ${deadlineDays} дн.`
+                    : " · просрочено"
+            }
+        </div>
+    `
+            : "";
+
+        const rejectNote = t.reviewComment
+            ? `<div class="task-note">
+                  <b>Замечание:</b> ${escapeHtml(t.reviewComment)}
+               </div>`
+            : "";
+
+        const approvedInfo =
+            isDone && reviewer
+                ? `<div class="task-approved">
+                      Проверено: <b>${escapeHtml(reviewer.fio)}</b>
+                      ${t.reviewedAt ? ` · ${fmtDateTime(t.reviewedAt)}` : ""}
+                   </div>`
+                : "";
+
+        let actions = "";
+        if (isReview) {
+            actions = `
+                <button class="btn-primary btn-sm" onclick="Teacher.taskApprove('${t.id}')">
+                    ${SVG.check({ cls: "icon icon-sm" })}
+                    <span>Одобрить</span>
+                </button>
+                <button class="btn-ghost btn-sm" onclick="Teacher.taskReject('${t.id}')">
+                    ${SVG.refresh({ cls: "icon icon-sm" })}
+                    <span>Вернуть в работу</span>
+                </button>
+                <button class="btn-ghost btn-sm" onclick="Teacher.taskRejectWithComment('${t.id}')">
+                    ${SVG.edit({ cls: "icon icon-sm" })}
+                    <span>С замечанием</span>
+                </button>
+            `;
+        } else if (isDone) {
+            actions = "";
+        } else {
+            actions = `<span class="task-waiting">Ожидает действий студента</span>`;
+        }
+
+        return `
+      <div class="task-card-row" style="border-left-color:${colBorder[t.col]};">
+        <div class="task-card-head">
+          <div class="task-card-title">${escapeHtml(t.title)}</div>
+          <span class="badge ${colBadges[t.col]}">${colLabels[t.col]}</span>
+        </div>
+
+        <div class="task-card-meta">
+          ${escapeHtml(student?.fio || "—")}
+          ${student?.group ? " · " + escapeHtml(student.group) : ""}
+          ${
+              work
+                  ? ` · <span style="opacity:0.8;">«${escapeHtml(work.topic.slice(0, 60))}${work.topic.length > 60 ? "…" : ""}»</span>`
+                  : ""
+          }
+        </div>
+
+        ${deadlineHtml}
+        ${rejectNote}
+        ${approvedInfo}
+
+        ${actions ? `<div class="task-card-actions">${actions}</div>` : ""}
+      </div>
+    `;
+    }
+
+    function taskApprove(taskId) {
+        const tasks = Storage.getTasks();
+        const t = tasks.find((x) => Storage.sameId(x.id, taskId));
+        if (!t) return;
+
+        if (t.col !== "review") {
+            App.toast("Задача не на проверке");
+            return;
+        }
+
+        const work = Storage.getWorkById(t.workId);
+        if (!work || !Storage.sameId(work.teacherId, getUser().id)) {
+            App.toast("Это не ваша задача");
+            return;
+        }
+
+        t.col = "done";
+        t.reviewedBy = getUser().id;
+        t.reviewedAt = Date.now();
+        t.reviewStatus = "approved";
+        Storage.setTasks(tasks);
+
+        if (typeof Notifications !== "undefined") {
+            Notifications.add({
+                userId: work.studentId,
+                type: "approve",
+                title: "Задача одобрена",
+                text: `«${t.title}» — проверено руководителем`,
+                link: { view: "my-work" },
+            });
+        }
+
+        if (typeof Audit !== "undefined") {
+            Audit.log(
+                "Задача одобрена",
+                t.title,
+                `студент: ${Storage.getUserById(work.studentId)?.fio || ""}`,
+                "positive",
+            );
+        }
+
+        App.toast("Задача одобрена");
+        App.navigate("tasks-review");
+    }
+
+    function taskReject(taskId) {
+        const tasks = Storage.getTasks();
+        const t = tasks.find((x) => Storage.sameId(x.id, taskId));
+        if (!t) return;
+
+        if (t.col !== "review") {
+            App.toast("Задача не на проверке");
+            return;
+        }
+
+        const work = Storage.getWorkById(t.workId);
+        if (!work || !Storage.sameId(work.teacherId, getUser().id)) {
+            App.toast("Это не ваша задача");
+            return;
+        }
+
+        t.col = "progress";
+        t.reviewedBy = getUser().id;
+        t.reviewedAt = Date.now();
+        t.reviewStatus = "rejected";
+        t.reviewComment = "";
+        Storage.setTasks(tasks);
+
+        if (typeof Notifications !== "undefined") {
+            Notifications.add({
+                userId: work.studentId,
+                type: "reject",
+                title: "Задача возвращена в работу",
+                text: `«${t.title}» — нужны доработки`,
+                link: { view: "my-work" },
+            });
+        }
+
+        if (typeof Audit !== "undefined") {
+            Audit.log("Задача возвращена", t.title, "", "negative");
+        }
+
+        App.toast("Задача возвращена в работу");
+        App.navigate("tasks-review");
+    }
+
+    function taskRejectWithComment(taskId) {
+        const t = Storage.getTasks().find((x) => Storage.sameId(x.id, taskId));
+        if (!t) return;
+
+        if (t.col !== "review") {
+            App.toast("Задача не на проверке");
+            return;
+        }
+
+        const work = Storage.getWorkById(t.workId);
+        if (!work || !Storage.sameId(work.teacherId, getUser().id)) {
+            App.toast("Это не ваша задача");
+            return;
+        }
+
+        const html = `
+      <div class="modal-back" onclick="if(event.target===this) App.closeModal()">
+        <div class="modal">
+          <div class="modal-head">
+            <h3>Замечание к задаче</h3>
+            <button class="modal-close" onclick="App.closeModal()">
+              ${SVG.x({ cls: "icon icon-sm" })}
+            </button>
+          </div>
+          <div class="field">
+            <label>Что нужно доработать</label>
+            <textarea id="task_comment" rows="4" placeholder="Например: добавить примеры, исправить расчёты..."></textarea>
+          </div>
+          <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+            <button class="btn-ghost" onclick="App.closeModal()">Отмена</button>
+            <button class="btn-primary" onclick="Teacher.saveTaskReject('${taskId}')">Отправить</button>
+          </div>
+        </div>
+      </div>
+    `;
+        App.openModal(html);
+    }
+
+    function saveTaskReject(taskId) {
+        const comment = document.getElementById("task_comment")?.value.trim();
+        if (!comment) {
+            App.toast("Введите замечание");
+            return;
+        }
+
+        const tasks = Storage.getTasks();
+        const t = tasks.find((x) => Storage.sameId(x.id, taskId));
+        if (!t) return;
+
+        if (t.col !== "review") {
+            App.toast("Задача не на проверке");
+            return;
+        }
+
+        const work = Storage.getWorkById(t.workId);
+        if (!work || !Storage.sameId(work.teacherId, getUser().id)) {
+            App.toast("Это не ваша задача");
+            return;
+        }
+
+        t.col = "progress";
+        t.reviewedBy = getUser().id;
+        t.reviewedAt = Date.now();
+        t.reviewStatus = "rejected";
+        t.reviewComment = comment;
+        Storage.setTasks(tasks);
+
+        Storage.saveComment({
+            id: uid(),
+            workId: work.id,
+            authorId: getUser().id,
+            text: `Замечание к задаче «${t.title}»: ${comment}`,
+            createdAt: Date.now(),
+            kind: "task-review",
+        });
+
+        if (typeof Notifications !== "undefined") {
+            Notifications.add({
+                userId: work.studentId,
+                type: "comment",
+                title: "Замечание к задаче",
+                text: `«${t.title}»: ${comment.slice(0, 80)}`,
+                link: { view: "my-work" },
+            });
+        }
+
+        if (typeof Audit !== "undefined") {
+            Audit.log(
+                "Задача возвращена с замечанием",
+                t.title,
+                comment,
+                "warning",
+            );
+        }
+
+        App.closeModal();
+        App.toast("Замечание отправлено");
+        App.navigate("tasks-review");
+    }
+
+    /* =========================================================
+       ОЦЕНКА ЗАЩИТЫ
+       ========================================================= */
+    let pickedGrade = 5;
+
+    function markAsDone(workId) {
+        const w = Storage.getWorkById(workId);
+        if (!w) return;
+
+        if (!Storage.sameId(w.teacherId, getUser().id)) {
+            App.toast("Это не ваша работа");
+            return;
+        }
+        if (w.status !== "approved") {
+            App.toast("Работа не допущена к защите");
+            return;
+        }
+
+        const student = Storage.getUserById(w.studentId);
+
+        const html = `
+      <div class="modal-back" onclick="if(event.target===this) Teacher.closeModal()">
+        <div class="modal" style="max-width:520px;">
+          <div class="modal-head">
+            <h3>Оценка за защиту</h3>
+            <button class="modal-close" onclick="Teacher.closeModal()">
+              ${SVG.x({ cls: "icon icon-sm" })}
+            </button>
+          </div>
+
+          <div style="font-size:13px;color:var(--txt-muted);margin-bottom:16px;">
+            ${escapeHtml(student?.fio || "—")} · «${escapeHtml(w.topic)}»
+          </div>
+
+          <div class="section-label">Итоговая оценка</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">
+            ${[5, 4, 3, 2]
+                .map((g) => {
+                    const labels = {
+                        5: "отлично",
+                        4: "хорошо",
+                        3: "удовл.",
+                        2: "неуд.",
+                    };
+                    return `
+                <button class="grade-btn" data-grade="${g}" onclick="Teacher.pickGrade(${g})">
+                  <div style="font-size:22px;font-weight:700;">${g}</div>
+                  <div style="font-size:11px;color:var(--txt-muted);">${labels[g]}</div>
+                </button>
+              `;
+                })
+                .join("")}
+          </div>
+
+          <div class="field">
+            <label>Комментарий комиссии / руководителя</label>
+            <textarea id="grade_comment" rows="3"
+              placeholder="Например: отличная защита, чёткие ответы на вопросы"></textarea>
+          </div>
+
+          <div class="field">
+            <label>Дата защиты</label>
+            <input type="date" id="grade_date" value="${new Date().toISOString().slice(0, 10)}">
+          </div>
+
+          <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+            <button class="btn-ghost" onclick="Teacher.closeModal()">Отмена</button>
+            <button class="btn-primary" onclick="Teacher.saveFinalGrade('${workId}')">
+              ${SVG.check({ cls: "icon icon-sm" })}
+              <span>Сохранить и завершить</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+        App.openModal(html);
+        pickGrade(5);
+    }
+
+    function pickGrade(g) {
+        pickedGrade = g;
+        document.querySelectorAll(".grade-btn").forEach((btn) => {
+            const active = +btn.dataset.grade === g;
+            btn.style.borderColor = active ? "var(--accent)" : "var(--line)";
+            btn.style.background = active
+                ? "var(--accent-soft)"
+                : "var(--bg-elev)";
+            btn.style.color = active ? "var(--accent)" : "var(--txt)";
+        });
+    }
+
+    function saveFinalGrade(workId) {
+        const w = Storage.getWorkById(workId);
+        if (!w) return;
+
+        if (!Storage.sameId(w.teacherId, getUser().id)) {
+            App.toast("Это не ваша работа");
+            return;
+        }
+        if (w.status !== "approved") {
+            App.toast("Работа не допущена к защите");
+            return;
+        }
+
+        const comment =
+            document.getElementById("grade_comment")?.value.trim() || "";
+        const date = document.getElementById("grade_date")?.value;
+
+        w.status = "done";
+        w.finalGrade = pickedGrade;
+        w.gradeComment = comment;
+        w.defendedAt = date ? new Date(date).getTime() : Date.now();
+        w.updatedAt = Date.now();
+        Storage.saveWork(w);
+
+        if (typeof Notifications !== "undefined") {
+            Notifications.add({
+                userId: w.studentId,
+                type: "approve",
+                title: "Работа защищена",
+                text: `«${w.topic}» — оценка ${pickedGrade}. ${comment}`,
+                link: { view: "archived" },
+            });
+        }
+
+        if (typeof Audit !== "undefined") {
+            Audit.log(
+                "Работа защищена",
+                w.topic,
+                `оценка: ${pickedGrade}`,
+                "positive",
+            );
+        }
+
+        pickedGrade = 5;
+        closeModal();
+        App.toast(`Работа защищена с оценкой ${w.finalGrade}`);
+        App.navigate("students");
+    }
+
+    function returnFromApproved(workId) {
+        const w = Storage.getWorkById(workId);
+        if (!w) return;
+
+        if (!Storage.sameId(w.teacherId, getUser().id)) {
+            App.toast("Это не ваша работа");
+            return;
+        }
+        if (w.status !== "approved") {
+            App.toast("Работа не в статусе «Допущена»");
+            return;
+        }
+        if (!confirm("Вернуть работу в статус «На проверке»?")) return;
+
+        w.status = "review";
+        w.updatedAt = Date.now();
+        Storage.saveWork(w);
+
+        if (typeof Notifications !== "undefined") {
+            Notifications.add({
+                userId: w.studentId,
+                type: "info",
+                title: "Работа возвращена на доработку",
+                text: `«${w.topic}» требует доработки`,
+                link: { view: "my-work" },
+            });
+        }
+
+        if (typeof Audit !== "undefined") {
+            Audit.log("Работа возвращена", w.topic, "", "warning");
+        }
+
+        App.toast("Работа возвращена в проверку");
+        App.navigate("students");
+    }
+
+    /* =========================================================
+       ПРАВИЛА
+       ========================================================= */
+    VIEWS.rules = function () {
+        const rules = Fuzzy.getRules();
+
+        return `
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">Правила нечёткого вывода (${rules.length})</div>
+          <button class="btn-ghost btn-sm" onclick="Teacher.resetRules()">
+            ${SVG.refresh({ cls: "icon icon-sm" })}
+            <span>Сбросить к умолчанию</span>
+          </button>
+        </div>
+        <p style="font-size:12px;color:var(--txt-muted);margin-bottom:14px;">
+          Включайте и выключайте правила, редактируйте описания. Изменения применяются мгновенно ко всем расчётам.
+        </p>
+
+        ${rules
+            .map(
+                (r) => `
+          <div class="rule-box ${r.enabled ? "" : "off"}">
+            <input type="checkbox" ${r.enabled ? "checked" : ""}
+              onchange="Teacher.toggleRule(${r.id}, this.checked)">
+            <div style="flex:1;">
+              <div class="rule-if">ЕСЛИ ${escapeHtml(r.if.join(" И "))}</div>
+              <div class="rule-then">ТО ${escapeHtml(r.then)}</div>
+              <input type="text" class="rule-desc" value="${escapeHtml(r.desc)}"
+                onchange="Teacher.updateRuleDesc(${r.id}, this.value)">
+            </div>
+          </div>
+        `,
+            )
+            .join("")}
+      </div>
+    `;
+    };
+
+    function toggleRule(id, enabled) {
+        const rules = Fuzzy.getRules();
+        const r = rules.find((x) => Storage.sameId(x.id, id));
+        if (r) {
+            r.enabled = enabled;
+            Storage.setRules(rules);
+            App.toast(enabled ? "Правило включено" : "Правило выключено");
+        }
+    }
+
+    function updateRuleDesc(id, desc) {
+        const rules = Fuzzy.getRules();
+        const r = rules.find((x) => Storage.sameId(x.id, id));
+        if (r) {
+            r.desc = desc;
+            Storage.setRules(rules);
+        }
+    }
+
+    function resetRules() {
+        if (!confirm("Сбросить все правила к значениям по умолчанию?")) return;
+        Storage.setRules(null);
+        App.toast("Правила сброшены");
+        App.navigate("rules");
+    }
+
+    /* =========================================================
+       ПРОФИЛЬ
+       ========================================================= */
+    VIEWS.profile = function () {
+        const u = getUser();
+        if (!u) return "";
+        const students = getMyStudents();
+
+        return `
+      <div class="card">
+        <div class="card-title">Профиль</div>
+        <div class="grid grid-2" style="margin-bottom:16px;">
+          <div><div class="text-muted" style="font-size:12px;">ФИО</div><div>${escapeHtml(u.fio)}</div></div>
+          <div><div class="text-muted" style="font-size:12px;">Email</div><div>${escapeHtml(u.email)}</div></div>
+          <div><div class="text-muted" style="font-size:12px;">Роль</div><div>Преподаватель</div></div>
+          <div><div class="text-muted" style="font-size:12px;">ID</div><div>${u.id}</div></div>
+        </div>
+        <div class="section-label">Профессиональные данные</div>
+        <div class="grid grid-2">
+          <div><div class="text-muted" style="font-size:12px;">Кафедра</div><div>${escapeHtml(u.department || "—")}</div></div>
+          <div><div class="text-muted" style="font-size:12px;">Должность</div><div>${escapeHtml(u.position || "—")}</div></div>
+          <div><div class="text-muted" style="font-size:12px;">Учёная степень</div><div>${escapeHtml(u.degree || "—")}</div></div>
+          <div><div class="text-muted" style="font-size:12px;">Макс. нагрузка</div><div>${u.maxLoad || "—"} работ</div></div>
+          <div style="grid-column:1/-1;">
+            <div class="text-muted" style="font-size:12px;">Научные интересы</div>
+            <div>${escapeHtml(u.interests || "—")}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mt-16">
+        <div class="card-title">Мои студенты (${students.length})</div>
+        ${
+            students.length === 0
+                ? '<div class="empty">Пока студентов нет</div>'
+                : `<table class="table">
+              <thead>
+                <tr><th>Студент</th><th>Группа</th><th>Тема</th><th>Статус</th></tr>
+              </thead>
+              <tbody>
+                ${students
+                    .map(
+                        (x) => `
+                  <tr>
+                    <td>${escapeHtml(x.student.fio)}</td>
+                    <td>${escapeHtml(x.student.group || "—")}</td>
+                    <td>${escapeHtml(x.work.topic)}</td>
+                    <td>${statusBadge(x.work.status)}</td>
+                  </tr>
+                `,
+                    )
+                    .join("")}
+              </tbody>
+            </table>`
+        }
+      </div>
+    `;
+    };
+
+    /* =========================================================
+       СТАТИСТИКА
+       ========================================================= */
+    VIEWS.stats = function () {
+        const students = getMyStudents();
+        const active = getMyActiveStudents();
+
+        const withRisk = active.map((x) => ({
+            ...x,
+            progress: calcProgress(x.work.id),
+            res: getFuzzyResult(x.work),
+        }));
+
+        const avgProgress = active.length
+            ? Math.round(
+                  active.reduce((a, x) => a + calcProgress(x.work.id), 0) /
+                      active.length,
+              )
+            : 0;
+        const avgRisk = withRisk.length
+            ? Math.round(
+                  withRisk.reduce((a, x) => a + x.res.risk.value, 0) /
+                      withRisk.length,
+              )
+            : 0;
+        const avgReady = withRisk.length
+            ? Math.round(
+                  withRisk.reduce((a, x) => a + x.res.ready.value, 0) /
+                      withRisk.length,
+              )
+            : 0;
+
+        return `
+      <div class="metric-grid">
+        <div class="metric">
+          <div class="metric-lbl">Всего студентов</div>
+          <div class="metric-val">${students.length}</div>
+        </div>
+        <div class="metric">
+          <div class="metric-lbl">Активных работ</div>
+          <div class="metric-val">${active.length}</div>
+        </div>
+        <div class="metric">
+          <div class="metric-lbl">Ср. прогресс</div>
+          <div class="metric-val">${avgProgress}%</div>
+        </div>
+        <div class="metric">
+          <div class="metric-lbl">Ср. риск</div>
+          <div class="metric-val" style="color:var(--${Utils.riskClass(avgRisk < 40 ? "low" : avgRisk < 65 ? "med" : "high")})">${avgRisk}</div>
+        </div>
+        <div class="metric">
+          <div class="metric-lbl">Ср. готовность</div>
+          <div class="metric-val">${avgReady}</div>
+        </div>
+      </div>
+
+      <div class="grid grid-2 mt-16">
+        <div class="card">
+          <div class="card-title">Нечёткий профиль группы</div>
+          <div class="chart-box h-260"><canvas id="teacherGroupRadar"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Студенты по группам</div>
+          <div class="chart-box h-260"><canvas id="teacherGroupsChart"></canvas></div>
+        </div>
+      </div>
+
+      <div class="card mt-16">
+        <div class="card-title">Сравнение студентов</div>
+        <div class="chart-box h-300"><canvas id="teacherCompareChart"></canvas></div>
+      </div>
+    `;
+    };
+
+    VIEWS.stats_after = function () {
+        if (!Charts.hasChart()) return;
+        const active = getMyActiveStudents();
+        const withData = active.map((x) => ({
+            student: x.student,
+            work: x.work,
+            progress: calcProgress(x.work.id),
+            res: getFuzzyResult(x.work),
+        }));
+
+        if (withData.length > 0) {
+            const avg = (fn) =>
+                Math.round(
+                    withData.reduce((a, x) => a + fn(x), 0) / withData.length,
+                );
+            Charts.radar(
+                "teacherGroupRadar",
+                ["Прогресс", "Риск", "Готовность", "Рейтинг"],
+                [
+                    {
+                        label: "Средние значения",
+                        data: [
+                            avg((x) => x.progress),
+                            avg((x) => x.res.risk.value),
+                            avg((x) => x.res.ready.value),
+                            avg((x) => x.res.rating.value),
+                        ],
+                        color: Charts.COLORS.accent,
+                    },
+                ],
+            );
+        }
+
+        const groups = {};
+        getMyStudents().forEach((x) => {
+            const g = x.student.group || "Не указана";
+            groups[g] = (groups[g] || 0) + 1;
+        });
+        if (Object.keys(groups).length > 0) {
+            Charts.doughnut(
+                "teacherGroupsChart",
+                Object.keys(groups),
+                Object.values(groups),
+                [
+                    Charts.COLORS.accent,
+                    Charts.COLORS.purple,
+                    Charts.COLORS.ok,
+                    Charts.COLORS.warn,
+                    Charts.COLORS.bad,
+                ],
+            );
+        }
+
+        if (withData.length > 0) {
+            Charts.bar(
+                "teacherCompareChart",
+                withData.map((x) => x.student.fio.split(" ")[0]),
+                withData.map((x) => x.progress),
+                withData.map((x) =>
+                    x.res.risk.term === "high"
+                        ? Charts.COLORS.bad
+                        : x.res.risk.term === "med"
+                          ? Charts.COLORS.warn
+                          : Charts.COLORS.ok,
+                ),
+                { label: "Прогресс, %", max: 100 },
+            );
+        }
+    };
+
+    /* =========================================================
+       КАЛЕНДАРЬ
+       ========================================================= */
+    VIEWS.calendar = function () {
+        const students = getMyStudents();
+        const events = [];
+
+        students.forEach((x) => {
+            if (x.work.deadline) {
+                events.push({
+                    date: x.work.deadline,
+                    title: `${x.student.fio}: защита`,
+                    kind: "defense",
+                });
+            }
+            const stages = Storage.getStagesByWork(x.work.id);
+            stages
+                .filter((s) => s.deadline && !s.done)
+                .forEach((s) => {
+                    events.push({
+                        date: s.deadline,
+                        title: `${x.student.fio}: ${s.name}`,
+                        kind: "stage",
+                    });
+                });
+        });
+
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth();
+        const monthNames = [
+            "Январь",
+            "Февраль",
+            "Март",
+            "Апрель",
+            "Май",
+            "Июнь",
+            "Июль",
+            "Август",
+            "Сентябрь",
+            "Октябрь",
+            "Ноябрь",
+            "Декабрь",
+        ];
+        const firstDay = new Date(year, month, 1).getDay();
+        const startOffset = (firstDay + 6) % 7;
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        const eventsByDay = {};
+        events.forEach((e) => {
+            const d = new Date(e.date);
+            if (d.getFullYear() === year && d.getMonth() === month) {
+                const day = d.getDate();
+                if (!eventsByDay[day]) eventsByDay[day] = [];
+                eventsByDay[day].push(e);
+            }
+        });
+
+        let cells = "";
+        for (let i = 0; i < startOffset; i++)
+            cells += '<div class="calendar-day empty"></div>';
+        for (let d = 1; d <= daysInMonth; d++) {
+            const isToday = d === now.getDate();
+            const hasEvents = eventsByDay[d];
+            const isUrgent =
+                hasEvents &&
+                hasEvents.some((e) => {
+                    const days = daysUntil(e.date);
+                    return days <= 3 && days >= 0;
+                });
+            cells += `
+        <div class="calendar-day ${isToday ? "today" : ""} ${hasEvents ? "has-deadline" : ""} ${isUrgent ? "urgent" : ""}">
+          ${d}
+        </div>
+      `;
+        }
+
+        const upcoming = events
+            .map((e) => ({ ...e, days: daysUntil(e.date) }))
+            .filter((e) => e.days >= 0)
+            .sort((a, b) => a.days - b.days)
+            .slice(0, 12);
+
+        return `
+      <div class="card">
+        <div class="card-title">${monthNames[month]} ${year}</div>
+        <div class="calendar-grid">
+          ${["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
+              .map((d) => `<div class="calendar-head">${d}</div>`)
+              .join("")}
+          ${cells}
+        </div>
+      </div>
+
+      <div class="card mt-16">
+        <div class="card-title">Ближайшие события (${upcoming.length})</div>
+        ${
+            upcoming.length === 0
+                ? '<div class="empty">Событий нет</div>'
+                : `<div class="timeline">
+                     ${upcoming
+                         .map(
+                             (e) => `
+                       <div class="timeline-item ${e.days <= 3 ? "bad" : e.days <= 7 ? "warn" : ""}">
+                         <div class="timeline-time">${fmtDate(e.date)} · через ${e.days} дн.</div>
+                         <div class="timeline-title">${escapeHtml(e.title)}</div>
+                       </div>
+                     `,
+                         )
+                         .join("")}
+                   </div>`
+        }
+      </div>
+    `;
+    };
+
+    /* =========================================================
+       МОДАЛКА ПРОВЕРКИ
+       ========================================================= */
     let reviewGostState = {};
     let reviewWorkId = null;
 
@@ -1177,23 +3060,23 @@ const Teacher = (() => {
             <div>
               ${
                   w.status === "active"
-                      ? `<button class="btn-ghost btn-sm" onclick="Teacher.markReview(${workId})">→ На проверке</button>`
+                      ? `<button class="btn-ghost btn-sm" onclick="Teacher.markReview('${workId}')">→ На проверке</button>`
                       : ""
               }
               ${
                   w.status === "review"
-                      ? `<button class="btn-ghost btn-sm" onclick="Teacher.markActive(${workId})">← В работу</button>`
+                      ? `<button class="btn-ghost btn-sm" onclick="Teacher.markActive('${workId}')">← В работу</button>`
                       : ""
               }
             </div>
             <div style="display:flex;gap:10px;">
               <button class="btn-ghost" onclick="Teacher.closeModal()">Отмена</button>
-              <button class="btn-primary" onclick="Teacher.saveReview(${workId})">Сохранить</button>
+              <button class="btn-primary" onclick="Teacher.saveReview('${workId}')">Сохранить</button>
             </div>
           </div>
 
           <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line);">
-            <button class="btn-primary" style="width:100%;" onclick="Teacher.approveFinal(${workId})">
+            <button class="btn-primary" style="width:100%;" onclick="Teacher.approveFinal('${workId}')">
               ${SVG.checkCircle({ cls: "icon icon-sm" })}
               <span>Допустить к защите</span>
             </button>
@@ -1424,880 +3307,10 @@ const Teacher = (() => {
         App.toast("Работа допущена к защите");
         App.navigate("students");
     }
-    VIEWS.rules = function () {
-        const rules = Fuzzy.getRules();
 
-        return `
-      <div class="card">
-        <div class="card-head">
-          <div class="card-title">Правила нечёткого вывода (${rules.length})</div>
-          <button class="btn-ghost btn-sm" onclick="Teacher.resetRules()">
-            ${SVG.refresh({ cls: "icon icon-sm" })}
-            <span>Сбросить к умолчанию</span>
-          </button>
-        </div>
-        <p style="font-size:12px;color:var(--txt-muted);margin-bottom:14px;">
-          Включайте и выключайте правила, редактируйте описания. Изменения применяются мгновенно ко всем расчётам.
-        </p>
-
-        ${rules
-            .map(
-                (r) => `
-          <div class="rule-box ${r.enabled ? "" : "off"}">
-            <input type="checkbox" ${r.enabled ? "checked" : ""}
-              onchange="Teacher.toggleRule(${r.id}, this.checked)">
-            <div style="flex:1;">
-              <div class="rule-if">ЕСЛИ ${escapeHtml(r.if.join(" И "))}</div>
-              <div class="rule-then">ТО ${escapeHtml(r.then)}</div>
-              <input type="text" class="rule-desc" value="${escapeHtml(r.desc)}"
-                onchange="Teacher.updateRuleDesc(${r.id}, this.value)">
-            </div>
-          </div>
-        `,
-            )
-            .join("")}
-      </div>
-    `;
-    };
-
-    function toggleRule(id, enabled) {
-        const rules = Fuzzy.getRules();
-        const r = rules.find((x) => Storage.sameId(x.id, id));
-        if (r) {
-            r.enabled = enabled;
-            Storage.setRules(rules);
-            App.toast(enabled ? "Правило включено" : "Правило выключено");
-        }
-    }
-
-    function updateRuleDesc(id, desc) {
-        const rules = Fuzzy.getRules();
-        const r = rules.find((x) => Storage.sameId(x.id, id));
-        if (r) {
-            r.desc = desc;
-            Storage.setRules(rules);
-        }
-    }
-
-    function resetRules() {
-        if (!confirm("Сбросить все правила к значениям по умолчанию?")) return;
-        Storage.setRules(null);
-        App.toast("Правила сброшены");
-        App.navigate("rules");
-    }
-
-    VIEWS.profile = function () {
-        const u = getUser();
-        if (!u) return "";
-        const students = getMyStudents();
-
-        return `
-      <div class="card">
-        <div class="card-title">Профиль</div>
-        <div class="grid grid-2" style="margin-bottom:16px;">
-          <div><div class="text-muted" style="font-size:12px;">ФИО</div><div>${escapeHtml(u.fio)}</div></div>
-          <div><div class="text-muted" style="font-size:12px;">Email</div><div>${escapeHtml(u.email)}</div></div>
-          <div><div class="text-muted" style="font-size:12px;">Роль</div><div>Преподаватель</div></div>
-          <div><div class="text-muted" style="font-size:12px;">ID</div><div>${u.id}</div></div>
-        </div>
-        <div class="section-label">Профессиональные данные</div>
-        <div class="grid grid-2">
-          <div><div class="text-muted" style="font-size:12px;">Кафедра</div><div>${escapeHtml(u.department || "—")}</div></div>
-          <div><div class="text-muted" style="font-size:12px;">Должность</div><div>${escapeHtml(u.position || "—")}</div></div>
-          <div><div class="text-muted" style="font-size:12px;">Учёная степень</div><div>${escapeHtml(u.degree || "—")}</div></div>
-          <div><div class="text-muted" style="font-size:12px;">Макс. нагрузка</div><div>${u.maxLoad || "—"} работ</div></div>
-          <div style="grid-column:1/-1;">
-            <div class="text-muted" style="font-size:12px;">Научные интересы</div>
-            <div>${escapeHtml(u.interests || "—")}</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="card mt-16">
-        <div class="card-title">Мои студенты (${students.length})</div>
-        ${
-            students.length === 0
-                ? '<div class="empty">Пока студентов нет</div>'
-                : `<table class="table">
-              <thead>
-                <tr><th>Студент</th><th>Группа</th><th>Тема</th><th>Статус</th></tr>
-              </thead>
-              <tbody>
-                ${students
-                    .map(
-                        (x) => `
-                  <tr>
-                    <td>${escapeHtml(x.student.fio)}</td>
-                    <td>${escapeHtml(x.student.group || "—")}</td>
-                    <td>${escapeHtml(x.work.topic)}</td>
-                    <td>${statusBadge(x.work.status)}</td>
-                  </tr>
-                `,
-                    )
-                    .join("")}
-              </tbody>
-            </table>`
-        }
-      </div>
-    `;
-    };
-
-    VIEWS.stats = function () {
-        const students = getMyStudents();
-        const active = getMyActiveStudents();
-
-        const withRisk = active.map((x) => ({
-            ...x,
-            progress: calcProgress(x.work.id),
-            res: getFuzzyResult(x.work),
-        }));
-
-        const avgProgress = active.length
-            ? Math.round(
-                  active.reduce((a, x) => a + calcProgress(x.work.id), 0) /
-                      active.length,
-              )
-            : 0;
-        const avgRisk = withRisk.length
-            ? Math.round(
-                  withRisk.reduce((a, x) => a + x.res.risk.value, 0) /
-                      withRisk.length,
-              )
-            : 0;
-        const avgReady = withRisk.length
-            ? Math.round(
-                  withRisk.reduce((a, x) => a + x.res.ready.value, 0) /
-                      withRisk.length,
-              )
-            : 0;
-
-        return `
-      <div class="metric-grid">
-        <div class="metric">
-          <div class="metric-lbl">Всего студентов</div>
-          <div class="metric-val">${students.length}</div>
-        </div>
-        <div class="metric">
-          <div class="metric-lbl">Активных работ</div>
-          <div class="metric-val">${active.length}</div>
-        </div>
-        <div class="metric">
-          <div class="metric-lbl">Ср. прогресс</div>
-          <div class="metric-val">${avgProgress}%</div>
-        </div>
-        <div class="metric">
-          <div class="metric-lbl">Ср. риск</div>
-          <div class="metric-val" style="color:var(--${Utils.riskClass(avgRisk < 40 ? "low" : avgRisk < 65 ? "med" : "high")})">${avgRisk}</div>
-        </div>
-        <div class="metric">
-          <div class="metric-lbl">Ср. готовность</div>
-          <div class="metric-val">${avgReady}</div>
-        </div>
-      </div>
-
-      <div class="grid grid-2 mt-16">
-        <div class="card">
-          <div class="card-title">Нечёткий профиль группы</div>
-          <div class="chart-box h-260"><canvas id="teacherGroupRadar"></canvas></div>
-        </div>
-        <div class="card">
-          <div class="card-title">Студенты по группам</div>
-          <div class="chart-box h-260"><canvas id="teacherGroupsChart"></canvas></div>
-        </div>
-      </div>
-
-      <div class="card mt-16">
-        <div class="card-title">Сравнение студентов</div>
-        <div class="chart-box h-300"><canvas id="teacherCompareChart"></canvas></div>
-      </div>
-    `;
-    };
-
-    VIEWS.stats_after = function () {
-        if (!Charts.hasChart()) return;
-        const active = getMyActiveStudents();
-        const withData = active.map((x) => ({
-            student: x.student,
-            work: x.work,
-            progress: calcProgress(x.work.id),
-            res: getFuzzyResult(x.work),
-        }));
-
-        if (withData.length > 0) {
-            const avg = (fn) =>
-                Math.round(
-                    withData.reduce((a, x) => a + fn(x), 0) / withData.length,
-                );
-            Charts.radar(
-                "teacherGroupRadar",
-                ["Прогресс", "Риск", "Готовность", "Рейтинг"],
-                [
-                    {
-                        label: "Средние значения",
-                        data: [
-                            avg((x) => x.progress),
-                            avg((x) => x.res.risk.value),
-                            avg((x) => x.res.ready.value),
-                            avg((x) => x.res.rating.value),
-                        ],
-                        color: Charts.COLORS.accent,
-                    },
-                ],
-            );
-        }
-
-        const groups = {};
-        getMyStudents().forEach((x) => {
-            const g = x.student.group || "Не указана";
-            groups[g] = (groups[g] || 0) + 1;
-        });
-        if (Object.keys(groups).length > 0) {
-            Charts.doughnut(
-                "teacherGroupsChart",
-                Object.keys(groups),
-                Object.values(groups),
-                [
-                    Charts.COLORS.accent,
-                    Charts.COLORS.purple,
-                    Charts.COLORS.ok,
-                    Charts.COLORS.warn,
-                    Charts.COLORS.bad,
-                ],
-            );
-        }
-
-        if (withData.length > 0) {
-            Charts.bar(
-                "teacherCompareChart",
-                withData.map((x) => x.student.fio.split(" ")[0]),
-                withData.map((x) => x.progress),
-                withData.map((x) =>
-                    x.res.risk.term === "high"
-                        ? Charts.COLORS.bad
-                        : x.res.risk.term === "med"
-                          ? Charts.COLORS.warn
-                          : Charts.COLORS.ok,
-                ),
-                { label: "Прогресс, %", max: 100 },
-            );
-        }
-    };
-
-    VIEWS.calendar = function () {
-        const students = getMyStudents();
-        const events = [];
-
-        students.forEach((x) => {
-            if (x.work.deadline) {
-                events.push({
-                    date: x.work.deadline,
-                    title: `${x.student.fio}: защита`,
-                    kind: "defense",
-                });
-            }
-            const stages = Storage.getStagesByWork(x.work.id);
-            stages
-                .filter((s) => s.deadline && !s.done)
-                .forEach((s) => {
-                    events.push({
-                        date: s.deadline,
-                        title: `${x.student.fio}: ${s.name}`,
-                        kind: "stage",
-                    });
-                });
-        });
-
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = now.getMonth();
-        const monthNames = [
-            "Январь",
-            "Февраль",
-            "Март",
-            "Апрель",
-            "Май",
-            "Июнь",
-            "Июль",
-            "Август",
-            "Сентябрь",
-            "Октябрь",
-            "Ноябрь",
-            "Декабрь",
-        ];
-        const firstDay = new Date(year, month, 1).getDay();
-        const startOffset = (firstDay + 6) % 7;
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-        const eventsByDay = {};
-        events.forEach((e) => {
-            const d = new Date(e.date);
-            if (d.getFullYear() === year && d.getMonth() === month) {
-                const day = d.getDate();
-                if (!eventsByDay[day]) eventsByDay[day] = [];
-                eventsByDay[day].push(e);
-            }
-        });
-
-        let cells = "";
-        for (let i = 0; i < startOffset; i++)
-            cells += '<div class="calendar-day empty"></div>';
-        for (let d = 1; d <= daysInMonth; d++) {
-            const isToday = d === now.getDate();
-            const hasEvents = eventsByDay[d];
-            const isUrgent =
-                hasEvents &&
-                hasEvents.some((e) => {
-                    const days = daysUntil(e.date);
-                    return days <= 3 && days >= 0;
-                });
-            cells += `
-        <div class="calendar-day ${isToday ? "today" : ""} ${hasEvents ? "has-deadline" : ""} ${isUrgent ? "urgent" : ""}">
-          ${d}
-        </div>
-      `;
-        }
-
-        const upcoming = events
-            .map((e) => ({ ...e, days: daysUntil(e.date) }))
-            .filter((e) => e.days >= 0)
-            .sort((a, b) => a.days - b.days)
-            .slice(0, 12);
-
-        return `
-      <div class="card">
-        <div class="card-title">${monthNames[month]} ${year}</div>
-        <div class="calendar-grid">
-          ${["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
-              .map((d) => `<div class="calendar-head">${d}</div>`)
-              .join("")}
-          ${cells}
-        </div>
-      </div>
-
-      <div class="card mt-16">
-        <div class="card-title">Ближайшие события (${upcoming.length})</div>
-        ${
-            upcoming.length === 0
-                ? '<div class="empty">Событий нет</div>'
-                : `<div class="timeline">
-                     ${upcoming
-                         .map(
-                             (e) => `
-                       <div class="timeline-item ${e.days <= 3 ? "bad" : e.days <= 7 ? "warn" : ""}">
-                         <div class="timeline-time">${fmtDate(e.date)} · через ${e.days} дн.</div>
-                         <div class="timeline-title">${escapeHtml(e.title)}</div>
-                       </div>
-                     `,
-                         )
-                         .join("")}
-                   </div>`
-        }
-      </div>
-    `;
-    };
-
-    VIEWS["tasks-review"] = function () {
-        const u = getUser();
-        if (!u) return "";
-
-        const myWorks = Storage.getWorksByTeacher(u.id);
-        const myWorkIds = myWorks.map((w) => w.id);
-
-        /* Загружаем задачи один раз */
-        const allTasks = Storage.getTasks();
-
-        const inReview = allTasks.filter(
-            (t) =>
-                myWorkIds.some((id) => Storage.sameId(id, t.workId)) &&
-                t.col === "review",
-        );
-
-        const enriched = inReview.map((t) => {
-            const work = Storage.getWorkById(t.workId);
-            const student = work ? Storage.getUserById(work.studentId) : null;
-            return { t, work, student };
-        });
-
-        const done = allTasks
-            .filter(
-                (t) =>
-                    myWorkIds.some((id) => Storage.sameId(id, t.workId)) &&
-                    t.col === "done" &&
-                    t.reviewedBy,
-            )
-            .sort((a, b) => (b.reviewedAt || 0) - (a.reviewedAt || 0))
-            .slice(0, 10)
-            .map((t) => {
-                const work = Storage.getWorkById(t.workId);
-                const student = work
-                    ? Storage.getUserById(work.studentId)
-                    : null;
-                return { t, work, student };
-            });
-
-        return `
-      <div class="card">
-        <div class="card-head">
-          <div class="card-title">
-            Задачи на проверке
-            ${enriched.length > 0 ? `<span class="count-chip">${enriched.length}</span>` : ""}
-          </div>
-        </div>
-
-        ${
-            enriched.length === 0
-                ? emptyState(
-                      "Нет задач на проверке",
-                      "Когда студент перетащит задачу в колонку «На проверке», она появится здесь.",
-                      SVG.checkCircle,
-                  )
-                : enriched.map((e) => renderTaskReviewCard(e)).join("")
-        }
-      </div>
-
-      ${
-          done.length > 0
-              ? `
-        <div class="card mt-16">
-          <div class="card-title">Недавно проверенные</div>
-          ${done.map((e) => renderTaskDoneRow(e)).join("")}
-        </div>
-      `
-              : ""
-      }
-    `;
-    };
-
-    function renderTaskReviewCard({ t, work, student }) {
-        return `
-      <div class="consult-card" style="border-left:3px solid var(--warn);">
-        <div class="consult-head">
-          <div>
-            <div style="font-weight:600;font-size:14px;">${escapeHtml(t.title)}</div>
-            <div class="consult-topic">
-              ${escapeHtml(student?.fio || "—")}
-              ${student?.group ? " · " + escapeHtml(student.group) : ""}
-              · «${escapeHtml((work?.topic || "").slice(0, 50))}${(work?.topic?.length || 0) > 50 ? "…" : ""}»
-            </div>
-          </div>
-          <span class="consult-status pending">На проверке</span>
-        </div>
-
-        ${
-            t.deadline
-                ? `
-          <div style="font-size:12px;color:var(--txt-muted);margin:6px 0;">
-            Дедлайн задачи: <b>${escapeHtml(t.deadline)}</b>
-            (${daysUntil(t.deadline) >= 0 ? "осталось " + daysUntil(t.deadline) + " дн." : "просрочено"})
-          </div>
-        `
-                : ""
-        }
-
-        ${t.comment ? `<div class="consult-comment">${escapeHtml(t.comment)}</div>` : ""}
-
-        <div class="consult-actions">
-          <button class="btn-primary btn-sm" onclick="Teacher.taskApprove(${t.id})">
-            ${SVG.check({ cls: "icon icon-sm" })}
-            <span>Одобрить</span>
-          </button>
-          <button class="btn-ghost btn-sm" onclick="Teacher.taskReject(${t.id})">
-            ${SVG.refresh({ cls: "icon icon-sm" })}
-            <span>Вернуть в работу</span>
-          </button>
-          <button class="btn-ghost btn-sm" onclick="Teacher.taskRejectWithComment(${t.id})">
-            ${SVG.edit({ cls: "icon icon-sm" })}
-            <span>С замечанием</span>
-          </button>
-        </div>
-      </div>
-    `;
-    }
-
-    function renderTaskDoneRow({ t, student }) {
-        const reviewer = t.reviewedBy
-            ? Storage.getUserById(t.reviewedBy)
-            : null;
-        return `
-      <div class="rank-row" style="grid-template-columns: 1fr 140px 140px 100px;">
-        <div>
-          <div style="font-weight:500;">${escapeHtml(t.title)}</div>
-          <div style="font-size:11px;color:var(--txt-muted);">${escapeHtml(student?.fio || "—")}</div>
-        </div>
-        <div style="font-size:11px;color:var(--txt-muted);">
-          ${reviewer ? "проверил " + escapeHtml(reviewer.fio.split(" ")[0]) : ""}
-        </div>
-        <div style="font-size:11px;color:var(--txt-muted);">
-          ${t.reviewedAt ? fmtDateTime(t.reviewedAt) : ""}
-        </div>
-        <div style="text-align:right;">
-          <span class="badge approved" style="font-size:11px;">
-            ${SVG.check({ cls: "icon icon-xs" })} Готово
-          </span>
-        </div>
-      </div>
-    `;
-    }
-
-    function taskApprove(taskId) {
-        const tasks = Storage.getTasks();
-        const t = tasks.find((x) => Storage.sameId(x.id, taskId));
-        if (!t) return;
-
-        if (t.col !== "review") {
-            App.toast("Задача не на проверке");
-            return;
-        }
-
-        const work = Storage.getWorkById(t.workId);
-        if (!work || !Storage.sameId(work.teacherId, getUser().id)) {
-            App.toast("Это не ваша задача");
-            return;
-        }
-
-        t.col = "done";
-        t.reviewedBy = getUser().id;
-        t.reviewedAt = Date.now();
-        t.reviewStatus = "approved";
-        Storage.setTasks(tasks);
-
-        if (typeof Notifications !== "undefined") {
-            Notifications.add({
-                userId: work.studentId,
-                type: "approve",
-                title: "Задача одобрена",
-                text: `«${t.title}» — проверено руководителем`,
-                link: { view: "my-work" },
-            });
-        }
-
-        if (typeof Audit !== "undefined") {
-            Audit.log(
-                "Задача одобрена",
-                t.title,
-                `студент: ${Storage.getUserById(work.studentId)?.fio || ""}`,
-                "positive",
-            );
-        }
-
-        App.toast("Задача одобрена");
-        App.navigate("tasks-review");
-    }
-
-    function taskReject(taskId) {
-        const tasks = Storage.getTasks();
-        const t = tasks.find((x) => Storage.sameId(x.id, taskId));
-        if (!t) return;
-
-        if (t.col !== "review") {
-            App.toast("Задача не на проверке");
-            return;
-        }
-
-        const work = Storage.getWorkById(t.workId);
-        if (!work || !Storage.sameId(work.teacherId, getUser().id)) {
-            App.toast("Это не ваша задача");
-            return;
-        }
-
-        t.col = "progress";
-        t.reviewedBy = getUser().id;
-        t.reviewedAt = Date.now();
-        t.reviewStatus = "rejected";
-        t.reviewComment = "";
-        Storage.setTasks(tasks);
-
-        if (typeof Notifications !== "undefined") {
-            Notifications.add({
-                userId: work.studentId,
-                type: "reject",
-                title: "Задача возвращена в работу",
-                text: `«${t.title}» — нужны доработки`,
-                link: { view: "my-work" },
-            });
-        }
-
-        if (typeof Audit !== "undefined") {
-            Audit.log("Задача возвращена", t.title, "", "negative");
-        }
-
-        App.toast("Задача возвращена в работу");
-        App.navigate("tasks-review");
-    }
-
-    function taskRejectWithComment(taskId) {
-        const t = Storage.getTasks().find((x) => Storage.sameId(x.id, taskId));
-        if (!t) return;
-
-        if (t.col !== "review") {
-            App.toast("Задача не на проверке");
-            return;
-        }
-
-        const work = Storage.getWorkById(t.workId);
-        if (!work || !Storage.sameId(work.teacherId, getUser().id)) {
-            App.toast("Это не ваша задача");
-            return;
-        }
-
-        const html = `
-      <div class="modal-back" onclick="if(event.target===this) App.closeModal()">
-        <div class="modal">
-          <div class="modal-head">
-            <h3>Замечание к задаче</h3>
-            <button class="modal-close" onclick="App.closeModal()">
-              ${SVG.x({ cls: "icon icon-sm" })}
-            </button>
-          </div>
-          <div class="field">
-            <label>Что нужно доработать</label>
-            <textarea id="task_comment" rows="4" placeholder="Например: добавить примеры, исправить расчёты..."></textarea>
-          </div>
-          <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
-            <button class="btn-ghost" onclick="App.closeModal()">Отмена</button>
-            <button class="btn-primary" onclick="Teacher.saveTaskReject(${taskId})">Отправить</button>
-          </div>
-        </div>
-      </div>
-    `;
-        App.openModal(html);
-    }
-
-    function saveTaskReject(taskId) {
-        const comment = document.getElementById("task_comment")?.value.trim();
-        if (!comment) {
-            App.toast("Введите замечание");
-            return;
-        }
-
-        const tasks = Storage.getTasks();
-        const t = tasks.find((x) => Storage.sameId(x.id, taskId));
-        if (!t) return;
-
-        if (t.col !== "review") {
-            App.toast("Задача не на проверке");
-            return;
-        }
-
-        const work = Storage.getWorkById(t.workId);
-        if (!work || !Storage.sameId(work.teacherId, getUser().id)) {
-            App.toast("Это не ваша задача");
-            return;
-        }
-
-        t.col = "progress";
-        t.reviewedBy = getUser().id;
-        t.reviewedAt = Date.now();
-        t.reviewStatus = "rejected";
-        t.reviewComment = comment;
-        Storage.setTasks(tasks);
-
-        Storage.saveComment({
-            id: uid(),
-            workId: work.id,
-            authorId: getUser().id,
-            text: `Замечание к задаче «${t.title}»: ${comment}`,
-            createdAt: Date.now(),
-            kind: "task-review",
-        });
-
-        if (typeof Notifications !== "undefined") {
-            Notifications.add({
-                userId: work.studentId,
-                type: "comment",
-                title: "Замечание к задаче",
-                text: `«${t.title}»: ${comment.slice(0, 80)}`,
-                link: { view: "my-work" },
-            });
-        }
-
-        if (typeof Audit !== "undefined") {
-            Audit.log(
-                "Задача возвращена с замечанием",
-                t.title,
-                comment,
-                "warning",
-            );
-        }
-
-        App.closeModal();
-        App.toast("Замечание отправлено");
-        App.navigate("tasks-review");
-    }
-
-    let pickedGrade = 5;
-
-    function markAsDone(workId) {
-        const w = Storage.getWorkById(workId);
-        if (!w) return;
-
-        if (!Storage.sameId(w.teacherId, getUser().id)) {
-            App.toast("Это не ваша работа");
-            return;
-        }
-        if (w.status !== "approved") {
-            App.toast("Работа не допущена к защите");
-            return;
-        }
-
-        const student = Storage.getUserById(w.studentId);
-
-        const html = `
-      <div class="modal-back" onclick="if(event.target===this) Teacher.closeModal()">
-        <div class="modal" style="max-width:520px;">
-          <div class="modal-head">
-            <h3>Оценка за защиту</h3>
-            <button class="modal-close" onclick="Teacher.closeModal()">
-              ${SVG.x({ cls: "icon icon-sm" })}
-            </button>
-          </div>
-
-          <div style="font-size:13px;color:var(--txt-muted);margin-bottom:16px;">
-            ${escapeHtml(student?.fio || "—")} · «${escapeHtml(w.topic)}»
-          </div>
-
-          <div class="section-label">Итоговая оценка</div>
-          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">
-            ${[5, 4, 3, 2]
-                .map((g) => {
-                    const labels = {
-                        5: "отлично",
-                        4: "хорошо",
-                        3: "удовл.",
-                        2: "неуд.",
-                    };
-                    return `
-                <button class="grade-btn" data-grade="${g}" onclick="Teacher.pickGrade(${g})">
-                  <div style="font-size:22px;font-weight:700;">${g}</div>
-                  <div style="font-size:11px;color:var(--txt-muted);">${labels[g]}</div>
-                </button>
-              `;
-                })
-                .join("")}
-          </div>
-
-          <div class="field">
-            <label>Комментарий комиссии / руководителя</label>
-            <textarea id="grade_comment" rows="3"
-              placeholder="Например: отличная защита, чёткие ответы на вопросы"></textarea>
-          </div>
-
-          <div class="field">
-            <label>Дата защиты</label>
-            <input type="date" id="grade_date" value="${new Date().toISOString().slice(0, 10)}">
-          </div>
-
-          <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
-            <button class="btn-ghost" onclick="Teacher.closeModal()">Отмена</button>
-            <button class="btn-primary" onclick="Teacher.saveFinalGrade(${workId})">
-              ${SVG.check({ cls: "icon icon-sm" })}
-              <span>Сохранить и завершить</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    `;
-        App.openModal(html);
-        pickGrade(5);
-    }
-
-    function pickGrade(g) {
-        pickedGrade = g;
-        document.querySelectorAll(".grade-btn").forEach((btn) => {
-            const active = +btn.dataset.grade === g;
-            btn.style.borderColor = active ? "var(--accent)" : "var(--line)";
-            btn.style.background = active
-                ? "var(--accent-soft)"
-                : "var(--bg-elev)";
-            btn.style.color = active ? "var(--accent)" : "var(--txt)";
-        });
-    }
-
-    function saveFinalGrade(workId) {
-        const w = Storage.getWorkById(workId);
-        if (!w) return;
-
-        if (!Storage.sameId(w.teacherId, getUser().id)) {
-            App.toast("Это не ваша работа");
-            return;
-        }
-        if (w.status !== "approved") {
-            App.toast("Работа не допущена к защите");
-            return;
-        }
-
-        const comment =
-            document.getElementById("grade_comment")?.value.trim() || "";
-        const date = document.getElementById("grade_date")?.value;
-
-        w.status = "done";
-        w.finalGrade = pickedGrade;
-        w.gradeComment = comment;
-        w.defendedAt = date ? new Date(date).getTime() : Date.now();
-        w.updatedAt = Date.now();
-        Storage.saveWork(w);
-
-        if (typeof Notifications !== "undefined") {
-            Notifications.add({
-                userId: w.studentId,
-                type: "approve",
-                title: "Работа защищена",
-                text: `«${w.topic}» — оценка ${pickedGrade}. ${comment}`,
-                link: { view: "archived" },
-            });
-        }
-
-        if (typeof Audit !== "undefined") {
-            Audit.log(
-                "Работа защищена",
-                w.topic,
-                `оценка: ${pickedGrade}`,
-                "positive",
-            );
-        }
-
-        pickedGrade = 5;
-        closeModal();
-        App.toast(`Работа защищена с оценкой ${w.finalGrade}`);
-        App.navigate("students");
-    }
-
-    function returnFromApproved(workId) {
-        const w = Storage.getWorkById(workId);
-        if (!w) return;
-
-        if (!Storage.sameId(w.teacherId, getUser().id)) {
-            App.toast("Это не ваша работа");
-            return;
-        }
-        if (w.status !== "approved") {
-            App.toast("Работа не в статусе «Допущена»");
-            return;
-        }
-        if (!confirm("Вернуть работу в статус «На проверке»?")) return;
-
-        w.status = "review";
-        w.updatedAt = Date.now();
-        Storage.saveWork(w);
-
-        if (typeof Notifications !== "undefined") {
-            Notifications.add({
-                userId: w.studentId,
-                type: "info",
-                title: "Работа возвращена на доработку",
-                text: `«${w.topic}» требует доработки`,
-                link: { view: "my-work" },
-            });
-        }
-
-        if (typeof Audit !== "undefined") {
-            Audit.log("Работа возвращена", w.topic, "", "warning");
-        }
-
-        App.toast("Работа возвращена в проверку");
-        App.navigate("students");
-    }
-
+    /* =========================================================
+       ДРУГИЕ РАЗДЕЛЫ (переиспользуют другие модули)
+       ========================================================= */
     VIEWS.mamdani = function (params) {
         return MamdaniViz.render(params);
     };
@@ -2321,8 +3334,27 @@ const Teacher = (() => {
         App.closeModal();
     }
 
+    /* =========================================================
+       ПУБЛИЧНЫЙ API
+       ========================================================= */
     return {
         VIEWS,
+
+        setRequestFilter,
+
+        setReviewFilter,
+        setReviewSearch,
+        setReviewSort,
+
+        toggleMyWorksActive,
+        setMyWorksType,
+        setMyWorksSearch,
+        setMyWorksSort,
+
+        setTaskFilter,
+        setTaskSearch,
+        setTaskSort,
+
         approveWork,
         openRejectModal,
         rejectWork,

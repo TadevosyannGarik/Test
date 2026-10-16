@@ -81,6 +81,13 @@ const App = (() => {
             order: 30,
         },
         {
+            id: "my-works",
+            icon: SVG.folder,
+            label: "Работы",
+            roles: ["teacher"],
+            order: 35,
+        },
+        {
             id: "review",
             icon: SVG.checkCircle,
             label: "Проверка",
@@ -458,9 +465,6 @@ const App = (() => {
         if (el) el.remove();
     }
 
-    /* =========================================================
-       TOAST
-       ========================================================= */
     function toast(msg) {
         const t = document.getElementById("toast");
         if (!t) return;
@@ -470,9 +474,6 @@ const App = (() => {
         toastTimer = setTimeout(() => t.classList.remove("show"), 2400);
     }
 
-    /* =========================================================
-       УВЕДОМЛЕНИЯ
-       ========================================================= */
     function refreshNotifications() {
         if (!currentUser) return;
         if (typeof Notifications === "undefined") return;
@@ -496,9 +497,6 @@ const App = (() => {
         }
     }
 
-    /* =========================================================
-       ПУБЛИЧНЫЙ API
-       ========================================================= */
     return {
         boot,
         navigate,
@@ -514,9 +512,6 @@ const App = (() => {
     };
 })();
 
-/* =========================================================
-   ЗАПУСК
-   ========================================================= */
 document.addEventListener("DOMContentLoaded", () => {
     if (typeof Auth === "undefined") {
         console.error("[App] Модуль Auth не загружен");

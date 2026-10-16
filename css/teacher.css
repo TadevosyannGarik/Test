@@ -263,3 +263,471 @@
     color: var(--txt-muted);
     border-color: var(--line);
 }
+
+/* =========================================================
+   РАЗДЕЛ «ПРОВЕРКА»
+   ========================================================= */
+.review-toolbar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.review-search {
+    flex: 1;
+    min-width: 200px;
+    padding: 9px 14px;
+    font-size: 13px;
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    background: var(--bg);
+    color: var(--txt);
+    outline: none;
+    transition: border-color var(--t-fast);
+}
+.review-search:focus {
+    border-color: var(--txt);
+}
+
+.review-sort {
+    padding: 9px 14px;
+    font-size: 13px;
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    background: var(--bg);
+    color: var(--txt);
+    outline: none;
+    cursor: pointer;
+    transition: border-color var(--t-fast);
+}
+.review-sort:focus {
+    border-color: var(--txt);
+}
+
+.review-item {
+    padding: 16px 18px;
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--info);
+    border-radius: var(--r);
+    margin-bottom: 10px;
+    background: var(--bg-elev);
+    transition: background var(--t-fast);
+}
+.review-item:hover {
+    background: var(--bg-soft);
+}
+
+.review-item-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 6px;
+}
+
+.review-item-title {
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--txt);
+    flex: 1;
+    min-width: 0;
+}
+
+.review-item-meta {
+    font-size: 12px;
+    color: var(--txt-muted);
+    margin-bottom: 12px;
+}
+
+.review-item-stats {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+}
+
+.review-stat {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    font-size: 12px;
+}
+
+.review-stat-label {
+    color: var(--txt-muted);
+}
+
+.review-stat-value {
+    font-weight: 600;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+}
+
+.review-item-info {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    font-size: 11px;
+    color: var(--txt-muted);
+    margin-bottom: 12px;
+}
+
+.review-info-dot {
+    opacity: 0.5;
+}
+
+.review-alert {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    background: var(--accent-viz-soft);
+    border: none;
+    border-radius: var(--r-sm);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--accent-viz);
+    text-align: left;
+    cursor: pointer;
+    transition: background var(--t-fast);
+}
+.review-alert:hover {
+    background: rgba(99, 102, 241, 0.15);
+}
+.review-alert span {
+    flex: 1;
+}
+
+.review-item-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.review-item-grade {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin: 8px 0 12px;
+    padding: 8px 12px;
+    background: var(--ok-soft);
+    border-radius: var(--r-sm);
+}
+
+.review-grade-num {
+    font-size: 20px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+}
+
+.review-grade-label {
+    font-size: 13px;
+    color: var(--txt);
+    font-weight: 500;
+}
+
+/* =========================================================
+   РАЗДЕЛ «ЗАДАЧИ» — карточки
+   ========================================================= */
+.task-card-row {
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--line);
+    border-radius: var(--r);
+    margin-bottom: 10px;
+    background: var(--bg-elev);
+    transition: background var(--t-fast);
+}
+.task-card-row:hover {
+    background: var(--bg-soft);
+}
+
+.task-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 6px;
+}
+
+.task-card-title {
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--txt);
+    flex: 1;
+    min-width: 0;
+}
+
+.task-card-meta {
+    font-size: 12px;
+    color: var(--txt-muted);
+    margin-bottom: 8px;
+}
+
+.task-deadline {
+    font-size: 12px;
+    margin-bottom: 8px;
+    font-variant-numeric: tabular-nums;
+}
+
+.task-note {
+    font-size: 12px;
+    line-height: 1.5;
+    padding: 8px 12px;
+    margin: 8px 0;
+    background: var(--bad-soft);
+    border-left: 3px solid var(--bad);
+    border-radius: 0 var(--r-sm) var(--r-sm) 0;
+    color: var(--txt);
+}
+.task-note b {
+    color: var(--bad);
+}
+
+.task-approved {
+    font-size: 11px;
+    color: var(--txt-muted);
+    margin: 8px 0;
+    padding: 6px 10px;
+    background: var(--ok-soft);
+    border-radius: var(--r-sm);
+}
+.task-approved b {
+    color: var(--ok);
+}
+
+.task-card-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
+}
+
+.task-waiting {
+    font-size: 12px;
+    color: var(--txt-muted);
+    font-style: italic;
+}
+
+/* =========================================================
+   КОНСУЛЬТАЦИИ — обновлённые карточки
+   ========================================================= */
+.consult-card {
+    position: relative;
+    padding: 16px 18px;
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    margin-bottom: 10px;
+    background: var(--bg-elev);
+    transition: background var(--t-fast);
+}
+.consult-card:hover {
+    background: var(--bg-soft);
+}
+
+/* Цветной левый бордер по статусу */
+.consult-status-pending {
+    border-left: 3px solid var(--warn);
+}
+.consult-status-rescheduled {
+    border-left: 3px solid var(--accent-viz);
+}
+.consult-status-approved {
+    border-left: 3px solid var(--ok);
+}
+.consult-status-rejected {
+    border-left: 3px solid var(--bad);
+}
+.consult-status-done {
+    border-left: 3px solid var(--txt-muted);
+}
+
+.consult-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+.consult-datetime-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+}
+
+.consult-datetime {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--txt);
+    font-variant-numeric: tabular-nums;
+}
+
+.consult-countdown {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 100px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.countdown-urgent {
+    background: var(--bad-soft);
+    color: var(--bad);
+}
+.countdown-soon {
+    background: var(--warn-soft);
+    color: var(--warn);
+}
+.countdown-far {
+    background: var(--bg-soft);
+    color: var(--txt-muted);
+}
+.countdown-past {
+    background: var(--bg-soft);
+    color: var(--txt-soft);
+}
+
+.consult-participants {
+    margin: 6px 0;
+    font-size: 12px;
+    color: var(--txt-muted);
+}
+.consult-participant b {
+    color: var(--txt);
+}
+
+.consult-rescheduled-note,
+.consult-approved-note {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    margin: 10px 0;
+    border-radius: var(--r-sm);
+    font-size: 12px;
+    line-height: 1.5;
+}
+.consult-rescheduled-note {
+    background: var(--accent-viz-soft);
+    color: var(--accent-viz);
+}
+.consult-approved-note {
+    background: var(--ok-soft);
+    color: var(--ok);
+}
+.consult-rescheduled-note .icon,
+.consult-approved-note .icon {
+    flex-shrink: 0;
+}
+
+.consult-response {
+    padding: 8px 12px;
+    margin: 10px 0;
+    border-radius: 0 var(--r-sm) var(--r-sm) 0;
+    font-size: 12px;
+    line-height: 1.5;
+}
+.consult-response-reject {
+    background: var(--bad-soft);
+    border-left: 3px solid var(--bad);
+    color: var(--txt);
+}
+.consult-response-reject b {
+    color: var(--bad);
+}
+
+.consult-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
+}
+
+.consult-created {
+    font-size: 11px;
+    color: var(--txt-soft);
+}
+
+/* История предложений */
+.consult-history {
+    font-size: 11px;
+}
+.consult-history summary {
+    cursor: pointer;
+    color: var(--txt-muted);
+    font-weight: 500;
+    padding: 4px 8px;
+    border-radius: var(--r-sm);
+    transition: background var(--t-fast);
+    list-style: none;
+}
+.consult-history summary::-webkit-details-marker {
+    display: none;
+}
+.consult-history summary::before {
+    content: "▸ ";
+    display: inline-block;
+    transition: transform var(--t-fast);
+}
+.consult-history[open] summary::before {
+    transform: rotate(90deg);
+}
+.consult-history summary:hover {
+    background: var(--bg-soft);
+    color: var(--txt);
+}
+
+.consult-history-list {
+    margin-top: 8px;
+    padding: 8px 0 4px;
+    border-top: 1px dashed var(--line);
+}
+
+.consult-history-item {
+    padding: 6px 0;
+    border-bottom: 1px dashed var(--line);
+}
+.consult-history-item:last-child {
+    border-bottom: none;
+}
+.consult-history-meta {
+    font-size: 11px;
+    color: var(--txt-muted);
+    margin-bottom: 2px;
+}
+.consult-history-meta b {
+    color: var(--txt);
+}
+.consult-history-datetime {
+    font-size: 12px;
+    color: var(--txt);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+}
+.consult-history-comment {
+    font-size: 11px;
+    color: var(--txt-muted);
+    margin-top: 2px;
+    font-style: italic;
+}
