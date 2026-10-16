@@ -96,9 +96,16 @@ const MamdaniViz = (() => {
         },
     };
 
+    const DISPLAY_DEFAULTS = {
+        orig: 65,
+        supScore: 5,
+        gost: 70,
+    };
+
     function safeMF(varName, term, value) {
         const mf = Fuzzy.MF[varName];
         if (!mf || typeof mf[term] !== "function") return 0;
+        if (value === null || value === undefined) return 0;
         return mf[term](value);
     }
 
@@ -109,6 +116,40 @@ const MamdaniViz = (() => {
         return Storage.getWorks();
     }
 
+    /* =========================================================
+       УМНЫЙ ВЫБОР РАБОТЫ ПО УМОЛЧАНИЮ
+
+       Приоритеты:
+       1. Активные работы (active / review) с максимальным прогрессом
+       2. Approved / done
+       3. Остальные (по updatedAt)
+       ========================================================= */
+    function pickDefaultWork(works) {
+        if (!works || works.length === 0) return null;
+
+        function score(w) {
+            const statusOrder = {
+                active: 0,
+                review: 1,
+                approved: 2,
+                draft: 3,
+                pending: 4,
+                done: 5,
+                rejected: 6,
+            };
+            const statusScore = statusOrder[w.status] ?? 99;
+            const progress = Utils.calcProgress(w.id);
+            // Хотим: меньше statusScore (приоритет статусу) и больше progress
+            return statusScore * 1000 - progress;
+        }
+
+        const sorted = [...works].sort((a, b) => score(a) - score(b));
+        return sorted[0];
+    }
+
+    /* =========================================================
+       ВХОДЫ ДЛЯ РАСЧЁТА
+       ========================================================= */
     function buildInputs(work) {
         if (!work) return null;
         const inputs = Utils.buildFuzzyInputs(work);
@@ -120,9 +161,21 @@ const MamdaniViz = (() => {
             activity: inputs.activity ?? 5,
             edits: inputs.edits ?? 0,
             volume: inputs.volume ?? 0,
-            orig: inputs.orig ?? 65,
-            supScore: inputs.supScore ?? 5,
-            gost: inputs.gost ?? 70,
+            orig: inputs.orig,
+            supScore: inputs.supScore,
+            gost: inputs.gost,
+        };
+    }
+
+    function buildInputsForDisplay(work) {
+        const base = buildInputs(work);
+        if (!base) return null;
+
+        return {
+            ...base,
+            orig: base.orig ?? DISPLAY_DEFAULTS.orig,
+            supScore: base.supScore ?? DISPLAY_DEFAULTS.supScore,
+            gost: base.gost ?? DISPLAY_DEFAULTS.gost,
         };
     }
 
@@ -164,12 +217,13 @@ const MamdaniViz = (() => {
             );
         }
 
-        if (params?.workId) selectedWorkId = +params.workId;
+        if (params?.workId) selectedWorkId = params.workId;
         if (
             !selectedWorkId ||
             !works.find((w) => Storage.sameId(w.id, selectedWorkId))
         ) {
-            selectedWorkId = works[0].id;
+            const def = pickDefaultWork(works);
+            selectedWorkId = def ? def.id : works[0].id;
         }
 
         const work = Storage.getWorkById(selectedWorkId);
@@ -274,15 +328,15 @@ const MamdaniViz = (() => {
     function renderActions(work) {
         return `
       <div class="mamdani-actions">
-        <button class="action-btn" onclick="MamdaniViz.contactStudent(${work.id})">
+        <button class="action-btn" onclick="MamdaniViz.contactStudent('${work.id}')">
           ${SVG.messageCircle({ cls: "icon icon-sm" })}
           <span>Написать студенту</span>
         </button>
-        <button class="action-btn" onclick="MamdaniViz.openCommentModal(${work.id})">
+        <button class="action-btn" onclick="MamdaniViz.openCommentModal('${work.id}')">
           ${SVG.edit({ cls: "icon icon-sm" })}
           <span>Добавить комментарий</span>
         </button>
-        <button class="action-btn" onclick="PdfReport.exportStudent(${work.id})">
+        <button class="action-btn" onclick="PdfReport.exportStudent('${work.id}')">
           ${SVG.fileText({ cls: "icon icon-sm" })}
           <span>Скачать PDF</span>
         </button>
@@ -293,6 +347,7 @@ const MamdaniViz = (() => {
     function renderMainResult(result) {
         const riskClass = Utils.riskClass(result.risk.term);
         const readyClass = Utils.readyClass(result.ready.term);
+        const ratingClass = Utils.readyClass(result.rating.term);
 
         return `
       <div class="mamdani-main">
@@ -308,7 +363,7 @@ const MamdaniViz = (() => {
             <div class="main-side-value">${result.ready.value.toFixed(0)}</div>
             <div class="main-side-term">${escapeHtml(Fuzzy.termLabel(result.ready.term, "ready"))}</div>
           </div>
-          <div class="main-side-card">
+          <div class="main-side-card ${ratingClass}">
             <div class="main-side-label">Рейтинг</div>
             <div class="main-side-value">${result.rating.value.toFixed(0)}</div>
             <div class="main-side-term">${escapeHtml(Fuzzy.termLabel(result.rating.term, "rating"))}</div>
@@ -335,11 +390,22 @@ const MamdaniViz = (() => {
                 text: `Прогресс ${inputs.progress}% — стоит подтянуть`,
             });
         }
-        if (inputs.gost < 70) {
+        if (
+            inputs.gost !== null &&
+            inputs.gost !== undefined &&
+            inputs.gost < 70
+        ) {
             todos.push({
                 icon: "📄",
                 title: "Обратить внимание на ГОСТ",
                 text: `Соответствие ${inputs.gost}% — нужно доработать`,
+            });
+        }
+        if (inputs.gost === null || inputs.gost === undefined) {
+            todos.push({
+                icon: "📝",
+                title: "Проверить оформление по ГОСТу",
+                text: "Оценка ещё не проводилась",
             });
         }
         if (inputs.activity < 4) {
@@ -489,6 +555,8 @@ const MamdaniViz = (() => {
     }
 
     function renderOverview(inputs, result) {
+        const ratingColor = Utils.readyClass(result.rating.term);
+
         return `
       <div class="mamdani-explain">
         <b>Коротко:</b> система взяла данные работы и через
@@ -513,7 +581,7 @@ const MamdaniViz = (() => {
         </div>
         <div class="metric">
           <div class="metric-lbl">Рейтинг</div>
-          <div class="metric-val" style="color:var(--accent)">
+          <div class="metric-val" style="color:var(--${ratingColor})">
             ${result.rating.value.toFixed(1)}
           </div>
           <div class="metric-sub">${escapeHtml(Fuzzy.termLabel(result.rating.term, "rating"))}</div>
@@ -539,32 +607,53 @@ const MamdaniViz = (() => {
         <b>Фаззификация</b> — превращение обычных чисел в «степени уверенности».
         Например, если прогресс 42%, система говорит:
         <b>«на 60% это средний и на 40% низкий»</b>.
+        <br><br>
+        <b>Примечание:</b> если руководитель ещё не проверял работу,
+        переменные «оригинальность», «оценка» и «ГОСТ» показаны серым —
+        они не участвуют в расчёте.
       </div>
 
       <div class="fuzz-table">
         ${vars
             .map((v) => {
-                const val = inputs[v] ?? 0;
+                const raw = inputs[v];
+                const isEmpty = raw === null || raw === undefined;
+                const val = isEmpty
+                    ? v === "orig"
+                        ? 65
+                        : v === "supScore"
+                          ? 5
+                          : v === "gost"
+                            ? 70
+                            : 0
+                    : raw;
+
                 const terms = ["low", "med", "high"].map((t) => ({
                     t,
-                    mu: safeMF(v, t, val),
+                    mu: isEmpty ? 0 : safeMF(v, t, val),
                 }));
                 const maxTerm = terms.reduce((a, b) => (a.mu > b.mu ? a : b));
-                const explanation = TERM_EXPLAIN[v]?.[maxTerm.t] || "";
+                const explanation = isEmpty
+                    ? "Нет данных — руководитель ещё не проверял"
+                    : TERM_EXPLAIN[v]?.[maxTerm.t] || "";
 
                 return `
-            <div class="fuzz-row">
+            <div class="fuzz-row" style="${isEmpty ? "opacity:0.55;" : ""}">
               <div class="fuzz-name">
                 <div style="font-weight:500;">${escapeHtml(VAR_NAMES[v])}</div>
                 <div style="font-size:11px;color:var(--txt-muted);margin-top:2px;">
                   ${escapeHtml(explanation)}
                 </div>
               </div>
-              <div class="fuzz-value">${val}</div>
+              <div class="fuzz-value">${isEmpty ? "—" : val}</div>
               <div class="fuzz-term">
-                <span class="fuzz-term-badge ${maxTerm.t}">
-                  ${escapeHtml(TERM_LABELS[maxTerm.t])} (${maxTerm.mu.toFixed(2)})
-                </span>
+                ${
+                    isEmpty
+                        ? `<span class="fuzz-term-badge" style="background:var(--bg-soft);color:var(--txt-muted);">нет данных</span>`
+                        : `<span class="fuzz-term-badge ${maxTerm.t}">
+                             ${escapeHtml(TERM_LABELS[maxTerm.t])} (${maxTerm.mu.toFixed(2)})
+                           </span>`
+                }
               </div>
               <div class="fuzz-bars">
                 ${terms
@@ -611,6 +700,9 @@ const MamdaniViz = (() => {
         <b>Правила</b> — основа системы. Каждое правило —
         «ЕСЛИ что-то ТО результат». Система берёт только те правила,
         у которых <b>посылка истинна</b>.
+        <br><br>
+        Всего в базе <b>${Fuzzy.getRules().length}</b> правил.
+        Ниже — только те, что сработали для текущей работы.
       </div>
 
       <div class="section-label">Сработавшие правила (${fired.length})</div>
@@ -1114,9 +1206,8 @@ const MamdaniViz = (() => {
     }
 
     function selectWork(id) {
-        const num = +id;
-        if (isNaN(num)) return;
-        selectedWorkId = num;
+        if (!id) return;
+        selectedWorkId = id;
         currentStep = "all";
         renderView();
     }
@@ -1145,7 +1236,7 @@ const MamdaniViz = (() => {
           </div>
           <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
             <button class="btn-ghost" onclick="App.closeModal()">Отмена</button>
-            <button class="btn-primary" onclick="MamdaniViz.saveComment(${workId})">Отправить</button>
+            <button class="btn-primary" onclick="MamdaniViz.saveComment('${workId}')">Отправить</button>
           </div>
         </div>
       </div>

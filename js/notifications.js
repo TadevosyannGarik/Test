@@ -14,6 +14,23 @@ const Notifications = (() => {
                       .replace(/"/g, "&quot;");
               };
 
+    /* =========================================================
+       БЕЗОПАСНОЕ ПОЛУЧЕНИЕ ПОЛЬЗОВАТЕЛЯ
+       ========================================================= */
+    function safeUser() {
+        if (typeof Auth === "undefined") return null;
+        try {
+            const u = Auth.getUser();
+            if (!u || !u.id) return null;
+            return u;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    /* =========================================================
+       ХРАНИЛИЩЕ
+       ========================================================= */
     function getAll() {
         const list = Storage.get(KEY, []);
         return Array.isArray(list) ? list : [];
@@ -23,6 +40,9 @@ const Notifications = (() => {
         Storage.set(KEY, Array.isArray(list) ? list : []);
     }
 
+    /* =========================================================
+       ДОБАВЛЕНИЕ
+       ========================================================= */
     function add({ userId, type, title, text, link }) {
         if (!userId) return null;
 
@@ -65,6 +85,9 @@ const Notifications = (() => {
         return notif;
     }
 
+    /* =========================================================
+       ЧТЕНИЕ
+       ========================================================= */
     function getForUser(userId) {
         if (!userId) return [];
         return getAll()
@@ -122,6 +145,9 @@ const Notifications = (() => {
         setAll(filtered);
     }
 
+    /* =========================================================
+       ИКОНКИ
+       ========================================================= */
     function iconFor(type) {
         switch (type) {
             case "work":
@@ -139,7 +165,27 @@ const Notifications = (() => {
         }
     }
 
+    /* =========================================================
+       РЕНДЕР ПАНЕЛИ
+       ========================================================= */
     function renderPanel(userId) {
+        if (!userId) {
+            return `
+        <div class="notif-panel" id="notifPanel">
+          <div class="notif-panel-head">
+            <h4>Уведомления</h4>
+            <button onclick="Notifications.closePanel()" title="Закрыть">
+              ${SVG.x({ cls: "icon icon-xs" })}
+            </button>
+          </div>
+          <div class="notif-empty">
+            ${SVG.bell({ cls: "icon icon-lg" })}
+            <div style="margin-top:8px;">Нет данных</div>
+          </div>
+        </div>
+      `;
+        }
+
         const list = getForUser(userId);
         const unread = unreadCount(userId);
 
@@ -188,7 +234,7 @@ const Notifications = (() => {
     function renderItem(n) {
         return `
       <div class="notif-item ${n.read ? "" : "unread"}"
-        onclick="Notifications.openItem(${n.id})">
+        onclick="Notifications.openItem('${n.id}')">
         <div class="notif-item-head">
           <span class="notif-item-ico">${iconFor(n.type)}</span>
           <span class="notif-item-title">${escapeHtml(n.title)}</span>
@@ -199,12 +245,16 @@ const Notifications = (() => {
     `;
     }
 
+    /* =========================================================
+       ДЕЙСТВИЯ
+       ========================================================= */
     function closePanel() {
         const el = document.getElementById("notifPanel");
         if (el) el.remove();
     }
 
     function openItem(id) {
+        if (!id) return;
         markRead(id);
         const list = getAll();
         const n = list.find((x) => Storage.sameId(x.id, id));
@@ -219,20 +269,31 @@ const Notifications = (() => {
     }
 
     function markAll() {
-        const u = Auth.getUser();
-        if (u) markAllRead(u.id);
+        const u = safeUser();
+        if (!u) {
+            closePanel();
+            return;
+        }
+        markAllRead(u.id);
         closePanel();
         if (typeof App !== "undefined" && App.refreshNotifications) {
             App.refreshNotifications();
         }
     }
 
-    function toggle(userId) {
+    /* =========================================================
+       TOGGLE — ГЛАВНОЕ ИЗМЕНЕНИЕ
+       Больше не принимает userId — сам получает пользователя
+       ========================================================= */
+    function toggle() {
         const existing = document.getElementById("notifPanel");
         if (existing) {
             closePanel();
             return;
         }
+
+        const u = safeUser();
+        const userId = u ? u.id : null;
 
         const html = renderPanel(userId);
 
@@ -257,6 +318,9 @@ const Notifications = (() => {
         host.insertAdjacentHTML("beforeend", html);
     }
 
+    /* =========================================================
+       ПУБЛИЧНЫЙ API
+       ========================================================= */
     return {
         add,
         getAll,

@@ -1,17 +1,40 @@
 const Fuzzy = (() => {
+    /* =========================================================
+       ТРЕУГОЛЬНАЯ ФУНКЦИЯ ПРИНАДЛЕЖНОСТИ
+       ========================================================= */
     function trimf(x, a, b, c) {
         if (typeof x !== "number" || isNaN(x)) return 0;
 
-        if (x === a && a === b) return 1;
-        if (x === c && b === c) return 1;
+        // Точечная функция (единственная точка)
+        if (a === b && b === c) {
+            return x === a ? 1 : 0;
+        }
 
+        // Левый вырожденный: a === b (Z-shape)
+        // 1 при x <= a, линейно спадает до 0 при x >= c
+        if (a === b) {
+            if (x <= a) return 1;
+            if (x >= c) return 0;
+            return (c - x) / (c - a);
+        }
+
+        // Правый вырожденный: b === c (S-shape)
+        // 0 при x <= a, линейно растёт до 1 при x >= b
+        if (b === c) {
+            if (x <= a) return 0;
+            if (x >= b) return 1;
+            return (x - a) / (b - a);
+        }
+
+        // Обычный треугольник
         if (x <= a || x >= c) return 0;
-
         if (x === b) return 1;
-
         return x < b ? (x - a) / (b - a) : (c - x) / (c - b);
     }
 
+    /* =========================================================
+       ВХОДНЫЕ ПЕРЕМЕННЫЕ
+       ========================================================= */
     const MF = {
         progress: {
             low: (x) => trimf(x, 0, 0, 50),
@@ -55,6 +78,9 @@ const Fuzzy = (() => {
         },
     };
 
+    /* =========================================================
+       ВЫХОДНЫЕ ПЕРЕМЕННЫЕ
+       ========================================================= */
     const OUT = {
         risk: {
             low: (x) => trimf(x, 0, 0, 40),
@@ -73,6 +99,9 @@ const Fuzzy = (() => {
         },
     };
 
+    /* =========================================================
+       SUGENO
+       ========================================================= */
     const SUGENO_OUTPUTS = {
         risk: { low: 20, med: 50, high: 85 },
         ready: { low: 20, med: 50, high: 85 },
@@ -81,8 +110,25 @@ const Fuzzy = (() => {
 
     const THRESHOLDS = { low: 40, high: 65 };
 
+    /* =========================================================
+       ПЕРЕМЕННЫЕ, ЗАВИСЯЩИЕ ОТ ПРОВЕРКИ РУКОВОДИТЕЛЯ
+       ========================================================= */
+    const TEACHER_DEPENDENT = ["orig", "supScore", "gost"];
+
+    /* =========================================================
+       БАЗА ПРАВИЛ (40 правил)
+       ---------------------------------------------------------
+       Risk:    14 правил (id 1-14)  — не зависят от проверки
+       Ready:   12 правил (id 15-26) — используют orig/supScore/gost
+       Ready:    4 правила (id 27-30) — «якорные», без проверки
+       Rating:   8 правил (id 31-38) — используют orig/supScore/gost
+       Rating:   2 правила (id 39-40) — «якорные», без проверки
+       ========================================================= */
     function defaultRules() {
         return [
+            /* ============ RISK: 18 правил ============ */
+
+            /* --- HIGH --- */
             {
                 id: 1,
                 if: ["progress=low", "days=low"],
@@ -106,56 +152,329 @@ const Fuzzy = (() => {
             },
             {
                 id: 4,
+                if: ["progress=med", "days=low"],
+                then: "risk=high",
+                enabled: true,
+                desc: "Средний прогресс, но сроки поджимают — высокий риск",
+            },
+            {
+                id: 5,
+                if: ["activity=low", "days=low"],
+                then: "risk=high",
+                enabled: true,
+                desc: "Низкая активность и мало дней — высокий риск",
+            },
+            {
+                id: 6,
+                if: ["progress=low", "days=med"],
+                then: "risk=high",
+                enabled: true,
+                desc: "Низкий прогресс и средние сроки — высокий риск",
+            },
+
+            /* --- LOW --- */
+            {
+                id: 7,
                 if: ["progress=high", "days=high"],
                 then: "risk=low",
                 enabled: true,
                 desc: "Высокий прогресс и запас дней — низкий риск",
             },
             {
-                id: 5,
+                id: 8,
                 if: ["activity=high", "edits=low"],
                 then: "risk=low",
                 enabled: true,
                 desc: "Активный студент и мало правок — низкий риск",
             },
             {
-                id: 6,
-                if: ["progress=med"],
-                then: "risk=med",
+                id: 9,
+                if: ["progress=high", "activity=high"],
+                then: "risk=low",
                 enabled: true,
-                desc: "Средний прогресс — средний риск",
+                desc: "Высокий прогресс и высокая активность — низкий риск",
             },
             {
-                id: 7,
+                id: 10,
+                if: ["days=high", "edits=low"],
+                then: "risk=low",
+                enabled: true,
+                desc: "Много времени и мало правок — низкий риск",
+            },
+            {
+                id: 11,
+                if: ["progress=high", "days=med"],
+                then: "risk=low",
+                enabled: true,
+                desc: "Высокий прогресс и средние сроки — низкий риск",
+            },
+            {
+                id: 12,
+                if: ["progress=high", "edits=low"],
+                then: "risk=low",
+                enabled: true,
+                desc: "Высокий прогресс и мало правок — низкий риск",
+            },
+
+            /* --- MED --- */
+            {
+                id: 13,
+                if: ["progress=med", "days=med"],
+                then: "risk=med",
+                enabled: true,
+                desc: "Средний прогресс и средние сроки — средний риск",
+            },
+            {
+                id: 14,
+                if: ["progress=med", "activity=med"],
+                then: "risk=med",
+                enabled: true,
+                desc: "Средний прогресс и средняя активность — средний риск",
+            },
+            {
+                id: 15,
+                if: ["progress=med", "edits=med"],
+                then: "risk=med",
+                enabled: true,
+                desc: "Средний прогресс и средние правки — средний риск",
+            },
+            {
+                id: 16,
+                if: ["days=med", "activity=med"],
+                then: "risk=med",
+                enabled: true,
+                desc: "Средние сроки и средняя активность — средний риск",
+            },
+            {
+                id: 17,
+                if: ["progress=low", "activity=med"],
+                then: "risk=med",
+                enabled: true,
+                desc: "Низкий прогресс, но активность средняя — средний риск",
+            },
+            {
+                id: 18,
+                if: ["progress=low", "days=high"],
+                then: "risk=med",
+                enabled: true,
+                desc: "Низкий прогресс, но запас дней — средний риск",
+            },
+
+            /* ============ READY: 12 правил с проверкой ============ */
+            {
+                id: 19,
                 if: ["volume=high", "orig=high", "gost=high"],
                 then: "ready=high",
                 enabled: true,
                 desc: "Высокий объём, оригинальность и ГОСТ — высокая готовность",
             },
             {
-                id: 8,
-                if: ["volume=low", "orig=low"],
-                then: "ready=low",
-                enabled: true,
-                desc: "Малый объём и низкая оригинальность — низкая готовность",
-            },
-            {
-                id: 9,
+                id: 20,
                 if: ["supScore=high", "gost=high"],
                 then: "ready=high",
                 enabled: true,
                 desc: "Высокая оценка и ГОСТ — высокая готовность",
             },
             {
-                id: 10,
+                id: 21,
+                if: ["orig=high", "supScore=high"],
+                then: "ready=high",
+                enabled: true,
+                desc: "Высокая оригинальность и оценка — высокая готовность",
+            },
+            {
+                id: 22,
+                if: ["volume=high", "orig=high"],
+                then: "ready=high",
+                enabled: true,
+                desc: "Высокий объём и оригинальность — высокая готовность",
+            },
+
+            {
+                id: 23,
+                if: ["volume=low", "orig=low"],
+                then: "ready=low",
+                enabled: true,
+                desc: "Малый объём и низкая оригинальность — низкая готовность",
+            },
+            {
+                id: 24,
                 if: ["supScore=low"],
                 then: "ready=low",
                 enabled: true,
                 desc: "Низкая оценка руководителя — низкая готовность",
             },
+            {
+                id: 25,
+                if: ["gost=low"],
+                then: "ready=low",
+                enabled: true,
+                desc: "Не соответствует ГОСТу — низкая готовность",
+            },
+            {
+                id: 26,
+                if: ["orig=low"],
+                then: "ready=low",
+                enabled: true,
+                desc: "Низкая оригинальность — низкая готовность",
+            },
+
+            {
+                id: 27,
+                if: ["orig=med"],
+                then: "ready=med",
+                enabled: true,
+                desc: "Средняя оригинальность — средняя готовность",
+            },
+            {
+                id: 28,
+                if: ["gost=med"],
+                then: "ready=med",
+                enabled: true,
+                desc: "Частично соответствует ГОСТу — средняя готовность",
+            },
+            {
+                id: 29,
+                if: ["supScore=med"],
+                then: "ready=med",
+                enabled: true,
+                desc: "Средняя оценка руководителя — средняя готовность",
+            },
+            {
+                id: 30,
+                if: ["volume=med", "orig=med"],
+                then: "ready=med",
+                enabled: true,
+                desc: "Средний объём и оригинальность — средняя готовность",
+            },
+
+            /* ============ READY: 4 «якорных» правила ============ */
+            /* Специально ослаблены: дают med, а не high, чтобы не перебивать */
+            {
+                id: 31,
+                if: ["progress=high", "activity=high"],
+                then: "ready=med",
+                enabled: true,
+                desc: "Высокий прогресс и активность — средняя готовность (без оценки)",
+            },
+            {
+                id: 32,
+                if: ["progress=high"],
+                then: "ready=med",
+                enabled: true,
+                desc: "Высокий прогресс — средняя готовность (без оценки)",
+            },
+            {
+                id: 33,
+                if: ["progress=med"],
+                then: "ready=med",
+                enabled: true,
+                desc: "Средний прогресс — средняя готовность",
+            },
+            {
+                id: 34,
+                if: ["progress=low"],
+                then: "ready=low",
+                enabled: true,
+                desc: "Низкий прогресс — низкая готовность",
+            },
+
+            /* ============ RATING: 8 правил с проверкой ============ */
+            {
+                id: 35,
+                if: ["progress=high", "supScore=high"],
+                then: "rating=high",
+                enabled: true,
+                desc: "Высокий прогресс и высокая оценка — высокий рейтинг",
+            },
+            {
+                id: 36,
+                if: ["orig=high", "gost=high"],
+                then: "rating=high",
+                enabled: true,
+                desc: "Высокая оригинальность и ГОСТ — высокий рейтинг",
+            },
+            {
+                id: 37,
+                if: ["supScore=high", "activity=high"],
+                then: "rating=high",
+                enabled: true,
+                desc: "Высокая оценка и активность — высокий рейтинг",
+            },
+
+            {
+                id: 38,
+                if: ["supScore=low"],
+                then: "rating=low",
+                enabled: true,
+                desc: "Низкая оценка руководителя — низкий рейтинг",
+            },
+            {
+                id: 39,
+                if: ["orig=low"],
+                then: "rating=low",
+                enabled: true,
+                desc: "Низкая оригинальность — низкий рейтинг",
+            },
+
+            {
+                id: 40,
+                if: ["supScore=med"],
+                then: "rating=med",
+                enabled: true,
+                desc: "Средняя оценка руководителя — средний рейтинг",
+            },
+            {
+                id: 41,
+                if: ["orig=med"],
+                then: "rating=med",
+                enabled: true,
+                desc: "Средняя оригинальность — средний рейтинг",
+            },
+            {
+                id: 42,
+                if: ["gost=med"],
+                then: "rating=med",
+                enabled: true,
+                desc: "Частично соответствует ГОСТу — средний рейтинг",
+            },
+
+            /* ============ RATING: 4 «якорных» правила ============ */
+            /* Ослаблены до med, чтобы якорь не перебивал реальные данные */
+            {
+                id: 43,
+                if: ["progress=high", "activity=high"],
+                then: "rating=med",
+                enabled: true,
+                desc: "Высокий прогресс и активность — средний рейтинг (без оценки)",
+            },
+            {
+                id: 44,
+                if: ["progress=high"],
+                then: "rating=med",
+                enabled: true,
+                desc: "Высокий прогресс — средний рейтинг (без оценки)",
+            },
+            {
+                id: 45,
+                if: ["progress=med"],
+                then: "rating=med",
+                enabled: true,
+                desc: "Средний прогресс — средний рейтинг",
+            },
+            {
+                id: 46,
+                if: ["progress=low"],
+                then: "rating=low",
+                enabled: true,
+                desc: "Низкий прогресс — низкий рейтинг",
+            },
         ];
     }
 
+    /* =========================================================
+       ПРАВИЛА (с миграцией medium → med)
+       ========================================================= */
     function getRules() {
         if (typeof Storage === "undefined") return defaultRules();
         const stored = Storage.getRules();
@@ -170,56 +489,89 @@ const Fuzzy = (() => {
         return stored;
     }
 
+    /* =========================================================
+       СИЛА ПРАВИЛА
+       ========================================================= */
     function ruleStrength(rule, inputs) {
         if (!rule || !Array.isArray(rule.if)) return 0;
-        const vals = rule.if.map((c) => {
+        if (rule.if.length === 0) return 0;
+
+        const vals = [];
+        for (const c of rule.if) {
             const [v, t] = c.split("=");
             const mf = MF[v];
             if (!mf || !mf[t]) return 0;
+
             const val = inputs[v];
+
+            if (val === null || val === undefined) {
+                if (TEACHER_DEPENDENT.includes(v)) return 0;
+                return 0;
+            }
+
             if (typeof val !== "number" || isNaN(val)) return 0;
-            return mf[t](val);
-        });
+
+            vals.push(mf[t](val));
+        }
+
         return vals.length === 0 ? 0 : Math.min(...vals);
     }
 
+    /* =========================================================
+       АГРЕГАЦИЯ
+       ========================================================= */
     function aggregate(outVar, rules, inputs) {
         const acc = { low: 0, med: 0, high: 0 };
         const fired = [];
+
         for (const r of rules) {
             if (!r.enabled) continue;
+
             const [ov, ot] = r.then.split("=");
             if (ov !== outVar) continue;
             if (!(ot in acc)) continue;
+
             const s = ruleStrength(r, inputs);
             if (s > 0) {
                 acc[ot] = Math.max(acc[ot], s);
                 fired.push({ rule: r, strength: s });
             }
         }
+
         return { acc, fired };
     }
 
+    /* =========================================================
+       ДЕФАЗЗИФИКАЦИЯ
+       ========================================================= */
     function defuzzify(outVar, acc) {
         const outMF = OUT[outVar];
         if (!outMF) return 0;
 
         let num = 0;
         let den = 0;
-        const STEP = 0.25;
+        const STEP = 0.5;
 
         for (let x = 0; x <= 100; x += STEP) {
             let mu = 0;
             for (const t of ["low", "med", "high"]) {
-                mu = Math.max(mu, Math.min(acc[t], outMF[t](x)));
+                const cut = Math.min(acc[t] || 0, outMF[t](x));
+                if (cut > mu) mu = cut;
             }
             num += x * mu * STEP;
             den += mu * STEP;
         }
-        return den === 0 ? 0 : num / den;
+
+        if (den === 0) return 0;
+        const result = num / den;
+        return isNaN(result) ? 0 : result;
     }
 
+    /* =========================================================
+       КЛАССИФИКАЦИЯ
+       ========================================================= */
     function classify(v) {
+        if (typeof v !== "number" || isNaN(v)) return "low";
         return v < THRESHOLDS.low
             ? "low"
             : v < THRESHOLDS.high
@@ -227,6 +579,9 @@ const Fuzzy = (() => {
               : "high";
     }
 
+    /* =========================================================
+       ЯРЛЫКИ
+       ========================================================= */
     function termLabel(term, kind) {
         const map = {
             low: { risk: "низкий", ready: "низкая", rating: "низкий" },
@@ -237,34 +592,57 @@ const Fuzzy = (() => {
         return row[kind] || "—";
     }
 
-    function infer(inputs) {
-        if (!inputs || typeof inputs !== "object") {
-            return {
-                risk: {
-                    value: 0,
-                    term: "low",
-                    fired: [],
-                    acc: { low: 0, med: 0, high: 0 },
-                },
-                ready: {
-                    value: 0,
-                    term: "low",
-                    fired: [],
-                    acc: { low: 0, med: 0, high: 0 },
-                },
-                rating: {
-                    value: 0,
-                    term: "low",
-                    fired: [],
-                    acc: { low: 0, med: 0, high: 0 },
-                },
-            };
-        }
+    /* =========================================================
+       НОРМАЛИЗАЦИЯ
+       ========================================================= */
+    function normalizeInputs(inputs) {
+        return {
+            progress: inputs.progress ?? 0,
+            days: inputs.days ?? 30,
+            activity: inputs.activity ?? 5,
+            edits: inputs.edits ?? 0,
+            volume: inputs.volume ?? 0,
+            orig: inputs.orig ?? null,
+            supScore: inputs.supScore ?? null,
+            gost: inputs.gost ?? null,
+        };
+    }
 
+    function emptyResult() {
+        return {
+            risk: {
+                value: 0,
+                term: "low",
+                fired: [],
+                acc: { low: 0, med: 0, high: 0 },
+            },
+            ready: {
+                value: 0,
+                term: "low",
+                fired: [],
+                acc: { low: 0, med: 0, high: 0 },
+            },
+            rating: {
+                value: 0,
+                term: "low",
+                fired: [],
+                acc: { low: 0, med: 0, high: 0 },
+            },
+        };
+    }
+
+    /* =========================================================
+       МАМДАНИ
+       ========================================================= */
+    function infer(inputs) {
+        if (!inputs || typeof inputs !== "object") return emptyResult();
+
+        const normalized = normalizeInputs(inputs);
         const rules = getRules();
-        const r = aggregate("risk", rules, inputs);
-        const g = aggregate("ready", rules, inputs);
-        const t = aggregate("rating", rules, inputs);
+
+        const r = aggregate("risk", rules, normalized);
+        const g = aggregate("ready", rules, normalized);
+        const t = aggregate("rating", rules, normalized);
 
         const rv = defuzzify("risk", r.acc);
         const gv = defuzzify("ready", g.acc);
@@ -287,8 +665,12 @@ const Fuzzy = (() => {
         };
     }
 
+    /* =========================================================
+       РЕКОМЕНДАЦИЯ
+       ========================================================= */
     function recommendation(inputs, res) {
         if (!res) return "";
+
         let rec = "";
         if (res.risk.term === "high") {
             rec =
@@ -310,30 +692,29 @@ const Fuzzy = (() => {
         return rec;
     }
 
+    /* =========================================================
+       СУГЕНО
+       ========================================================= */
     function sugenoInfer(inputs) {
-        if (!inputs || typeof inputs !== "object") {
-            return {
-                risk: { value: 0, term: "low", fired: [] },
-                ready: { value: 0, term: "low", fired: [] },
-                rating: { value: 0, term: "low", fired: [] },
-            };
-        }
+        if (!inputs || typeof inputs !== "object") return emptyResult();
 
+        const normalized = normalizeInputs(inputs);
         const rules = getRules();
 
         function calc(outVar) {
-            let num = 0,
-                den = 0;
+            let num = 0;
+            let den = 0;
             const fired = [];
             const outValues = SUGENO_OUTPUTS[outVar];
 
             for (const r of rules) {
                 if (!r.enabled) continue;
+
                 const [ov, ot] = r.then.split("=");
                 if (ov !== outVar) continue;
                 if (!(ot in outValues)) continue;
 
-                const s = ruleStrength(r, inputs);
+                const s = ruleStrength(r, normalized);
                 if (s > 0) {
                     const z = outValues[ot];
                     num += s * z;
@@ -341,6 +722,7 @@ const Fuzzy = (() => {
                     fired.push({ rule: r, strength: s, value: z });
                 }
             }
+
             return { value: den === 0 ? 0 : num / den, fired };
         }
 
@@ -355,38 +737,49 @@ const Fuzzy = (() => {
         };
     }
 
+    /* =========================================================
+       ЧЁТКАЯ ФОРМУЛА
+       ========================================================= */
     function crispInfer(inputs) {
         if (!inputs || typeof inputs !== "object") inputs = {};
+
         const clamp = (v) => Math.max(0, Math.min(100, v));
 
+        const progress = inputs.progress || 0;
+        const days = Math.min(inputs.days || 0, 60);
+        const activity = inputs.activity || 0;
+        const edits = Math.min(inputs.edits || 0, 20);
+        const volume = inputs.volume || 0;
+        const orig = inputs.orig ?? 65;
+        const supScore = inputs.supScore ?? 5;
+        const gost = inputs.gost ?? 70;
+
         const riskRaw =
-            (100 - (inputs.progress || 0)) * 0.35 +
-            (60 - Math.min(inputs.days || 0, 60)) * 0.8 +
-            (10 - (inputs.activity || 0)) * 3 +
-            Math.min(inputs.edits || 0, 20) * 1.5;
+            (100 - progress) * 0.35 +
+            (60 - days) * 0.8 +
+            (10 - activity) * 3 +
+            edits * 1.5;
 
         const readyRaw =
-            (inputs.volume || 0) * 0.3 +
-            (inputs.orig || 0) * 0.25 +
-            (inputs.gost || 0) * 0.2 +
-            (inputs.supScore || 0) * 2.5;
+            volume * 0.3 + orig * 0.25 + gost * 0.2 + supScore * 2.5;
 
         const ratingRaw =
-            (inputs.progress || 0) * 0.3 +
-            (inputs.activity || 0) * 4 +
-            (inputs.orig || 0) * 0.2 +
-            (inputs.supScore || 0) * 3;
+            progress * 0.3 + activity * 4 + orig * 0.2 + supScore * 3;
+
+        const rv = clamp(riskRaw);
+        const gv = clamp(readyRaw);
+        const tv = clamp(ratingRaw);
 
         return {
-            risk: { value: clamp(riskRaw), term: classify(clamp(riskRaw)) },
-            ready: { value: clamp(readyRaw), term: classify(clamp(readyRaw)) },
-            rating: {
-                value: clamp(ratingRaw),
-                term: classify(clamp(ratingRaw)),
-            },
+            risk: { value: rv, term: classify(rv) },
+            ready: { value: gv, term: classify(gv) },
+            rating: { value: tv, term: classify(tv) },
         };
     }
 
+    /* =========================================================
+       СЛОВАРИ
+       ========================================================= */
     const VAR_LABELS = {
         progress: { label: "Прогресс", unit: "%" },
         days: { label: "Дней до дедлайна", unit: "дн." },
@@ -436,6 +829,9 @@ const Fuzzy = (() => {
         let bestMu = 0;
         const mf = MF[varName];
         if (!mf) return { term: best, mu: 0 };
+        if (typeof value !== "number" || isNaN(value)) {
+            return { term: best, mu: 0 };
+        }
 
         for (const t of ["low", "med", "high"]) {
             const mu = mf[t] ? mf[t](value) : 0;
@@ -456,8 +852,12 @@ const Fuzzy = (() => {
             .replace(/"/g, "&quot;");
     }
 
+    /* =========================================================
+       ОБЪЯСНЕНИЕ
+       ========================================================= */
     function explain(inputs, result) {
         if (!inputs || !result) return "";
+
         const riskTerm = result.risk.term;
         const riskWord =
             riskTerm === "high"
@@ -465,6 +865,7 @@ const Fuzzy = (() => {
                 : riskTerm === "med"
                   ? "средний"
                   : "низкий";
+
         const readyWord =
             result.ready.term === "high"
                 ? "высокая"
@@ -530,17 +931,51 @@ const Fuzzy = (() => {
         return html;
     }
 
+    function explainRating(inputs, result) {
+        if (!inputs || !result) return "";
+
+        const term = result.rating.term;
+        const word =
+            term === "high" ? "высокий" : term === "med" ? "средний" : "низкий";
+
+        const top = (result.rating.fired || [])
+            .sort((a, b) => b.strength - a.strength)
+            .slice(0, 3);
+
+        let html = `<div class="explain">
+      <p><b>Рейтинг ${word}</b> (${result.rating.value.toFixed(0)}/100).</p>`;
+
+        if (top.length > 0) {
+            html += `<p style="margin-top:10px;"><b>Определяющие правила:</b></p>
+        <ul>${top
+            .map(
+                (f) =>
+                    `<li>«${escapeHtml(f.rule.desc)}» — сила <b>${f.strength.toFixed(2)}</b></li>`,
+            )
+            .join("")}</ul>`;
+        } else {
+            html += `<p style="margin-top:10px;color:var(--txt-muted);">Рейтинг не сформирован — нет данных.</p>`;
+        }
+
+        html += `</div>`;
+        return html;
+    }
+
     return {
         MF,
         OUT,
         SUGENO_OUTPUTS,
         THRESHOLDS,
+
         defaultRules,
         getRules,
+
         infer,
         sugenoInfer,
         crispInfer,
+
         explain,
+        explainRating,
         dominantTerm,
         classify,
         termLabel,

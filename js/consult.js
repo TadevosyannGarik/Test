@@ -377,11 +377,11 @@ const Consult = (() => {
             (isTeacher || isAdmin) && c.status === STATUS.pending
                 ? `
           <div class="consult-actions">
-            <button class="btn-primary btn-sm" onclick="Consult.uiApprove(${c.id})">
+            <button class="btn-primary btn-sm" onclick="Consult.uiApprove('${c.id}')">
               ${SVG.check({ cls: "icon icon-sm" })}
               <span>Подтвердить</span>
             </button>
-            <button class="btn-ghost btn-sm" onclick="Consult.openRejectModal(${c.id})">
+            <button class="btn-ghost btn-sm" onclick="Consult.openRejectModal('${c.id}')">
               ${SVG.x({ cls: "icon icon-sm" })}
               <span>Отклонить</span>
             </button>
@@ -394,7 +394,7 @@ const Consult = (() => {
             (isTeacher || isAdmin) && c.status === STATUS.approved
                 ? `
           <div class="consult-actions">
-            <button class="btn-ghost btn-sm" onclick="Consult.uiMarkDone(${c.id})">
+            <button class="btn-ghost btn-sm" onclick="Consult.uiMarkDone('${c.id}')">
               ${SVG.checkCircle({ cls: "icon icon-sm" })}
               <span>Отметить проведённой</span>
             </button>
@@ -407,7 +407,7 @@ const Consult = (() => {
             isStudent && c.status === STATUS.pending
                 ? `
           <div class="consult-actions">
-            <button class="btn-ghost btn-sm btn-danger" onclick="Consult.uiCancel(${c.id})">
+            <button class="btn-ghost btn-sm btn-danger" onclick="Consult.uiCancel('${c.id}')">
               ${SVG.x({ cls: "icon icon-sm" })}
               <span>Отменить</span>
             </button>
@@ -553,7 +553,7 @@ const Consult = (() => {
 
           <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
             <button class="btn-ghost" onclick="App.closeModal()">Отмена</button>
-            <button class="btn-primary" onclick="Consult.saveReject(${id})">Отклонить</button>
+            <button class="btn-primary" onclick="Consult.saveReject('${id}')">Отклонить</button>
           </div>
         </div>
       </div>

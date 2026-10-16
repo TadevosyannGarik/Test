@@ -16,6 +16,7 @@ const Admin = (() => {
 
     let userFilter = { role: "", q: "" };
     let workFilter = { status: "", type: "", q: "" };
+    let analyticsFilter = { status: "", type: "", teacherId: "" };
 
     function getUser() {
         return Auth.getUser();
@@ -136,72 +137,67 @@ const Admin = (() => {
 
         const students = users.filter((u) => u.role === "student");
         const teachers = users.filter((u) => u.role === "teacher");
+        const admins = users.filter((u) => u.role === "admin");
 
-        const enriched = works
-            .map((w) => {
-                const res = getFuzzyResult(w);
-                if (!res) return null;
-                return { w, res, progress: calcProgress(w.id) };
-            })
-            .filter(Boolean);
+        const blocked = users.filter((u) => u.blocked);
+        const weekAgo = Date.now() - 7 * 86400000;
+        const newUsersWeek = users.filter((u) => (u.createdAt || 0) > weekAgo);
 
-        const active = enriched.filter(
-            (e) => e.w.status !== "rejected" && e.w.status !== "done",
+        const activeWorks = works.filter(
+            (w) => w.status === "active" || w.status === "review",
         );
-        const highRisk = active.filter(
-            (e) => e.res.risk.term === "high",
-        ).length;
-        const avgRating = works.length
-            ? (
-                  enriched.reduce((a, e) => a + e.res.rating.value, 0) /
-                  works.length
-              ).toFixed(1)
-            : "0";
-        const avgProgress = works.length
-            ? Math.round(
-                  enriched.reduce((a, e) => a + e.progress, 0) / works.length,
-              )
-            : 0;
+        const pendingWorks = works.filter((w) => w.status === "pending");
+
+        const sizeKB = Storage.getSizeKB ? Storage.getSizeKB() : 0;
 
         return `
+      <!-- ============ KPI админа ============ -->
       <div class="grid grid-4">
         <div class="card kpi">
           <div class="kpi-num">${users.length}</div>
           <div class="kpi-lbl">Пользователей</div>
         </div>
         <div class="card kpi">
-          <div class="kpi-num">${works.length}</div>
-          <div class="kpi-lbl">Работ</div>
+          <div class="kpi-num" style="color:var(--info)">${activeWorks.length}</div>
+          <div class="kpi-lbl">Активных работ</div>
         </div>
         <div class="card kpi">
-          <div class="kpi-num" style="color:var(--bad)">${highRisk}</div>
-          <div class="kpi-lbl">Высокий риск</div>
+          <div class="kpi-num" style="color:var(--ok)">+${newUsersWeek.length}</div>
+          <div class="kpi-lbl">Новых за неделю</div>
         </div>
         <div class="card kpi">
-          <div class="kpi-num">${avgRating}</div>
-          <div class="kpi-lbl">Ср. рейтинг</div>
+          <div class="kpi-num" style="color:${blocked.length > 0 ? "var(--bad)" : "var(--txt-muted)"}">
+            ${blocked.length}
+          </div>
+          <div class="kpi-lbl">Заблокировано</div>
         </div>
       </div>
 
+      <!-- ============ Метрики ============ -->
       <div class="metric-grid mt-16">
         <div class="metric">
           <div class="metric-lbl">Студентов</div>
           <div class="metric-val">${students.length}</div>
+          <div class="metric-sub">${users.length ? Math.round((students.length / users.length) * 100) : 0}% от всех</div>
         </div>
         <div class="metric">
           <div class="metric-lbl">Преподавателей</div>
           <div class="metric-val">${teachers.length}</div>
+          <div class="metric-sub">${users.length ? Math.round((teachers.length / users.length) * 100) : 0}% от всех</div>
         </div>
         <div class="metric">
-          <div class="metric-lbl">Ср. прогресс</div>
-          <div class="metric-val">${avgProgress}%</div>
+          <div class="metric-lbl">Администраторов</div>
+          <div class="metric-val">${admins.length}</div>
+          <div class="metric-sub">управляющих системой</div>
         </div>
         <div class="metric">
-          <div class="metric-lbl">Активных работ</div>
-          <div class="metric-val">${active.length}</div>
+          <div class="metric-lbl">Размер БД</div>
+          <div class="metric-val">${sizeKB} <span style="font-size:14px;font-weight:400;color:var(--txt-muted);">КБ</span></div>
+          <div class="metric-sub">в localStorage</div>
         </div>
       </div>
 
+      <!-- ============ Графики ============ -->
       <div class="grid grid-3 mt-16">
         <div class="card">
           <div class="card-title">Риски</div>
@@ -217,6 +213,7 @@ const Admin = (() => {
         </div>
       </div>
 
+      <!-- ============ Быстрые действия ============ -->
       <div class="card mt-16">
         <div class="card-title">Быстрые действия</div>
         <div class="quick-actions">
@@ -248,37 +245,33 @@ const Admin = (() => {
         </div>
       </div>
 
-      ${
-          highRisk > 0
-              ? `
-        <div class="card mt-16">
+      <!-- ============ Нижний блок: активность + внимание ============ -->
+      <div class="grid grid-2 mt-16">
+        <div class="card">
           <div class="card-head">
-            <div class="card-title">Работы с высоким риском (${highRisk})</div>
-            <button class="btn-ghost btn-sm" onclick="App.navigate('works')">Все →</button>
+            <div class="card-title" style="margin-bottom:0;">
+              ${SVG.activity({ cls: "icon icon-sm" })}
+              Последние действия
+            </div>
+            <button class="btn-ghost btn-sm" onclick="App.navigate('audit')">
+              Все →
+            </button>
           </div>
-          ${enriched
-              .filter((e) => e.res.risk.term === "high")
-              .sort((a, b) => b.res.risk.value - a.res.risk.value)
-              .slice(0, 5)
-              .map(
-                  (e) => `
-              <div class="work-list-row">
-                <div>
-                  <div class="work-list-topic">${escapeHtml(e.w.topic)}</div>
-                  <div class="work-list-sub">${escapeHtml(userName(e.w.studentId))} · ${escapeHtml(userName(e.w.teacherId))}</div>
-                </div>
-                <div>${statusBadge(e.w.status)}</div>
-                <div style="font-size:12px;">${e.progress}%</div>
-                <div><span class="badge risk-high">риск ${e.res.risk.value.toFixed(0)}</span></div>
-                <div><button class="btn-ghost btn-sm" onclick="App.navigate('work-detail', {id: ${e.w.id}})">→</button></div>
-              </div>
-            `,
-              )
-              .join("")}
+          <div id="adminRecentAudit">
+            ${renderRecentAudit()}
+          </div>
         </div>
-      `
-              : ""
-      }
+
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title" style="margin-bottom:0;">
+              ${SVG.alertTriangle({ cls: "icon icon-sm" })}
+              Требуют внимания
+            </div>
+          </div>
+          ${renderNeedsAttention(users, works)}
+        </div>
+      </div>
     `;
     };
 
@@ -413,9 +406,9 @@ const Admin = (() => {
         return `
       <div class="user-row">
         <div class="user-avatar ${u.role}"
-          onclick="Admin.openUserProfile(${u.id})"
+          onclick="Admin.openUserProfile('${u.id}')"
           style="cursor:pointer;">${initials(u.fio)}</div>
-        <div onclick="Admin.openUserProfile(${u.id})" style="cursor:pointer;">
+        <div onclick="Admin.openUserProfile('${u.id}')" style="cursor:pointer;">
           <div class="user-name">${escapeHtml(u.fio)}${blocked}</div>
           <div class="user-email">${escapeHtml(u.email)}</div>
           <div class="user-extra">${extra}</div>
@@ -425,7 +418,7 @@ const Admin = (() => {
           ${
               isMe
                   ? '<span class="text-muted" style="font-size:11px;">это вы</span>'
-                  : `<button class="btn-ghost btn-sm" onclick="Admin.openEditUserModal(${u.id})">Изменить</button>`
+                  : `<button class="btn-ghost btn-sm" onclick="Admin.openEditUserModal('${u.id}')">Изменить</button>`
           }
         </div>
         <div style="display:flex;gap:4px;">
@@ -435,11 +428,11 @@ const Admin = (() => {
                   : `
             <button class="btn-icon"
               title="${u.blocked ? "Разблокировать" : "Заблокировать"}"
-              onclick="Admin.toggleBlock(${u.id})">
+              onclick="Admin.toggleBlock('${u.id}')">
               ${u.blocked ? SVG.unlock({ cls: "icon icon-sm" }) : SVG.lock({ cls: "icon icon-sm" })}
             </button>
             <button class="btn-icon danger" title="Удалить"
-              onclick="Admin.deleteUser(${u.id})">
+              onclick="Admin.deleteUser('${u.id}')">
               ${SVG.trash({ cls: "icon icon-sm" })}
             </button>
           `
@@ -618,12 +611,30 @@ const Admin = (() => {
             box.innerHTML = `
         <div class="section-label">Данные студента</div>
         <div class="row-2">
-          <div class="field"><label>Факультет</label><input type="text" id="cu_faculty" placeholder="ФИТ"></div>
-          <div class="field"><label>Группа</label><input type="text" id="cu_group" placeholder="ПИ-21-1"></div>
+          ${Auth.renderRefField({
+              id: "cu_faculty",
+              label: "Факультет",
+              refKey: "faculties",
+              required: false,
+              placeholder: "ФИТ",
+          })}
+          ${Auth.renderRefField({
+              id: "cu_group",
+              label: "Группа",
+              refKey: "groups",
+              required: false,
+              placeholder: "ПИ-21-1",
+          })}
         </div>
         <div class="row-2">
           <div class="field"><label>Курс</label><input type="number" id="cu_course" min="1" max="6" value="1"></div>
-          <div class="field"><label>Направление</label><input type="text" id="cu_direction" placeholder="Программная инженерия"></div>
+          ${Auth.renderRefField({
+              id: "cu_direction",
+              label: "Направление",
+              refKey: "directions",
+              required: false,
+              placeholder: "Программная инженерия",
+          })}
         </div>
         <div class="field"><label>Номер зачётки</label><input type="text" id="cu_recordBook" placeholder="21-1234"></div>
       `;
@@ -631,7 +642,13 @@ const Admin = (() => {
             box.innerHTML = `
         <div class="section-label">Данные преподавателя</div>
         <div class="row-2">
-          <div class="field"><label>Кафедра</label><input type="text" id="cu_department" placeholder="Кафедра ИС"></div>
+          ${Auth.renderRefField({
+              id: "cu_department",
+              label: "Кафедра",
+              refKey: "departments",
+              required: false,
+              placeholder: "Кафедра ИС",
+          })}
           <div class="field"><label>Должность</label><input type="text" id="cu_position" placeholder="Доцент"></div>
         </div>
         <div class="row-2">
@@ -644,7 +661,13 @@ const Admin = (() => {
             box.innerHTML = `
         <div class="section-label">Данные администратора</div>
         <div class="row-2">
-          <div class="field"><label>Подразделение</label><input type="text" id="cu_department" placeholder="Кафедра ИС"></div>
+          ${Auth.renderRefField({
+              id: "cu_department",
+              label: "Подразделение",
+              refKey: "departments",
+              required: false,
+              placeholder: "Кафедра ИС",
+          })}
           <div class="field"><label>Должность</label><input type="text" id="cu_position" placeholder="Заведующий"></div>
         </div>
         <div class="field"><label>Уровень доступа</label>
@@ -657,7 +680,6 @@ const Admin = (() => {
       `;
         }
     }
-
     function createUser() {
         const fio = document.getElementById("cu_fio")?.value.trim() || "";
         const email =
@@ -686,18 +708,14 @@ const Admin = (() => {
 
         const roleData = {};
         if (createRole === "student") {
-            roleData.faculty =
-                document.getElementById("cu_faculty")?.value.trim() || "";
-            roleData.group =
-                document.getElementById("cu_group")?.value.trim() || "";
+            roleData.faculty = Auth.getRefValue("cu_faculty");
+            roleData.group = Auth.getRefValue("cu_group");
             roleData.course = +document.getElementById("cu_course")?.value || 1;
-            roleData.direction =
-                document.getElementById("cu_direction")?.value.trim() || "";
+            roleData.direction = Auth.getRefValue("cu_direction");
             roleData.recordBook =
                 document.getElementById("cu_recordBook")?.value.trim() || "";
         } else if (createRole === "teacher") {
-            roleData.department =
-                document.getElementById("cu_department")?.value.trim() || "";
+            roleData.department = Auth.getRefValue("cu_department");
             roleData.position =
                 document.getElementById("cu_position")?.value.trim() || "";
             roleData.degree =
@@ -707,8 +725,7 @@ const Admin = (() => {
             roleData.interests =
                 document.getElementById("cu_interests")?.value.trim() || "";
         } else {
-            roleData.department =
-                document.getElementById("cu_department")?.value.trim() || "";
+            roleData.department = Auth.getRefValue("cu_department");
             roleData.position =
                 document.getElementById("cu_position")?.value.trim() || "";
             roleData.accessLevel =
@@ -781,24 +798,84 @@ const Admin = (() => {
 
           <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
             <button class="btn-ghost" onclick="Admin.closeModal()">Отмена</button>
-            <button class="btn-primary" onclick="Admin.saveUser(${u.id})">Сохранить</button>
+            <button class="btn-primary" onclick="Admin.saveUser('${u.id}')">Сохранить</button>
           </div>
         </div>
       </div>
     `;
         App.openModal(html);
+        setTimeout(() => {
+            ["eu_faculty", "eu_group", "eu_direction", "eu_department"].forEach(
+                (id) => {
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    const cur = el.dataset.current;
+                    if (!cur) return;
+                    if (el.tagName === "SELECT") {
+                        // Проверим, есть ли такое значение среди опций
+                        const hasOpt = Array.from(el.options).some(
+                            (o) => o.value === cur,
+                        );
+                        if (hasOpt) {
+                            el.value = cur;
+                        } else {
+                            // Не нашли — переключаем на «+ Другое...» и заполняем input
+                            el.value = "__custom__";
+                            const custom = document.getElementById(
+                                id + "_custom",
+                            );
+                            if (custom) {
+                                custom.style.display = "block";
+                                custom.value = cur;
+                            }
+                        }
+                    } else {
+                        el.value = cur;
+                    }
+                },
+            );
+        }, 0);
     }
 
     function renderExtraFieldsForEdit(u) {
+        const escapeHtml = Utils.escapeHtml;
+
         if (u.role === "student") {
             return `
         <div class="row-2">
-          <div class="field"><label>Факультет</label><input type="text" id="eu_faculty" value="${escapeHtml(u.faculty || "")}"></div>
-          <div class="field"><label>Группа</label><input type="text" id="eu_group" value="${escapeHtml(u.group || "")}"></div>
+          ${Auth.renderRefField({
+              id: "eu_faculty",
+              label: "Факультет",
+              refKey: "faculties",
+              required: false,
+              placeholder: "ФИТ",
+          }).replace(
+              'id="eu_faculty"',
+              `id="eu_faculty" data-current="${escapeHtml(u.faculty || "")}"`,
+          )}
+          ${Auth.renderRefField({
+              id: "eu_group",
+              label: "Группа",
+              refKey: "groups",
+              required: false,
+              placeholder: "ПИ-21-1",
+          }).replace(
+              'id="eu_group"',
+              `id="eu_group" data-current="${escapeHtml(u.group || "")}"`,
+          )}
         </div>
         <div class="row-2">
           <div class="field"><label>Курс</label><input type="number" id="eu_course" value="${u.course || 1}" min="1" max="6"></div>
-          <div class="field"><label>Направление</label><input type="text" id="eu_direction" value="${escapeHtml(u.direction || "")}"></div>
+          ${Auth.renderRefField({
+              id: "eu_direction",
+              label: "Направление",
+              refKey: "directions",
+              required: false,
+              placeholder: "Программная инженерия",
+          }).replace(
+              'id="eu_direction"',
+              `id="eu_direction" data-current="${escapeHtml(u.direction || "")}"`,
+          )}
         </div>
         <div class="field"><label>Номер зачётки</label><input type="text" id="eu_recordBook" value="${escapeHtml(u.recordBook || "")}"></div>
       `;
@@ -806,7 +883,16 @@ const Admin = (() => {
         if (u.role === "teacher") {
             return `
         <div class="row-2">
-          <div class="field"><label>Кафедра</label><input type="text" id="eu_department" value="${escapeHtml(u.department || "")}"></div>
+          ${Auth.renderRefField({
+              id: "eu_department",
+              label: "Кафедра",
+              refKey: "departments",
+              required: false,
+              placeholder: "Кафедра ИС",
+          }).replace(
+              'id="eu_department"',
+              `id="eu_department" data-current="${escapeHtml(u.department || "")}"`,
+          )}
           <div class="field"><label>Должность</label><input type="text" id="eu_position" value="${escapeHtml(u.position || "")}"></div>
         </div>
         <div class="row-2">
@@ -818,7 +904,16 @@ const Admin = (() => {
         }
         return `
       <div class="row-2">
-        <div class="field"><label>Подразделение</label><input type="text" id="eu_department" value="${escapeHtml(u.department || "")}"></div>
+        ${Auth.renderRefField({
+            id: "eu_department",
+            label: "Подразделение",
+            refKey: "departments",
+            required: false,
+            placeholder: "Кафедра ИС",
+        }).replace(
+            'id="eu_department"',
+            `id="eu_department" data-current="${escapeHtml(u.department || "")}"`,
+        )}
         <div class="field"><label>Должность</label><input type="text" id="eu_position" value="${escapeHtml(u.position || "")}"></div>
       </div>
       <div class="field"><label>Уровень доступа</label>
@@ -853,17 +948,14 @@ const Admin = (() => {
         if (pass) u.pass = hashPass(pass);
 
         if (u.role === "student") {
-            u.faculty =
-                document.getElementById("eu_faculty")?.value.trim() || "";
-            u.group = document.getElementById("eu_group")?.value.trim() || "";
+            u.faculty = Auth.getRefValue("eu_faculty");
+            u.group = Auth.getRefValue("eu_group");
             u.course = +document.getElementById("eu_course")?.value || 1;
-            u.direction =
-                document.getElementById("eu_direction")?.value.trim() || "";
+            u.direction = Auth.getRefValue("eu_direction");
             u.recordBook =
                 document.getElementById("eu_recordBook")?.value.trim() || "";
         } else if (u.role === "teacher") {
-            u.department =
-                document.getElementById("eu_department")?.value.trim() || "";
+            u.department = Auth.getRefValue("eu_department");
             u.position =
                 document.getElementById("eu_position")?.value.trim() || "";
             u.degree = document.getElementById("eu_degree")?.value.trim() || "";
@@ -871,8 +963,7 @@ const Admin = (() => {
             u.interests =
                 document.getElementById("eu_interests")?.value.trim() || "";
         } else {
-            u.department =
-                document.getElementById("eu_department")?.value.trim() || "";
+            u.department = Auth.getRefValue("eu_department");
             u.position =
                 document.getElementById("eu_position")?.value.trim() || "";
             u.accessLevel =
@@ -970,10 +1061,10 @@ const Admin = (() => {
         <div style="font-size:12px;">${progress}%</div>
         <div><span class="badge risk-${riskTerm}">риск ${riskValue}</span></div>
         <div style="display:flex;gap:4px;">
-          <button class="btn-icon" onclick="App.navigate('work-detail', {id: ${w.id}})">
+          <button class="btn-icon" onclick="App.navigate('work-detail', {id: '${w.id}'})">
             ${SVG.eye({ cls: "icon icon-sm" })}
           </button>
-          <button class="btn-icon danger" onclick="Admin.deleteWork(${w.id})">
+          <button class="btn-icon danger" onclick="Admin.deleteWork('${w.id}')">
             ${SVG.trash({ cls: "icon icon-sm" })}
           </button>
         </div>
@@ -1144,14 +1235,14 @@ const Admin = (() => {
                 (r) => `
           <div class="rule-box ${r.enabled ? "" : "off"}">
             <input type="checkbox" ${r.enabled ? "checked" : ""}
-              onchange="Admin.toggleRule(${r.id}, this.checked)">
+              onchange="Admin.toggleRule('${r.id}', this.checked)">
             <div style="flex:1;">
               <div class="rule-if">ЕСЛИ ${escapeHtml(r.if.join(" И "))}</div>
               <div class="rule-then">ТО ${escapeHtml(r.then)}</div>
               <input type="text" class="rule-desc" value="${escapeHtml(r.desc)}"
-                onchange="Admin.updateRuleDesc(${r.id}, this.value)">
+                onchange="Admin.updateRuleDesc('${r.id}', this.value)">
             </div>
-            <button class="btn-icon danger" onclick="Admin.deleteRule(${r.id})">
+            <button class="btn-icon danger" onclick="Admin.deleteRule('${r.id}')">
               ${SVG.trash({ cls: "icon icon-sm" })}
             </button>
           </div>
@@ -1197,20 +1288,421 @@ const Admin = (() => {
     }
 
     VIEWS.analytics = function () {
+        const filtered = getFilteredWorksForAnalytics();
+        const metrics = calcAnalyticsMetrics(filtered);
+        const teachers = Storage.getUsers().filter((u) => u.role === "teacher");
+
         return `
-      <div class="grid grid-2">
-        <div class="card">
-          <div class="card-title">Риски по работам</div>
-          <div class="chart-wrap-lg"><canvas id="adminChartDept"></canvas></div>
+      ${renderAnalyticsHero(metrics)}
+      ${renderAnalyticsKpi(metrics)}
+      ${renderAnalyticsFilters(teachers)}
+      ${metrics.total === 0 ? renderAnalyticsEmpty() : ""}
+      ${
+          metrics.total > 0
+              ? `
+        ${renderAnalyticsCharts()}
+        ${renderAnalyticsBars(metrics)}
+        ${renderAnalyticsTops(metrics)}
+        ${renderAnalyticsTables(metrics)}
+      `
+              : ""
+      }
+      ${renderAnalyticsExport()}
+    `;
+    };
+
+    /* ---------- HERO ---------- */
+    function renderAnalyticsHero(m) {
+        return `
+      <div class="mf-hero" style="margin-bottom:20px;">
+        <div class="mf-hero-icon">
+          ${SVG.trending({ cls: "icon icon-xl" })}
         </div>
-        <div class="card">
-          <div class="card-title">Нагрузка на руководителей</div>
-          <div class="chart-wrap-lg"><canvas id="adminChartLoad"></canvas></div>
+        <div class="mf-hero-body">
+          <div class="mf-hero-title">Аналитика по работам</div>
+          <div class="mf-hero-text">
+            Полная картина по всем курсовым и дипломным работам:
+            <b>риски, прогресс, нагрузка на преподавателей</b>.
+            Фильтруйте данные по статусу, типу или руководителю.
+          </div>
         </div>
       </div>
+    `;
+    }
 
-      <div class="card mt-16">
-        <div class="card-title">Экспорт и отчёты</div>
+    /* ---------- KPI ---------- */
+    function renderAnalyticsKpi(m) {
+        const riskColor =
+            m.avgRisk < 40 ? "ok" : m.avgRisk < 65 ? "warn" : "bad";
+        const progressColor =
+            m.avgProgress < 40 ? "bad" : m.avgProgress < 70 ? "warn" : "ok";
+
+        return `
+      <div class="metric-grid" style="margin-bottom:20px;">
+        <div class="metric">
+          <div class="metric-lbl">Всего работ</div>
+          <div class="metric-val">${m.total}</div>
+          <div class="metric-sub">в выборке</div>
+        </div>
+        <div class="metric">
+          <div class="metric-lbl">Активных</div>
+          <div class="metric-val" style="color:var(--info)">${m.active}</div>
+          <div class="metric-sub">в работе / на проверке</div>
+        </div>
+        <div class="metric">
+          <div class="metric-lbl">Высокий риск</div>
+          <div class="metric-val" style="color:var(--bad)">${m.highRisk}</div>
+          <div class="metric-sub">${m.total ? Math.round((m.highRisk / m.total) * 100) : 0}% от всех</div>
+        </div>
+        <div class="metric">
+          <div class="metric-lbl">Ср. прогресс</div>
+          <div class="metric-val" style="color:var(--${progressColor})">${m.avgProgress}%</div>
+          <div class="metric-sub">по всем работам</div>
+        </div>
+        <div class="metric">
+          <div class="metric-lbl">Ср. риск</div>
+          <div class="metric-val" style="color:var(--${riskColor})">${m.avgRisk}</div>
+          <div class="metric-sub">${Fuzzy.termLabel(Fuzzy.classify(m.avgRisk), "risk")}</div>
+        </div>
+        <div class="metric">
+          <div class="metric-lbl">Ср. рейтинг</div>
+          <div class="metric-val" style="color:var(--accent-viz)">${m.avgRating}</div>
+          <div class="metric-sub">интегральный</div>
+        </div>
+      </div>
+    `;
+    }
+
+    /* ---------- ФИЛЬТРЫ ---------- */
+    function renderAnalyticsFilters(teachers) {
+        const hasFilter =
+            analyticsFilter.status ||
+            analyticsFilter.type ||
+            analyticsFilter.teacherId;
+
+        return `
+      <div class="card" style="margin-bottom:20px;">
+        <div class="card-head" style="margin-bottom:14px;">
+          <div class="card-title" style="margin-bottom:0;">Фильтры</div>
+          ${
+              hasFilter
+                  ? `
+            <button class="btn-ghost btn-sm" onclick="Admin.resetAnalyticsFilter()">
+              ${SVG.x({ cls: "icon icon-xs" })}
+              <span>Сбросить</span>
+            </button>
+          `
+                  : ""
+          }
+        </div>
+        <div class="admin-filters" style="margin-bottom:0;">
+          <select onchange="Admin.setAnalyticsFilter('status', this.value)">
+            <option value="">Все статусы</option>
+            ${Object.entries(Utils.WORK_STATUSES)
+                .map(
+                    ([k, v]) =>
+                        `<option value="${k}" ${analyticsFilter.status === k ? "selected" : ""}>${v.label}</option>`,
+                )
+                .join("")}
+          </select>
+          <select onchange="Admin.setAnalyticsFilter('type', this.value)">
+            <option value="">Все типы</option>
+            ${Object.entries(Utils.WORK_TYPES)
+                .map(
+                    ([k, v]) =>
+                        `<option value="${k}" ${analyticsFilter.type === k ? "selected" : ""}>${v.title}</option>`,
+                )
+                .join("")}
+          </select>
+          <select onchange="Admin.setAnalyticsFilter('teacherId', this.value)">
+            <option value="">Все преподаватели</option>
+            ${teachers
+                .map(
+                    (t) =>
+                        `<option value="${t.id}" ${Storage.sameId(analyticsFilter.teacherId, t.id) ? "selected" : ""}>${escapeHtml(t.fio)}</option>`,
+                )
+                .join("")}
+          </select>
+        </div>
+      </div>
+    `;
+    }
+
+    /* ---------- ПУСТОЕ СОСТОЯНИЕ ---------- */
+    function renderAnalyticsEmpty() {
+        const hasFilter =
+            analyticsFilter.status ||
+            analyticsFilter.type ||
+            analyticsFilter.teacherId;
+
+        return `
+      <div class="card" style="padding:40px 24px;text-align:center;">
+        <div style="font-size:40px;opacity:0.4;margin-bottom:16px;">
+          ${SVG.trending({ cls: "icon icon-2xl" })}
+        </div>
+        <div style="font-size:16px;font-weight:600;margin-bottom:8px;">
+          ${hasFilter ? "Нет данных по выбранным фильтрам" : "Работ пока нет"}
+        </div>
+        <div style="font-size:13px;color:var(--txt-muted);margin-bottom:16px;">
+          ${hasFilter ? "Попробуйте сбросить фильтры" : "Создайте или загрузите демо-данные"}
+        </div>
+        ${
+            hasFilter
+                ? `<button class="btn-ghost" onclick="Admin.resetAnalyticsFilter()">Сбросить фильтры</button>`
+                : ""
+        }
+      </div>
+    `;
+    }
+
+    /* ---------- 4 ДИАГРАММЫ ---------- */
+    function renderAnalyticsCharts() {
+        return `
+      <div class="grid grid-2" style="margin-bottom:20px;">
+        <div class="card">
+          <div class="card-title">Распределение по рискам</div>
+          <div class="chart-box h-220"><canvas id="anChartRisk"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Распределение по статусам</div>
+          <div class="chart-box h-220"><canvas id="anChartStatus"></canvas></div>
+        </div>
+      </div>
+      <div class="grid grid-2" style="margin-bottom:20px;">
+        <div class="card">
+          <div class="card-title">Типы работ</div>
+          <div class="chart-box h-220"><canvas id="anChartType"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Готовность к защите</div>
+          <div class="chart-box h-220"><canvas id="anChartReady"></canvas></div>
+        </div>
+      </div>
+    `;
+    }
+
+    /* ---------- 2 ГОРИЗОНТАЛЬНЫХ БАРА ---------- */
+    function renderAnalyticsBars(m) {
+        return `
+      <div class="grid grid-2" style="margin-bottom:20px;">
+        <div class="card">
+          <div class="card-title">Нагрузка на преподавателей (Топ-10)</div>
+          <div class="chart-box h-300"><canvas id="anChartLoad"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Средний прогресс по группам</div>
+          <div class="chart-box h-300"><canvas id="anChartGroups"></canvas></div>
+        </div>
+      </div>
+    `;
+    }
+
+    /* ---------- ТОПЫ ---------- */
+    function renderAnalyticsTops(m) {
+        const highRisk = [...m.enriched]
+            .filter((e) => e.res.risk.term === "high" || e.res.risk.value > 50)
+            .sort((a, b) => b.res.risk.value - a.res.risk.value)
+            .slice(0, 5);
+
+        const topProgress = [...m.enriched]
+            .sort((a, b) => b.progress - a.progress)
+            .slice(0, 5);
+
+        return `
+      <div class="grid grid-2" style="margin-bottom:20px;">
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title" style="margin-bottom:0;">
+              ${SVG.alertTriangle({ cls: "icon icon-sm" })}
+              Требуют внимания
+            </div>
+            <span class="count-chip">${highRisk.length}</span>
+          </div>
+          ${
+              highRisk.length === 0
+                  ? '<div class="empty" style="padding:20px;">Нет работ с высоким риском</div>'
+                  : highRisk
+                        .map(
+                            (e) => `
+            <div class="mini-project" onclick="App.navigate('work-detail', {id: '${e.w.id}'})">
+              <div style="flex:1;min-width:0;">
+                <div class="mini-project-title" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                  ${escapeHtml(e.w.topic)}
+                </div>
+                <div class="mini-project-sub">
+                  ${escapeHtml(e.student?.fio || "—")}
+                  · рук. ${escapeHtml(e.teacher?.fio?.split(" ")[0] || "—")}
+                </div>
+              </div>
+              <div style="text-align:right;flex-shrink:0;">
+                <div style="font-size:14px;font-weight:600;color:var(--bad);">
+                  ${e.res.risk.value.toFixed(0)}
+                </div>
+                <div style="font-size:11px;color:var(--txt-muted);">риск</div>
+              </div>
+            </div>
+          `,
+                        )
+                        .join("")
+          }
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title" style="margin-bottom:0;">
+              ${SVG.award({ cls: "icon icon-sm" })}
+              Лучший прогресс
+            </div>
+            <span class="count-chip">${topProgress.length}</span>
+          </div>
+          ${
+              topProgress.length === 0
+                  ? '<div class="empty" style="padding:20px;">Нет данных</div>'
+                  : topProgress
+                        .map(
+                            (e) => `
+            <div class="mini-project" onclick="App.navigate('work-detail', {id: '${e.w.id}'})">
+              <div style="flex:1;min-width:0;">
+                <div class="mini-project-title" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                  ${escapeHtml(e.w.topic)}
+                </div>
+                <div class="mini-project-sub">
+                  ${escapeHtml(e.student?.fio || "—")}
+                  · рук. ${escapeHtml(e.teacher?.fio?.split(" ")[0] || "—")}
+                </div>
+              </div>
+              <div style="text-align:right;flex-shrink:0;">
+                <div style="font-size:14px;font-weight:600;color:var(--ok);">
+                  ${e.progress}%
+                </div>
+                <div style="font-size:11px;color:var(--txt-muted);">прогресс</div>
+              </div>
+            </div>
+          `,
+                        )
+                        .join("")
+          }
+        </div>
+      </div>
+    `;
+    }
+
+    /* ---------- ТАБЛИЦЫ ---------- */
+    function renderAnalyticsTables(m) {
+        const groups = groupAnalyticsByStudentGroup(m.enriched);
+        const teachers = groupAnalyticsByTeacher(m.enriched);
+
+        return `
+      <div class="grid grid-2" style="margin-bottom:20px;">
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title" style="margin-bottom:0;">Сводка по группам</div>
+            <span class="count-chip">${groups.length}</span>
+          </div>
+          ${
+              groups.length === 0
+                  ? '<div class="empty" style="padding:20px;">Нет данных о группах</div>'
+                  : `
+            <div style="overflow-x:auto;">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Группа</th>
+                    <th style="text-align:right;">Работ</th>
+                    <th style="text-align:right;">Ср. прогресс</th>
+                    <th style="text-align:right;">Ср. риск</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${groups
+                      .map(
+                          (g) => `
+                    <tr>
+                      <td><b>${escapeHtml(g.name)}</b></td>
+                      <td style="text-align:right;">${g.count}</td>
+                      <td style="text-align:right;">
+                        <span style="color:var(--${Utils.progressClass(g.avgProgress)});font-weight:600;">
+                          ${g.avgProgress}%
+                        </span>
+                      </td>
+                      <td style="text-align:right;">
+                        <span style="color:var(--${Utils.riskClass(Fuzzy.classify(g.avgRisk))});font-weight:600;">
+                          ${g.avgRisk}
+                        </span>
+                      </td>
+                    </tr>
+                  `,
+                      )
+                      .join("")}
+                </tbody>
+              </table>
+            </div>
+          `
+          }
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title" style="margin-bottom:0;">Сводка по преподавателям</div>
+            <span class="count-chip">${teachers.length}</span>
+          </div>
+          ${
+              teachers.length === 0
+                  ? '<div class="empty" style="padding:20px;">Нет данных</div>'
+                  : `
+            <div style="overflow-x:auto;">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Преподаватель</th>
+                    <th style="text-align:right;">Работ</th>
+                    <th style="text-align:right;">Ср. прогресс</th>
+                    <th style="text-align:right;">Ср. риск</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${teachers
+                      .map(
+                          (t) => `
+                    <tr>
+                      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                        <b>${escapeHtml(t.name)}</b>
+                      </td>
+                      <td style="text-align:right;">${t.count}</td>
+                      <td style="text-align:right;">
+                        <span style="color:var(--${Utils.progressClass(t.avgProgress)});font-weight:600;">
+                          ${t.avgProgress}%
+                        </span>
+                      </td>
+                      <td style="text-align:right;">
+                        <span style="color:var(--${Utils.riskClass(Fuzzy.classify(t.avgRisk))});font-weight:600;">
+                          ${t.avgRisk}
+                        </span>
+                      </td>
+                    </tr>
+                  `,
+                      )
+                      .join("")}
+                </tbody>
+              </table>
+            </div>
+          `
+          }
+        </div>
+      </div>
+    `;
+    }
+
+    /* ---------- ЭКСПОРТ ---------- */
+    function renderAnalyticsExport() {
+        return `
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title" style="margin-bottom:0;">
+            ${SVG.download({ cls: "icon icon-sm" })}
+            Экспорт и отчёты
+          </div>
+        </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
           <button class="btn-primary" onclick="Admin.exportWorksCSV()">
             ${SVG.download({ cls: "icon icon-sm" })}
@@ -1228,85 +1720,239 @@ const Admin = (() => {
         <div id="reportBox" style="margin-top:16px;"></div>
       </div>
     `;
-    };
+    }
 
     VIEWS.analytics_after = function () {
         if (!Charts.hasChart()) return;
 
-        const works = Storage.getWorks()
-            .map((w) => ({
-                w,
-                res: getFuzzyResult(w),
-            }))
-            .filter((e) => e.res);
+        const filtered = getFilteredWorksForAnalytics();
+        const metrics = calcAnalyticsMetrics(filtered);
+        if (metrics.total === 0) return;
+
+        const { enriched } = metrics;
+
+        /* ---------- 1. Риски (doughnut) ---------- */
+        const riskLow = enriched.filter(
+            (e) => e.res.risk.term === "low",
+        ).length;
+        const riskMed = enriched.filter(
+            (e) => e.res.risk.term === "med",
+        ).length;
+        const riskHigh = enriched.filter(
+            (e) => e.res.risk.term === "high",
+        ).length;
+
+        Charts.doughnut(
+            "anChartRisk",
+            ["Низкий", "Средний", "Высокий"],
+            [riskLow, riskMed, riskHigh],
+            [Charts.COLORS.ok, Charts.COLORS.warn, Charts.COLORS.bad],
+        );
+
+        /* ---------- 2. Статусы (doughnut) ---------- */
+        const statusLabels = {
+            draft: "Черновик",
+            pending: "На утверждении",
+            active: "В работе",
+            review: "На проверке",
+            approved: "Допущена",
+            done: "Защищена",
+            rejected: "Отклонена",
+        };
+        const statusCounts = {};
+        enriched.forEach((e) => {
+            statusCounts[e.w.status] = (statusCounts[e.w.status] || 0) + 1;
+        });
+        const statusKeys = Object.keys(statusCounts);
+
+        Charts.doughnut(
+            "anChartStatus",
+            statusKeys.map((k) => statusLabels[k] || k),
+            statusKeys.map((k) => statusCounts[k]),
+            [
+                "#94a3b8", // draft — серый
+                Charts.COLORS.warn,
+                Charts.COLORS.info,
+                Charts.COLORS.purple,
+                Charts.COLORS.ok,
+                "#16a34a",
+                Charts.COLORS.bad,
+            ],
+        );
+
+        /* ---------- 3. Типы работ (doughnut) ---------- */
+        const typeCounts = {};
+        enriched.forEach((e) => {
+            typeCounts[e.w.type] = (typeCounts[e.w.type] || 0) + 1;
+        });
+        const typeKeys = Object.keys(typeCounts);
+
+        Charts.doughnut(
+            "anChartType",
+            typeKeys.map((k) => Utils.workTypeLabel(k)),
+            typeKeys.map((k) => typeCounts[k]),
+            [
+                Charts.COLORS.accent,
+                Charts.COLORS.purple,
+                Charts.COLORS.info,
+                "#0ea5e9",
+            ],
+        );
+
+        /* ---------- 4. Готовность (doughnut) ---------- */
+        const readyLow = enriched.filter(
+            (e) => e.res.ready.term === "low",
+        ).length;
+        const readyMed = enriched.filter(
+            (e) => e.res.ready.term === "med",
+        ).length;
+        const readyHigh = enriched.filter(
+            (e) => e.res.ready.term === "high",
+        ).length;
+
+        Charts.doughnut(
+            "anChartReady",
+            ["Низкая", "Средняя", "Высокая"],
+            [readyLow, readyMed, readyHigh],
+            [Charts.COLORS.bad, Charts.COLORS.warn, Charts.COLORS.ok],
+        );
+
+        /* ---------- 5. Нагрузка преподавателей (horizontal bar, Топ-10) ---------- */
+        const teacherLoad = groupAnalyticsByTeacher(enriched).slice(0, 10);
 
         Charts.bar(
-            "adminChartDept",
-            works.map(
-                (e) =>
-                    e.w.topic.slice(0, 22) + (e.w.topic.length > 22 ? "…" : ""),
-            ),
-            works.map((e) => e.res.risk.value),
-            works.map((e) =>
-                e.res.risk.term === "high"
+            "anChartLoad",
+            teacherLoad.map((t) => {
+                const parts = t.name.split(" ");
+                return parts[0] + (parts[1] ? " " + parts[1][0] + "." : "");
+            }),
+            teacherLoad.map((t) => t.count),
+            teacherLoad.map((t) =>
+                t.count > 15
                     ? Charts.COLORS.bad
-                    : e.res.risk.term === "med"
+                    : t.count > 8
                       ? Charts.COLORS.warn
                       : Charts.COLORS.ok,
             ),
-            { label: "Риск", horizontal: true, max: 100 },
+            { label: "Работ", horizontal: true },
         );
 
-        const supLoad = {};
-        Storage.getWorks().forEach((w) => {
-            const t = userName(w.teacherId);
-            supLoad[t] = (supLoad[t] || 0) + 1;
-        });
+        /* ---------- 6. Прогресс по группам (horizontal bar) ---------- */
+        const groupProgress = groupAnalyticsByStudentGroup(enriched);
 
-        Charts.polar(
-            "adminChartLoad",
-            Object.keys(supLoad),
-            Object.values(supLoad),
-        );
+        if (groupProgress.length > 0) {
+            Charts.bar(
+                "anChartGroups",
+                groupProgress.map((g) => g.name),
+                groupProgress.map((g) => g.avgProgress),
+                groupProgress.map((g) =>
+                    g.avgProgress < 40
+                        ? Charts.COLORS.bad
+                        : g.avgProgress < 70
+                          ? Charts.COLORS.warn
+                          : Charts.COLORS.ok,
+                ),
+                { label: "Ср. прогресс, %", horizontal: true, max: 100 },
+            );
+        }
     };
 
     function generateReport() {
-        const works = Storage.getWorks();
-        const enriched = works
-            .map((w) => ({ w, res: getFuzzyResult(w) }))
-            .filter((e) => e.res);
-        const high = enriched.filter((e) => e.res.risk.term === "high");
-
+        const filtered = getFilteredWorksForAnalytics();
+        const m = calcAnalyticsMetrics(filtered);
         const box = document.getElementById("reportBox");
         if (!box) return;
 
+        const high = m.enriched
+            .filter((e) => e.res.risk.term === "high")
+            .sort((a, b) => b.res.risk.value - a.res.risk.value);
+
+        const groups = groupAnalyticsByStudentGroup(m.enriched);
+        const teachers = groupAnalyticsByTeacher(m.enriched);
+
+        const filterDesc = [];
+        if (analyticsFilter.status)
+            filterDesc.push(
+                `статус: ${Utils.WORK_STATUSES[analyticsFilter.status]?.label || analyticsFilter.status}`,
+            );
+        if (analyticsFilter.type)
+            filterDesc.push(
+                `тип: ${Utils.workTypeLabel(analyticsFilter.type)}`,
+            );
+        if (analyticsFilter.teacherId) {
+            const t = Storage.getUserById(analyticsFilter.teacherId);
+            filterDesc.push(`руководитель: ${t?.fio || "—"}`);
+        }
+
         box.innerHTML = `
-      <div style="background:var(--bg-soft);padding:18px;border-radius:10px;font-size:13px;line-height:1.8;">
-        <h4 style="margin-bottom:10px;">Сводный отчёт кафедры</h4>
-        <p><b>Дата:</b> ${new Date().toLocaleDateString("ru-RU")}</p>
-        <p><b>Всего работ:</b> ${works.length}</p>
-        <p><b>В зоне высокого риска:</b> ${high.length}</p>
-        <p><b>Средний рейтинг:</b> ${
-            works.length
-                ? (
-                      enriched.reduce((a, e) => a + e.res.rating.value, 0) /
-                      works.length
-                  ).toFixed(1)
-                : "0"
-        }</p>
-        <p style="margin-top:10px;"><b>Требуют внимания:</b></p>
-        <ul style="margin-left:20px;">
-          ${
-              high.length
-                  ? high
-                        .map(
-                            (e) =>
-                                `<li>${escapeHtml(userName(e.w.studentId))} — «${escapeHtml(e.w.topic)}» (риск ${e.res.risk.value.toFixed(1)})</li>`,
-                        )
-                        .join("")
-                  : "<li>нет</li>"
-          }
-        </ul>
+      <div style="background:var(--bg-soft);padding:20px;border-radius:10px;font-size:13px;line-height:1.7;">
+        <h4 style="margin-bottom:14px;font-size:15px;">Сводный отчёт</h4>
+
+        <p style="color:var(--txt-muted);margin-bottom:12px;">
+          <b>Дата:</b> ${new Date().toLocaleString("ru-RU")}<br>
+          ${filterDesc.length ? `<b>Фильтры:</b> ${filterDesc.join(", ")}` : "<b>Фильтры:</b> нет (все работы)"}
+        </p>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px;">
+          <div><b>Всего работ:</b> ${m.total}</div>
+          <div><b>Активных:</b> ${m.active}</div>
+          <div><b>Высокий риск:</b> <span style="color:var(--bad)">${m.highRisk}</span></div>
+          <div><b>Ср. прогресс:</b> ${m.avgProgress}%</div>
+          <div><b>Ср. риск:</b> ${m.avgRisk}</div>
+          <div><b>Ср. рейтинг:</b> ${m.avgRating}</div>
+        </div>
+
+        ${
+            high.length
+                ? `
+          <p style="margin-top:14px;"><b>Требуют внимания (${high.length}):</b></p>
+          <ul style="margin-left:20px;margin-top:6px;">
+            ${high
+                .slice(0, 10)
+                .map(
+                    (e) =>
+                        `<li>${escapeHtml(e.student?.fio || "—")} — «${escapeHtml(e.w.topic)}» (риск ${e.res.risk.value.toFixed(1)})</li>`,
+                )
+                .join("")}
+            ${high.length > 10 ? `<li style="color:var(--txt-muted);">... и ещё ${high.length - 10}</li>` : ""}
+          </ul>
+        `
+                : '<p style="color:var(--ok);margin-top:14px;">✓ Работ с высоким риском нет</p>'
+        }
+
+        ${
+            groups.length
+                ? `
+          <p style="margin-top:14px;"><b>По группам:</b></p>
+          <ul style="margin-left:20px;margin-top:6px;">
+            ${groups
+                .slice(0, 5)
+                .map(
+                    (g) =>
+                        `<li><b>${escapeHtml(g.name)}</b> — ${g.count} работ, ср. прогресс ${g.avgProgress}%, ср. риск ${g.avgRisk}</li>`,
+                )
+                .join("")}
+          </ul>
+        `
+                : ""
+        }
+
+        ${
+            teachers.length
+                ? `
+          <p style="margin-top:14px;"><b>По преподавателям (Топ-5 по нагрузке):</b></p>
+          <ul style="margin-left:20px;margin-top:6px;">
+            ${teachers
+                .slice(0, 5)
+                .map(
+                    (t) =>
+                        `<li><b>${escapeHtml(t.name)}</b> — ${t.count} работ, ср. прогресс ${t.avgProgress}%, ср. риск ${t.avgRisk}</li>`,
+                )
+                .join("")}
+          </ul>
+        `
+                : ""
+        }
       </div>
     `;
         App.toast("Отчёт сформирован");
@@ -1752,7 +2398,7 @@ const Admin = (() => {
                               ? res.risk.value.toFixed(0)
                               : "—";
                           return `
-                <div class="mini-project" onclick="App.navigate('work-detail', {id: ${w.id}})">
+                <div class="mini-project" onclick="App.navigate('work-detail', {id: '${w.id}'})">
                   <div>
                     <div class="mini-project-title">${escapeHtml(w.topic)}</div>
                     <div class="mini-project-sub">
@@ -1881,7 +2527,7 @@ const Admin = (() => {
                               ? res.risk.value.toFixed(0)
                               : "—";
                           return `
-                <div class="mini-project" onclick="App.navigate('work-detail', {id: ${w.id}})">
+                <div class="mini-project" onclick="App.navigate('work-detail', {id: '${w.id}'})">
                   <div>
                     <div class="mini-project-title">${escapeHtml(w.topic)}</div>
                     <div class="mini-project-sub">
@@ -1927,6 +2573,273 @@ const Admin = (() => {
         App.closeModal();
     }
 
+    function getFilteredWorksForAnalytics() {
+        let works = Storage.getWorks();
+        if (analyticsFilter.status)
+            works = works.filter((w) => w.status === analyticsFilter.status);
+        if (analyticsFilter.type)
+            works = works.filter((w) => w.type === analyticsFilter.type);
+        if (analyticsFilter.teacherId)
+            works = works.filter((w) =>
+                Storage.sameId(w.teacherId, analyticsFilter.teacherId),
+            );
+        return works;
+    }
+
+    function calcAnalyticsMetrics(works) {
+        const enriched = works
+            .map((w) => {
+                const res = Utils.safeFuzzyInfer(Utils.buildFuzzyInputs(w));
+                if (!res) return null;
+                return {
+                    w,
+                    res,
+                    progress: Utils.calcProgress(w.id),
+                    student: Storage.getUserById(w.studentId),
+                    teacher: Storage.getUserById(w.teacherId),
+                };
+            })
+            .filter(Boolean);
+
+        const total = enriched.length;
+        if (total === 0) {
+            return {
+                enriched: [],
+                total: 0,
+                active: 0,
+                highRisk: 0,
+                avgProgress: 0,
+                avgRisk: 0,
+                avgReady: 0,
+                avgRating: 0,
+            };
+        }
+
+        const active = enriched.filter(
+            (e) => e.w.status === "active" || e.w.status === "review",
+        ).length;
+
+        const highRisk = enriched.filter(
+            (e) => e.res.risk.term === "high",
+        ).length;
+
+        const avgProgress = Math.round(
+            enriched.reduce((a, e) => a + e.progress, 0) / total,
+        );
+        const avgRisk = Math.round(
+            enriched.reduce((a, e) => a + e.res.risk.value, 0) / total,
+        );
+        const avgReady = Math.round(
+            enriched.reduce((a, e) => a + e.res.ready.value, 0) / total,
+        );
+        const avgRating = Math.round(
+            enriched.reduce((a, e) => a + e.res.rating.value, 0) / total,
+        );
+
+        return {
+            enriched,
+            total,
+            active,
+            highRisk,
+            avgProgress,
+            avgRisk,
+            avgReady,
+            avgRating,
+        };
+    }
+
+    function groupAnalyticsByStudentGroup(enriched) {
+        const groups = {};
+        enriched.forEach((e) => {
+            const g = e.student?.group || "Не указана";
+            if (!groups[g]) {
+                groups[g] = {
+                    count: 0,
+                    sumProgress: 0,
+                    sumRisk: 0,
+                };
+            }
+            groups[g].count++;
+            groups[g].sumProgress += e.progress;
+            groups[g].sumRisk += e.res.risk.value;
+        });
+        return Object.entries(groups)
+            .map(([name, data]) => ({
+                name,
+                count: data.count,
+                avgProgress: Math.round(data.sumProgress / data.count),
+                avgRisk: Math.round(data.sumRisk / data.count),
+            }))
+            .sort((a, b) => b.avgProgress - a.avgProgress);
+    }
+
+    function groupAnalyticsByTeacher(enriched) {
+        const teachers = {};
+        enriched.forEach((e) => {
+            const id = e.teacher?.id || "unknown";
+            const name = e.teacher?.fio || "Неизвестный";
+            if (!teachers[id]) {
+                teachers[id] = { name, count: 0, sumProgress: 0, sumRisk: 0 };
+            }
+            teachers[id].count++;
+            teachers[id].sumProgress += e.progress;
+            teachers[id].sumRisk += e.res.risk.value;
+        });
+        return Object.values(teachers)
+            .map((t) => ({
+                name: t.name,
+                count: t.count,
+                avgProgress: Math.round(t.sumProgress / t.count),
+                avgRisk: Math.round(t.sumRisk / t.count),
+            }))
+            .sort((a, b) => b.count - a.count);
+    }
+
+    function setAnalyticsFilter(key, value) {
+        analyticsFilter[key] = value;
+        App.navigate("analytics");
+    }
+
+    function resetAnalyticsFilter() {
+        analyticsFilter = { status: "", type: "", teacherId: "" };
+        App.navigate("analytics");
+    }
+
+    function renderRecentAudit() {
+        if (typeof Audit === "undefined") {
+            return '<div class="empty" style="padding:20px;">Журнал недоступен</div>';
+        }
+
+        const items = Audit.getAll().slice(0, 7);
+
+        if (items.length === 0) {
+            return `
+        <div class="empty" style="padding:30px;">
+          ${SVG.log({ cls: "icon icon-2xl" })}
+          <div style="margin-top:8px;">Активности пока нет</div>
+        </div>
+      `;
+        }
+
+        return items
+            .map((e) => {
+                const roleLabel =
+                    e.userRole === "student"
+                        ? "Студент"
+                        : e.userRole === "teacher"
+                          ? "Преподаватель"
+                          : "Админ";
+
+                return `
+        <div class="audit-row" style="grid-template-columns: 90px 1fr auto; padding:10px 0;">
+          <div class="audit-time" style="font-size:10px;">
+            ${fmtDateTime(e.createdAt).slice(0, 10)}
+          </div>
+          <div>
+            <span class="audit-action ${e.type || "info"}" style="font-size:12px;">
+              ${escapeHtml(e.action || "—")}
+            </span>
+            ${
+                e.target
+                    ? `<span style="color:var(--txt-muted);font-size:11px;"> · ${escapeHtml(e.target.slice(0, 40))}${e.target.length > 40 ? "…" : ""}</span>`
+                    : ""
+            }
+          </div>
+          <div style="text-align:right;">
+            <span class="role-chip ${e.userRole}" style="font-size:10px;">
+              ${roleLabel}
+            </span>
+          </div>
+        </div>
+      `;
+            })
+            .join("");
+    }
+
+    function renderNeedsAttention(users, works) {
+        const items = [];
+
+        const pending = works.filter((w) => w.status === "pending");
+        if (pending.length > 0) {
+            items.push(`
+        <div class="mini-project" onclick="App.navigate('works')">
+          <div>
+            <div class="mini-project-title">
+              ${SVG.clipboard({ cls: "icon icon-xs" })}
+              Заявок на утверждении: ${pending.length}
+            </div>
+            <div class="mini-project-sub">Ждут решения руководителя</div>
+          </div>
+          <span style="color:var(--txt-muted);font-size:18px;">›</span>
+        </div>
+      `);
+        }
+
+        const blocked = users.filter((u) => u.blocked);
+        if (blocked.length > 0) {
+            items.push(`
+        <div class="mini-project" onclick="App.navigate('users')">
+          <div>
+            <div class="mini-project-title">
+              ${SVG.lock({ cls: "icon icon-xs" })}
+              Заблокировано: ${blocked.length}
+            </div>
+            <div class="mini-project-sub">Проверьте аккаунты</div>
+          </div>
+          <span style="color:var(--txt-muted);font-size:18px;">›</span>
+        </div>
+      `);
+        }
+
+        const rejected = works.filter((w) => w.status === "rejected");
+        if (rejected.length > 0) {
+            items.push(`
+        <div class="mini-project" onclick="App.navigate('works')">
+          <div>
+            <div class="mini-project-title">
+              ${SVG.x({ cls: "icon icon-xs" })}
+              Отклонено: ${rejected.length}
+            </div>
+            <div class="mini-project-sub">Требуют пересмотра</div>
+          </div>
+          <span style="color:var(--txt-muted);font-size:18px;">›</span>
+        </div>
+      `);
+        }
+
+        const noTeacher = works.filter(
+            (w) => !w.teacherId || !Storage.getUserById(w.teacherId),
+        );
+        if (noTeacher.length > 0) {
+            items.push(`
+        <div class="mini-project" onclick="App.navigate('works')">
+          <div>
+            <div class="mini-project-title">
+              ${SVG.alertTriangle({ cls: "icon icon-xs" })}
+              Без руководителя: ${noTeacher.length}
+            </div>
+            <div class="mini-project-sub">Требуют назначения</div>
+          </div>
+          <span style="color:var(--txt-muted);font-size:18px;">›</span>
+        </div>
+      `);
+        }
+
+        if (items.length === 0) {
+            return `
+        <div class="empty-state" style="padding:40px 20px;">
+          ${SVG.checkCircle({ cls: "icon icon-2xl" })}
+          <h3 style="margin-top:12px;">Всё в порядке</h3>
+          <p style="color:var(--txt-muted);font-size:13px;">
+            Нет задач, требующих внимания администратора.
+          </p>
+        </div>
+      `;
+        }
+
+        return items.join("");
+    }
+
     return {
         VIEWS,
 
@@ -1939,6 +2852,9 @@ const Admin = (() => {
         openEditUserModal,
         saveUser,
         openUserProfile,
+
+        setAnalyticsFilter,
+        resetAnalyticsFilter,
 
         setWorkFilter,
         deleteWork,

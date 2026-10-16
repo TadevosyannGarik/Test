@@ -114,6 +114,9 @@ const MFEditor = (() => {
     let liveValue = 50;
     let chartInstance = null;
 
+    /* =========================================================
+       УТИЛИТЫ
+       ========================================================= */
     function clamp01(v) {
         if (typeof v !== "number" || isNaN(v) || !isFinite(v)) return 0;
         return Math.max(0, Math.min(100, v));
@@ -158,6 +161,35 @@ const MFEditor = (() => {
         const clean = sanitizeOverrides(o);
         Storage.set(STORAGE_KEY, clean);
         applyOverrides();
+    }
+
+    /**
+     * Возвращает эффективный треугольник для переменной/терма:
+     * override, если есть, иначе дефолт.
+     */
+    function getEffectiveTerm(varName, term) {
+        const overrides = getOverrides();
+        if (
+            overrides[varName] &&
+            overrides[varName][term] &&
+            Array.isArray(overrides[varName][term])
+        ) {
+            return overrides[varName][term].slice();
+        }
+        const def = DEFAULTS[varName]?.[term];
+        return def ? def.slice() : [0, 0, 0];
+    }
+
+    /**
+     * Проверяет, изменён ли терм (есть ли override).
+     */
+    function isTermOverridden(varName, term) {
+        const overrides = getOverrides();
+        return !!(
+            overrides[varName] &&
+            overrides[varName][term] &&
+            Array.isArray(overrides[varName][term])
+        );
     }
 
     function _trimf(x, a, b, c) {
@@ -210,21 +242,22 @@ const MFEditor = (() => {
         }
     }
 
+    /**
+     * Возвращает объект с эффективными термами переменной
+     * (с учётом overrides).
+     */
     function getCurrentDef(varName) {
-        const overrides = getOverrides();
-        const def = JSON.parse(JSON.stringify(DEFAULTS[varName]));
-        if (overrides[varName]) {
-            for (const t in overrides[varName]) {
-                def[t] = overrides[varName][t];
-            }
+        const def = {};
+        for (const t of ["low", "med", "high"]) {
+            def[t] = getEffectiveTerm(varName, t);
         }
         return def;
     }
 
     function getMu(varName, term, x) {
-        const def = getCurrentDef(varName);
-        if (!def[term]) return 0;
-        const [a, b, c] = def[term];
+        const def = getEffectiveTerm(varName, term);
+        if (!def) return 0;
+        const [a, b, c] = def;
         return _trimf(x, a, b, c);
     }
 
@@ -238,6 +271,9 @@ const MFEditor = (() => {
         return (val / range.max) * 100;
     }
 
+    /* =========================================================
+       РЕНДЕР
+       ========================================================= */
     function render() {
         const currentDef = getCurrentDef(selectedVar);
         const range = VAR_RANGE[selectedVar] || { min: 0, max: 100, unit: "" };
@@ -455,29 +491,31 @@ const MFEditor = (() => {
             high: `Чем <b>больше</b> значение, тем увереннее терм «${labels[term]}»`,
         };
         const example = VAR_EXAMPLES[selectedVar]?.[term] || "";
+        const changed = isTermOverridden(selectedVar, term);
 
         return `
-      <div class="mf-term-card">
+      <div class="mf-term-card ${changed ? "mf-term-card-changed" : ""}">
         <div class="mf-term-head">
           <span class="mf-term-dot" style="background:${colors[term]}"></span>
           <span class="mf-term-name">${labels[term]}</span>
+          ${changed ? `<span class="mf-term-changed">изменён</span>` : ""}
           <span class="mf-term-tri">(${tri[0]} · ${tri[1]} · ${tri[2]})</span>
         </div>
         <div class="mf-term-hint">${hints[term]} · например, <b>${example}</b></div>
         <div class="mf-term-inputs">
           <div class="mf-term-input">
             <label>Начало (a)</label>
-            <input type="number" value="${tri[0]}" min="${range.min}" max="${range.max}" step="1"
+            <input type="number" value="${Math.round(tri[0])}" min="${range.min}" max="${range.max}" step="1"
               onchange="MFEditor.updateTri('${term}', 0, +this.value)">
           </div>
           <div class="mf-term-input">
             <label>Вершина (b)</label>
-            <input type="number" value="${tri[1]}" min="${range.min}" max="${range.max}" step="1"
+            <input type="number" value="${Math.round(tri[1])}" min="${range.min}" max="${range.max}" step="1"
               onchange="MFEditor.updateTri('${term}', 1, +this.value)">
           </div>
           <div class="mf-term-input">
             <label>Конец (c)</label>
-            <input type="number" value="${tri[2]}" min="${range.min}" max="${range.max}" step="1"
+            <input type="number" value="${Math.round(tri[2])}" min="${range.min}" max="${range.max}" step="1"
               onchange="MFEditor.updateTri('${term}', 2, +this.value)">
           </div>
         </div>
@@ -551,27 +589,30 @@ const MFEditor = (() => {
       </div>
     `;
     }
+
+    /* =========================================================
+       ДЕЙСТВИЯ
+       ========================================================= */
     function selectVar(v) {
         if (!DEFAULTS[v]) return;
         selectedVar = v;
-
-        const range = VAR_RANGE[v] || { min: 0, max: 100 };
         liveValue = 50;
-
         renderView();
     }
 
     function onLiveChange(val) {
         liveValue = +val;
-
         const liveBox = document.querySelector(".mf-live");
         if (liveBox) {
             liveBox.outerHTML = renderLiveExample();
         }
-
         drawChart();
     }
 
+    /**
+     * Обновляет ОДИН терм — точечно.
+     * Раньше копировались все три дефолтных, теперь только изменяемый.
+     */
     function updateTri(term, idx, val) {
         if (!["low", "med", "high"].includes(term)) return;
         if (![0, 1, 2].includes(idx)) return;
@@ -581,16 +622,18 @@ const MFEditor = (() => {
         const safeVal = clamp01(+val * scale);
 
         const overrides = getOverrides();
+
+        // Инициализируем ветку переменной БЕЗ копирования всех термов
         if (!overrides[selectedVar]) {
-            overrides[selectedVar] = JSON.parse(
-                JSON.stringify(DEFAULTS[selectedVar]),
-            );
+            overrides[selectedVar] = {};
         }
 
-        overrides[selectedVar][term][idx] = safeVal;
-        overrides[selectedVar][term] = sanitizeTriangle(
-            overrides[selectedVar][term],
-        );
+        // Копируем текущий эффективный терм (с учётом дефолта)
+        const current = getEffectiveTerm(selectedVar, term);
+        const updated = current.slice();
+        updated[idx] = safeVal;
+
+        overrides[selectedVar][term] = sanitizeTriangle(updated);
 
         setOverrides(overrides);
 
@@ -608,6 +651,7 @@ const MFEditor = (() => {
             liveBox.outerHTML = renderLiveExample();
         }
         drawChart();
+        renderView();
     }
 
     function applyPreset(key) {
@@ -981,6 +1025,8 @@ const MFEditor = (() => {
         VAR_LABELS,
         getOverrides,
         setOverrides,
+        getEffectiveTerm,
+        isTermOverridden,
     };
 })();
 

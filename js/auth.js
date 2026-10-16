@@ -2,6 +2,136 @@ const Auth = (() => {
     let selectedRole = "student";
     let currentUser = null;
 
+    const escapeHtml = Utils.escapeHtml;
+
+    /* =========================================================
+       СПРАВОЧНИКИ (fp_refs) — используются в полях регистрации
+       ========================================================= */
+    const REF_KEY = "fp_refs";
+
+    const DEFAULT_REFS = {
+        faculties: ["ФИТ", "ФЭН", "ГФ"],
+        departments: ["Кафедра информационных систем", "Кафедра математики"],
+        groups: ["ПИ-21-1", "ПИ-21-2", "ИВТ-22-1"],
+        directions: ["Программная инженерия", "Информационные системы"],
+    };
+
+    function getRefs() {
+        const refs = Storage.get(REF_KEY, null);
+        if (!refs || typeof refs !== "object") return DEFAULT_REFS;
+        return {
+            faculties: Array.isArray(refs.faculties) ? refs.faculties : [],
+            departments: Array.isArray(refs.departments)
+                ? refs.departments
+                : [],
+            groups: Array.isArray(refs.groups) ? refs.groups : [],
+            directions: Array.isArray(refs.directions) ? refs.directions : [],
+        };
+    }
+
+    /* =========================================================
+       ХЕЛПЕРЫ ДЛЯ ПОЛЕЙ ИЗ СПРАВОЧНИКОВ
+
+       Если в справочнике есть значения — рендерим <select> + «+ Другое...».
+       Если справочник пуст — рендерим обычный <input>.
+       ========================================================= */
+    function renderRefField({
+        id,
+        label,
+        refKey,
+        required,
+        placeholder,
+        cssClass = "",
+    }) {
+        const refs = getRefs();
+        const options = refs[refKey] || [];
+        const reqMark = required ? '<span class="req">*</span>' : "";
+        const wrapperClass = `field ${cssClass}`.trim();
+
+        // Справочник пуст — обычный input
+        if (options.length === 0) {
+            return `
+                <div class="${wrapperClass}">
+                    <label>${label} ${reqMark}</label>
+                    <input type="text" id="${id}" placeholder="${escapeHtml(placeholder || "")}">
+                    <div class="field-err">Обязательно</div>
+                </div>
+            `;
+        }
+
+        // Есть справочник — выпадающий список + «Другое»
+        const optionsHtml = options
+            .map((o) => {
+                const val = escapeHtml(o);
+                return `<option value="${val}">${val}</option>`;
+            })
+            .join("");
+
+        return `
+            <div class="${wrapperClass}">
+                <label>${label} ${reqMark}</label>
+                <select id="${id}" onchange="Auth.onRefSelectChange(this)">
+                    <option value="">— выберите —</option>
+                    ${optionsHtml}
+                    <option value="__custom__">+ Другое…</option>
+                </select>
+                <input type="text" id="${id}_custom"
+                    placeholder="Введите своё значение"
+                    style="display:none;margin-top:8px;">
+                <div class="field-err">Обязательно</div>
+            </div>
+        `;
+    }
+
+    /**
+     * Обработчик изменения select: показывает/скрывает поле «своё значение».
+     */
+    function onRefSelectChange(selectEl) {
+        if (!selectEl || !selectEl.id) return;
+        const custom = document.getElementById(selectEl.id + "_custom");
+        if (!custom) return;
+
+        if (selectEl.value === "__custom__") {
+            custom.style.display = "block";
+            custom.focus();
+        } else {
+            custom.style.display = "none";
+            custom.value = "";
+        }
+    }
+
+    /**
+     * Возвращает итоговое значение поля (выбор из select или «своё»).
+     */
+    function getRefValue(id) {
+        const el = document.getElementById(id);
+        if (!el) return "";
+        if (el.tagName === "SELECT") {
+            if (el.value === "__custom__") {
+                const custom = document.getElementById(id + "_custom");
+                return custom ? custom.value.trim() : "";
+            }
+            return el.value.trim();
+        }
+        return el.value.trim();
+    }
+
+    /**
+     * Валидация: если поле — select, проверяем «выбрано» или «введено своё».
+     */
+    function validateRefField(id, required) {
+        const el = document.getElementById(id);
+        if (!el) return true;
+        const val = getRefValue(id);
+        const ok = !required || val.length > 0;
+        const wrap = el.closest(".field");
+        if (wrap) wrap.classList.toggle("invalid", !ok);
+        return ok;
+    }
+
+    /* =========================================================
+       ДЕМО-ПОЛЬЗОВАТЕЛИ
+       ========================================================= */
     function getDemoUsers() {
         return [
             {
@@ -63,6 +193,9 @@ const Auth = (() => {
         if (changed) Storage.setUsers(users);
     }
 
+    /* =========================================================
+       ПЕРЕКЛЮЧЕНИЕ ТАБОВ / РОЛИ
+       ========================================================= */
     function switchTab(mode) {
         const loginTab = document.getElementById("tabLogin");
         const registerTab = document.getElementById("tabRegister");
@@ -94,6 +227,13 @@ const Auth = (() => {
         renderRoleFields(role);
     }
 
+    /* =========================================================
+       РЕНДЕР ПОЛЕЙ ПО РОЛИ
+
+       Поля «Факультет», «Группа», «Направление» (студент)
+       и «Кафедра» (преподаватель, админ) — выпадающие списки
+       из справочников (с fallback на input, если справочник пуст).
+       ========================================================= */
     function renderRoleFields(role) {
         const label = document.getElementById("roleSectionLabel");
         const box = document.getElementById("roleFields");
@@ -108,95 +248,109 @@ const Auth = (() => {
 
         if (role === "student") {
             box.innerHTML = `
-        <div class="row-2">
-          <div class="field">
-            <label>Факультет <span class="req">*</span></label>
-            <input type="text" id="r_faculty" placeholder="ФИТ">
-            <div class="field-err">Обязательно</div>
-          </div>
-          <div class="field">
-            <label>Группа <span class="req">*</span></label>
-            <input type="text" id="r_group" placeholder="ПИ-21-1">
-            <div class="field-err">Обязательно</div>
-          </div>
-        </div>
-        <div class="row-2">
-          <div class="field">
-            <label>Курс <span class="req">*</span></label>
-            <select id="r_course">
-              <option value="">— выберите —</option>
-              <option>1</option><option>2</option><option>3</option>
-              <option>4</option><option>5</option><option>6</option>
-            </select>
-            <div class="field-err">Обязательно</div>
-          </div>
-          <div class="field">
-            <label>Направление</label>
-            <input type="text" id="r_direction" placeholder="Программная инженерия">
-          </div>
-        </div>
-        <div class="field">
-          <label>Номер зачётки</label>
-          <input type="text" id="r_recordBook" placeholder="21-1234">
-        </div>
-      `;
+                <div class="row-2">
+                    ${renderRefField({
+                        id: "r_faculty",
+                        label: "Факультет",
+                        refKey: "faculties",
+                        required: true,
+                        placeholder: "ФИТ",
+                    })}
+                    ${renderRefField({
+                        id: "r_group",
+                        label: "Группа",
+                        refKey: "groups",
+                        required: true,
+                        placeholder: "ПИ-21-1",
+                    })}
+                </div>
+                <div class="row-2">
+                    <div class="field">
+                        <label>Курс <span class="req">*</span></label>
+                        <select id="r_course">
+                            <option value="">— выберите —</option>
+                            <option>1</option><option>2</option><option>3</option>
+                            <option>4</option><option>5</option><option>6</option>
+                        </select>
+                        <div class="field-err">Обязательно</div>
+                    </div>
+                    ${renderRefField({
+                        id: "r_direction",
+                        label: "Направление",
+                        refKey: "directions",
+                        required: false,
+                        placeholder: "Программная инженерия",
+                    })}
+                </div>
+                <div class="field">
+                    <label>Номер зачётки</label>
+                    <input type="text" id="r_recordBook" placeholder="21-1234">
+                </div>
+            `;
         } else if (role === "teacher") {
             box.innerHTML = `
-        <div class="row-2">
-          <div class="field">
-            <label>Кафедра <span class="req">*</span></label>
-            <input type="text" id="r_department" placeholder="Кафедра информационных систем">
-            <div class="field-err">Обязательно</div>
-          </div>
-          <div class="field">
-            <label>Должность <span class="req">*</span></label>
-            <input type="text" id="r_position" placeholder="Доцент">
-            <div class="field-err">Обязательно</div>
-          </div>
-        </div>
-        <div class="row-2">
-          <div class="field">
-            <label>Учёная степень</label>
-            <input type="text" id="r_degree" placeholder="к.т.н.">
-          </div>
-          <div class="field">
-            <label>Макс. нагрузка (работ)</label>
-            <input type="number" id="r_maxLoad" value="8" min="1" max="30">
-          </div>
-        </div>
-        <div class="field">
-          <label>Научные интересы</label>
-          <input type="text" id="r_interests" placeholder="Нечёткая логика, ИИ">
-        </div>
-      `;
+                <div class="row-2">
+                    ${renderRefField({
+                        id: "r_department",
+                        label: "Кафедра",
+                        refKey: "departments",
+                        required: true,
+                        placeholder: "Кафедра информационных систем",
+                    })}
+                    <div class="field">
+                        <label>Должность <span class="req">*</span></label>
+                        <input type="text" id="r_position" placeholder="Доцент">
+                        <div class="field-err">Обязательно</div>
+                    </div>
+                </div>
+                <div class="row-2">
+                    <div class="field">
+                        <label>Учёная степень</label>
+                        <input type="text" id="r_degree" placeholder="к.т.н.">
+                    </div>
+                    <div class="field">
+                        <label>Макс. нагрузка (работ)</label>
+                        <input type="number" id="r_maxLoad" value="8" min="1" max="30">
+                    </div>
+                </div>
+                <div class="field">
+                    <label>Научные интересы</label>
+                    <input type="text" id="r_interests" placeholder="Нечёткая логика, ИИ">
+                </div>
+            `;
         } else {
             box.innerHTML = `
-        <div class="row-2">
-          <div class="field">
-            <label>Подразделение <span class="req">*</span></label>
-            <input type="text" id="r_department" placeholder="Кафедра информационных систем">
-            <div class="field-err">Обязательно</div>
-          </div>
-          <div class="field">
-            <label>Должность <span class="req">*</span></label>
-            <input type="text" id="r_position" placeholder="Заведующая кафедрой">
-            <div class="field-err">Обязательно</div>
-          </div>
-        </div>
-        <div class="field">
-          <label>Уровень доступа <span class="req">*</span></label>
-          <select id="r_accessLevel">
-            <option value="">— выберите —</option>
-            <option>Полный</option>
-            <option>Ограниченный</option>
-            <option>Только чтение</option>
-          </select>
-          <div class="field-err">Обязательно</div>
-        </div>
-      `;
+                <div class="row-2">
+                    ${renderRefField({
+                        id: "r_department",
+                        label: "Подразделение",
+                        refKey: "departments",
+                        required: true,
+                        placeholder: "Кафедра информационных систем",
+                    })}
+                    <div class="field">
+                        <label>Должность <span class="req">*</span></label>
+                        <input type="text" id="r_position" placeholder="Заведующая кафедрой">
+                        <div class="field-err">Обязательно</div>
+                    </div>
+                </div>
+                <div class="field">
+                    <label>Уровень доступа <span class="req">*</span></label>
+                    <select id="r_accessLevel">
+                        <option value="">— выберите —</option>
+                        <option>Полный</option>
+                        <option>Ограниченный</option>
+                        <option>Только чтение</option>
+                    </select>
+                    <div class="field-err">Обязательно</div>
+                </div>
+            `;
         }
     }
 
+    /* =========================================================
+       ВАЛИДАЦИЯ И СООБЩЕНИЯ
+       ========================================================= */
     function markField(id, valid) {
         const el = document.getElementById(id);
         if (!el) return valid;
@@ -219,6 +373,9 @@ const Auth = (() => {
         m.textContent = "";
     }
 
+    /* =========================================================
+       РЕГИСТРАЦИЯ
+       ========================================================= */
     function register() {
         hideMsg();
         let ok = true;
@@ -243,29 +400,24 @@ const Auth = (() => {
         const roleData = {};
 
         if (selectedRole === "student") {
-            const f = document.getElementById("r_faculty");
-            const g = document.getElementById("r_group");
+            ok &= validateRefField("r_faculty", true);
+            ok &= validateRefField("r_group", true);
             const c = document.getElementById("r_course");
-
-            if (f) ok &= markField("r_faculty", f.value.trim().length > 0);
-            if (g) ok &= markField("r_group", g.value.trim().length > 0);
             if (c) ok &= markField("r_course", c.value !== "");
+            ok &= validateRefField("r_direction", false);
 
-            roleData.faculty = f?.value.trim() || "";
-            roleData.group = g?.value.trim() || "";
+            roleData.faculty = getRefValue("r_faculty");
+            roleData.group = getRefValue("r_group");
             roleData.course = c ? +c.value : 1;
-            roleData.direction =
-                document.getElementById("r_direction")?.value.trim() || "";
+            roleData.direction = getRefValue("r_direction");
             roleData.recordBook =
                 document.getElementById("r_recordBook")?.value.trim() || "";
         } else if (selectedRole === "teacher") {
-            const d = document.getElementById("r_department");
+            ok &= validateRefField("r_department", true);
             const p = document.getElementById("r_position");
-
-            if (d) ok &= markField("r_department", d.value.trim().length > 0);
             if (p) ok &= markField("r_position", p.value.trim().length > 0);
 
-            roleData.department = d?.value.trim() || "";
+            roleData.department = getRefValue("r_department");
             roleData.position = p?.value.trim() || "";
             roleData.degree =
                 document.getElementById("r_degree")?.value.trim() || "";
@@ -274,15 +426,13 @@ const Auth = (() => {
             roleData.maxLoad =
                 +document.getElementById("r_maxLoad")?.value || 8;
         } else {
-            const d = document.getElementById("r_department");
+            ok &= validateRefField("r_department", true);
             const p = document.getElementById("r_position");
-            const a = document.getElementById("r_accessLevel");
-
-            if (d) ok &= markField("r_department", d.value.trim().length > 0);
             if (p) ok &= markField("r_position", p.value.trim().length > 0);
+            const a = document.getElementById("r_accessLevel");
             if (a) ok &= markField("r_accessLevel", a.value !== "");
 
-            roleData.department = d?.value.trim() || "";
+            roleData.department = getRefValue("r_department");
             roleData.position = p?.value.trim() || "";
             roleData.accessLevel = a?.value || "Полный";
         }
@@ -319,6 +469,9 @@ const Auth = (() => {
         setTimeout(() => loginAs(newUser), 600);
     }
 
+    /* =========================================================
+       ВХОД
+       ========================================================= */
     function login() {
         hideMsg();
         const email =
@@ -433,6 +586,9 @@ const Auth = (() => {
         return currentUser;
     }
 
+    /* =========================================================
+       ПУБЛИЧНЫЙ API
+       ========================================================= */
     return {
         seedDemo,
         switchTab,
@@ -444,6 +600,12 @@ const Auth = (() => {
         logout,
         restoreSession,
         getUser,
+
+        // Хелперы для полей из справочников (используются в admin.js)
+        renderRefField,
+        onRefSelectChange,
+        getRefValue,
+        validateRefField,
     };
 })();
 

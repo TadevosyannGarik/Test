@@ -1,4 +1,7 @@
 const Charts = (() => {
+    /* =========================================================
+       ЧТЕНИЕ CSS-ПЕРЕМЕННОЙ
+       ========================================================= */
     function cssVar(name, fallback) {
         try {
             const v = getComputedStyle(document.documentElement)
@@ -10,6 +13,14 @@ const Charts = (() => {
         }
     }
 
+    /* =========================================================
+       КЭШ ЦВЕТОВ
+
+       _colors пересобирается вызовом refreshColors().
+       Автоматически сбрасывается при:
+         - смене prefers-color-scheme
+         - изменении размера окна (на всякий случай)
+       ========================================================= */
     let _colors = null;
 
     function getColors() {
@@ -29,6 +40,9 @@ const Charts = (() => {
         return _colors;
     }
 
+    /* =========================================================
+       ПРОКСИ-ОБЁРТКА — всегда читает актуальные цвета
+       ========================================================= */
     const COLORS = new Proxy(
         {},
         {
@@ -38,10 +52,16 @@ const Charts = (() => {
         },
     );
 
+    /* =========================================================
+       ПРОВЕРКА НАЛИЧИЯ CHART.JS
+       ========================================================= */
     function hasChart() {
         return typeof Chart !== "undefined";
     }
 
+    /* =========================================================
+       ГЛУБОКОЕ СЛИЯНИЕ ОПЦИЙ
+       ========================================================= */
     function deepMerge(target, source) {
         if (!source) return target;
         const out = { ...target };
@@ -64,6 +84,9 @@ const Charts = (() => {
         return out;
     }
 
+    /* =========================================================
+       БАЗОВЫЕ ОПЦИИ ДЛЯ ВСЕХ ГРАФИКОВ
+       ========================================================= */
     function baseOpts(extra = {}) {
         const C = getColors();
         const base = {
@@ -106,6 +129,9 @@ const Charts = (() => {
         return deepMerge(base, extra);
     }
 
+    /* =========================================================
+       УНИЧТОЖЕНИЕ СТАРОГО ГРАФИКА
+       ========================================================= */
     function destroyOld(ctx) {
         if (!ctx) return;
         if (ctx._chart) {
@@ -122,6 +148,9 @@ const Charts = (() => {
         }
     }
 
+    /* =========================================================
+       DOUGHNUT
+       ========================================================= */
     function doughnut(canvasId, labels, data, colors) {
         if (!hasChart()) return null;
         const ctx = document.getElementById(canvasId);
@@ -153,6 +182,9 @@ const Charts = (() => {
         return ctx._chart;
     }
 
+    /* =========================================================
+       BAR
+       ========================================================= */
     function bar(canvasId, labels, data, colors, opts = {}) {
         if (!hasChart()) return null;
         const ctx = document.getElementById(canvasId);
@@ -198,6 +230,9 @@ const Charts = (() => {
         return ctx._chart;
     }
 
+    /* =========================================================
+       LINE
+       ========================================================= */
     function line(canvasId, labels, datasets, opts = {}) {
         if (!hasChart()) return null;
         const ctx = document.getElementById(canvasId);
@@ -251,6 +286,9 @@ const Charts = (() => {
         return ctx._chart;
     }
 
+    /* =========================================================
+       POLAR AREA
+       ========================================================= */
     function polar(canvasId, labels, data, colors, opts = {}) {
         if (!hasChart()) return null;
         const ctx = document.getElementById(canvasId);
@@ -300,6 +338,9 @@ const Charts = (() => {
         return ctx._chart;
     }
 
+    /* =========================================================
+       RADAR
+       ========================================================= */
     function radar(canvasId, labels, datasets, opts = {}) {
         if (!hasChart()) return null;
         const ctx = document.getElementById(canvasId);
@@ -352,6 +393,9 @@ const Charts = (() => {
         return ctx._chart;
     }
 
+    /* =========================================================
+       ЦВЕТ В RGBA
+       ========================================================= */
     function hexToRgba(hex, alpha = 1) {
         if (!hex) return `rgba(0,0,0,${alpha})`;
         if (hex.startsWith("rgba")) return hex;
@@ -367,8 +411,44 @@ const Charts = (() => {
         return `rgba(${r}, ${g}, ${b}, ${alpha})`;
     }
 
+    /* =========================================================
+       СБРОС КЭША ЦВЕТОВ
+       ========================================================= */
     function refreshColors() {
         _colors = null;
+    }
+
+    /* =========================================================
+       АВТОМАТИЧЕСКАЯ РЕАКЦИЯ НА СМЕНУ ТЕМЫ
+       ========================================================= */
+    function initColorListeners() {
+        // 1. Смена prefers-color-scheme (dark/light)
+        if (window.matchMedia) {
+            try {
+                const mql = window.matchMedia("(prefers-color-scheme: dark)");
+                // Современные браузеры
+                if (typeof mql.addEventListener === "function") {
+                    mql.addEventListener("change", () => {
+                        refreshColors();
+                    });
+                } else if (typeof mql.addListener === "function") {
+                    // Safari < 14
+                    mql.addListener(() => {
+                        refreshColors();
+                    });
+                }
+            } catch (e) {
+                console.warn("[Charts] matchMedia error:", e);
+            }
+        }
+    }
+
+    /* =========================================================
+       ИНИЦИАЛИЗАЦИЯ
+       ========================================================= */
+    function init() {
+        refreshColors();
+        initColorListeners();
     }
 
     return {
@@ -380,5 +460,13 @@ const Charts = (() => {
         hasChart,
         COLORS,
         refreshColors,
+        init,
     };
 })();
+
+/* =========================================================
+   АВТОЗАПУСК ПОСЛЕ ЗАГРУЗКИ DOM
+   ========================================================= */
+document.addEventListener("DOMContentLoaded", () => {
+    Charts.init();
+});

@@ -1,78 +1,254 @@
 /* =========================================================
    APP — запуск, навигация, рендер разделов, модалки, toast
-   + Анимации переходов между разделами
    ========================================================= */
 const App = (() => {
     let currentUser = null;
     let toastTimer = null;
 
     /* =========================================================
-       НАВИГАЦИЯ ПО РОЛЯМ
+       НАВИГАЦИЯ — ЕДИНЫЙ ИСТОЧНИК ПРАВДЫ
+
+       Каждый пункт меню описывается один раз:
+         id      — идентификатор (совпадает с ключом в VIEWS)
+         icon    — функция-иконка из SVG
+         label   — подпись для меню
+         roles   — массив ролей, которым доступен пункт
+         order   — порядок в меню (число; сортировка по возрастанию)
+
+       Чтобы добавить новый пункт — просто добавь объект в NAV_ITEMS.
+       Чтобы ограничить роль — допиши/убери её в roles.
        ========================================================= */
+    const NAV_ITEMS = [
+        // Общие для всех
+        {
+            id: "dashboard",
+            icon: SVG.dashboard,
+            label: "Дашборд",
+            roles: ["student", "teacher", "admin"],
+            order: 10,
+        },
+
+        // Студент
+        {
+            id: "my-work",
+            icon: SVG.folder,
+            label: "Моя работа",
+            roles: ["student"],
+            order: 20,
+        },
+        {
+            id: "archived",
+            icon: SVG.archive,
+            label: "Завершённые",
+            roles: ["student"],
+            order: 30,
+        },
+        {
+            id: "docx",
+            icon: SVG.fileText,
+            label: "ГОСТ",
+            roles: ["student"],
+            order: 60,
+        },
+        {
+            id: "calendar",
+            icon: SVG.calendar,
+            label: "Календарь",
+            roles: ["student"],
+            order: 90,
+        },
+        {
+            id: "activity",
+            icon: SVG.log,
+            label: "Активность",
+            roles: ["student"],
+            order: 100,
+        },
+
+        // Преподаватель
+        {
+            id: "requests",
+            icon: SVG.clipboard,
+            label: "Заявки",
+            roles: ["teacher"],
+            order: 20,
+        },
+        {
+            id: "students",
+            icon: SVG.users,
+            label: "Студенты",
+            roles: ["teacher"],
+            order: 30,
+        },
+        {
+            id: "review",
+            icon: SVG.checkCircle,
+            label: "Проверка",
+            roles: ["teacher"],
+            order: 40,
+        },
+        {
+            id: "tasks-review",
+            icon: SVG.check,
+            label: "Задачи",
+            roles: ["teacher"],
+            order: 50,
+        },
+        {
+            id: "rankings",
+            icon: SVG.award,
+            label: "Рейтинги",
+            roles: ["teacher", "admin"],
+            order: 70,
+        },
+        {
+            id: "mfEditor",
+            icon: SVG.settings,
+            label: "Редактор ФП",
+            roles: ["teacher", "admin"],
+            order: 110,
+        },
+        {
+            id: "rules",
+            icon: SVG.settings,
+            label: "Правила",
+            roles: ["teacher", "admin"],
+            order: 120,
+        },
+
+        // Админ
+        {
+            id: "users",
+            icon: SVG.users,
+            label: "Пользователи",
+            roles: ["admin"],
+            order: 20,
+        },
+        {
+            id: "works",
+            icon: SVG.folder,
+            label: "Работы",
+            roles: ["admin"],
+            order: 30,
+        },
+        {
+            id: "demo",
+            icon: SVG.rocket,
+            label: "Демо-данные",
+            roles: ["admin"],
+            order: 40,
+        },
+        {
+            id: "audit",
+            icon: SVG.log,
+            label: "Аудит",
+            roles: ["admin"],
+            order: 80,
+        },
+        {
+            id: "analytics",
+            icon: SVG.trending,
+            label: "Аналитика",
+            roles: ["admin"],
+            order: 90,
+        },
+        {
+            id: "refs",
+            icon: SVG.book,
+            label: "Справочники",
+            roles: ["admin"],
+            order: 130,
+        },
+        {
+            id: "settings",
+            icon: SVG.settings,
+            label: "Настройки",
+            roles: ["admin"],
+            order: 140,
+        },
+
+        // Общие (продолжение)
+        {
+            id: "mamdani",
+            icon: SVG.brain,
+            label: "Мамдани",
+            roles: ["student", "teacher", "admin"],
+            order: 50,
+        },
+        {
+            id: "simulate",
+            icon: SVG.sliders,
+            label: "Симулятор",
+            roles: ["student", "teacher", "admin"],
+            order: 60,
+        },
+        {
+            id: "consultations",
+            icon: SVG.calendar,
+            label: "Консультации",
+            roles: ["student", "teacher", "admin"],
+            order: 70,
+        },
+        {
+            id: "stats",
+            icon: SVG.trending,
+            label: "Статистика",
+            roles: ["student", "teacher"],
+            order: 80,
+        },
+        {
+            id: "profile",
+            icon: SVG.user,
+            label: "Профиль",
+            roles: ["student", "teacher", "admin"],
+            order: 999,
+        },
+    ];
+
+    /**
+     * Возвращает массив пунктов меню для заданной роли,
+     * отсортированных по order.
+     */
     function navItems(role) {
-        if (role === "student") {
-            return [
-                { id: "dashboard", icon: SVG.dashboard, label: "Дашборд" },
-                { id: "my-work", icon: SVG.folder, label: "Моя работа" },
-                { id: "archived", icon: SVG.archive, label: "Завершённые" },
-                { id: "mamdani", icon: SVG.brain, label: "Мамдани" },
-                { id: "simulate", icon: SVG.sliders, label: "Симулятор" },
-                { id: "docx", icon: SVG.fileText, label: "ГОСТ" },
-                {
-                    id: "consultations",
-                    icon: SVG.calendar,
-                    label: "Консультации",
-                },
-                { id: "stats", icon: SVG.trending, label: "Статистика" },
-                { id: "calendar", icon: SVG.calendar, label: "Календарь" },
-                { id: "activity", icon: SVG.log, label: "Активность" },
-                { id: "profile", icon: SVG.user, label: "Профиль" },
-            ];
+        if (!role) return [];
+        return NAV_ITEMS.filter((it) => it.roles.includes(role)).sort(
+            (a, b) => a.order - b.order,
+        );
+    }
+
+    /* =========================================================
+       МАППИНГ ДОЧЕРНИХ VIEW → РОДИТЕЛЬСКИМ ВКЛАДКАМ
+
+       Используется для подсветки активной вкладки
+       на детальных страницах (profile, work-detail, ...).
+       ========================================================= */
+    const VIEW_PARENT_MAP = {
+        // Общие
+        "create-work": "dashboard",
+        "my-work": "dashboard",
+
+        // Преподаватель
+        "student-detail": "students",
+        "request-detail": "requests",
+
+        // Админ
+        "teacher-profile": "users",
+        "student-profile": "users",
+        "work-detail": "works",
+        "edit-work": "works",
+    };
+
+    function resolveActiveNavItem(viewId, role) {
+        if (!viewId) return null;
+
+        // 1. Если viewId сам является вкладкой — используем его
+        const items = navItems(role);
+        if (items.some((it) => it.id === viewId)) {
+            return viewId;
         }
 
-        if (role === "teacher") {
-            return [
-                { id: "dashboard", icon: SVG.dashboard, label: "Дашборд" },
-                { id: "requests", icon: SVG.clipboard, label: "Заявки" },
-                { id: "students", icon: SVG.users, label: "Студенты" },
-                { id: "review", icon: SVG.checkCircle, label: "Проверка" },
-                { id: "tasks-review", icon: SVG.check, label: "Задачи" },
-                { id: "mamdani", icon: SVG.brain, label: "Мамдани" },
-                { id: "simulate", icon: SVG.sliders, label: "Симулятор" },
-                { id: "rankings", icon: SVG.award, label: "Рейтинги" },
-                {
-                    id: "consultations",
-                    icon: SVG.calendar,
-                    label: "Консультации",
-                },
-                { id: "stats", icon: SVG.trending, label: "Статистика" },
-                { id: "mfEditor", icon: SVG.settings, label: "Редактор ФП" },
-                { id: "rules", icon: SVG.settings, label: "Правила" },
-                { id: "profile", icon: SVG.user, label: "Профиль" },
-            ];
-        }
-
-        return [
-            { id: "dashboard", icon: SVG.dashboard, label: "Дашборд" },
-            { id: "users", icon: SVG.users, label: "Пользователи" },
-            { id: "works", icon: SVG.folder, label: "Работы" },
-            { id: "demo", icon: SVG.rocket, label: "Демо-данные" },
-            { id: "mamdani", icon: SVG.brain, label: "Мамдани" },
-            { id: "simulate", icon: SVG.sliders, label: "Симулятор" },
-            { id: "rankings", icon: SVG.award, label: "Рейтинги" },
-            {
-                id: "consultations",
-                icon: SVG.calendar,
-                label: "Консультации",
-            },
-            { id: "audit", icon: SVG.log, label: "Аудит" },
-            { id: "analytics", icon: SVG.trending, label: "Аналитика" },
-            { id: "mfEditor", icon: SVG.settings, label: "Редактор ФП" },
-            { id: "rules", icon: SVG.settings, label: "Правила" },
-            { id: "refs", icon: SVG.book, label: "Справочники" },
-            { id: "settings", icon: SVG.settings, label: "Настройки" },
-            { id: "profile", icon: SVG.user, label: "Профиль" },
-        ];
+        // 2. Иначе — ищем в маппинге
+        return VIEW_PARENT_MAP[viewId] || null;
     }
 
     /* =========================================================
@@ -131,7 +307,7 @@ const App = (() => {
     }
 
     /* =========================================================
-       НАВИГАЦИЯ
+       РЕНДЕР НАВИГАЦИИ
        ========================================================= */
     function renderNav(role) {
         const nav = document.getElementById("mainNav");
@@ -164,6 +340,9 @@ const App = (() => {
         nav.innerHTML = html;
     }
 
+    /* =========================================================
+       НАВИГАЦИЯ
+       ========================================================= */
     function navigate(viewId, params) {
         if (!viewId) return;
 
@@ -171,8 +350,12 @@ const App = (() => {
         const hideNav = viewId === "create-work";
         if (nav) nav.style.display = hideNav ? "none" : "flex";
 
+        const activeId = currentUser
+            ? resolveActiveNavItem(viewId, currentUser.role)
+            : viewId;
+
         document.querySelectorAll("#mainNav button").forEach((b) => {
-            b.classList.toggle("active", b.dataset.view === viewId);
+            b.classList.toggle("active", b.dataset.view === activeId);
         });
 
         renderView(viewId, params);
@@ -212,7 +395,6 @@ const App = (() => {
 
         if (fn) {
             try {
-                /* ГЛАВНОЕ ИЗМЕНЕНИЕ — оборачиваем контент в .view.active */
                 root.innerHTML = `<div class="view active">${fn(params)}</div>`;
             } catch (err) {
                 console.error("[App] Ошибка рендера раздела:", viewId, err);
@@ -325,6 +507,10 @@ const App = (() => {
         toast,
         refreshNotifications,
         getUser: () => currentUser,
+        // Для отладки/расширения
+        NAV_ITEMS,
+        navItems,
+        resolveActiveNavItem,
     };
 })();
 

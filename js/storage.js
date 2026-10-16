@@ -16,6 +16,9 @@ const Storage = (() => {
         mfOverrides: "fp_mf_overrides",
     };
 
+    /* =========================================================
+       БАЗОВЫЕ ОПЕРАЦИИ
+       ========================================================= */
     function get(key, def = null) {
         try {
             const raw = localStorage.getItem(key);
@@ -45,12 +48,19 @@ const Storage = (() => {
         }
     }
 
+    /**
+     * Сравнение id (числа или строки приводятся к строке).
+     * Работает для любого типа id.
+     */
     function sameId(a, b) {
         if (a === null || a === undefined) return false;
         if (b === null || b === undefined) return false;
         return String(a) === String(b);
     }
 
+    /* =========================================================
+       ПОЛЬЗОВАТЕЛИ
+       ========================================================= */
     function getUsers() {
         const u = get(KEYS.users, []);
         return Array.isArray(u) ? u : [];
@@ -76,6 +86,9 @@ const Storage = (() => {
         setUsers(users);
     }
 
+    /* =========================================================
+       СЕССИЯ
+       ========================================================= */
     function getSession() {
         return get(KEYS.session, null);
     }
@@ -86,6 +99,9 @@ const Storage = (() => {
         remove(KEYS.session);
     }
 
+    /* =========================================================
+       РАБОТЫ
+       ========================================================= */
     function getWorks() {
         const w = get(KEYS.works, []);
         return Array.isArray(w) ? w : [];
@@ -140,6 +156,9 @@ const Storage = (() => {
         }
     }
 
+    /* =========================================================
+       ЭТАПЫ
+       ========================================================= */
     function getStages() {
         const s = get(KEYS.stages, []);
         return Array.isArray(s) ? s : [];
@@ -164,6 +183,9 @@ const Storage = (() => {
         setStages(getStages().filter((s) => !sameId(s.id, id)));
     }
 
+    /* =========================================================
+       ЗАДАЧИ
+       ========================================================= */
     function getTasks() {
         const t = get(KEYS.tasks, []);
         return Array.isArray(t) ? t : [];
@@ -186,6 +208,9 @@ const Storage = (() => {
         setTasks(getTasks().filter((t) => !sameId(t.id, id)));
     }
 
+    /* =========================================================
+       ВЕРСИИ
+       ========================================================= */
     function getVersions() {
         const v = get(KEYS.versions, []);
         return Array.isArray(v) ? v : [];
@@ -208,6 +233,9 @@ const Storage = (() => {
         setVersions(getVersions().filter((v) => !sameId(v.id, id)));
     }
 
+    /* =========================================================
+       КОММЕНТАРИИ
+       ========================================================= */
     function getComments() {
         const c = get(KEYS.comments, []);
         return Array.isArray(c) ? c : [];
@@ -235,6 +263,9 @@ const Storage = (() => {
         setComments(getComments().filter((c) => !sameId(c.id, id)));
     }
 
+    /* =========================================================
+       ПРАВИЛА
+       ========================================================= */
     function getRules() {
         const r = get(KEYS.rules, null);
         return Array.isArray(r) ? r : null;
@@ -243,6 +274,9 @@ const Storage = (() => {
         set(KEYS.rules, r);
     }
 
+    /* =========================================================
+       ОБЩИЕ
+       ========================================================= */
     function clearAll() {
         Object.keys(localStorage).forEach((key) => {
             if (key.startsWith("fp_")) localStorage.removeItem(key);
@@ -330,22 +364,55 @@ const Storage = (() => {
     };
 })();
 
+/* =========================================================
+   ХЕШ ПАРОЛЯ
+
+   УЧЕБНАЯ РЕАЛИЗАЦИЯ — НЕ для production!
+   Используется простой FNV-1a-подобный хеш с 3 раундами
+   и «солью». В реальном приложении используйте:
+   - bcrypt / argon2 на сервере,
+   - или Web Crypto API (crypto.subtle.deriveBits с PBKDF2).
+   ========================================================= */
 function hashPass(p) {
     if (!p) return "h0";
-    let h = 0;
-    for (let i = 0; i < p.length; i++) {
-        h = (h << 5) - h + p.charCodeAt(i);
-        h |= 0;
+
+    const SALT = "meridian-fuzzy-2024"; // статичная соль (для демо)
+    let str = SALT + String(p) + SALT;
+
+    // 3 раунда для усиления
+    let hash = 2166136261; // FNV offset basis
+    for (let round = 0; round < 3; round++) {
+        for (let i = 0; i < str.length; i++) {
+            hash ^= str.charCodeAt(i);
+            // Умножение на FNV prime (16777619) с ограничением 32 бита
+            hash = (hash * 16777619) >>> 0;
+            // Битовое перемешивание
+            hash ^= hash >>> 13;
+        }
+        // Меняем вход для следующего раунда
+        str = hash.toString(36) + str + hash;
     }
-    return "h" + Math.abs(h).toString(36);
+
+    return "h" + hash.toString(36);
 }
 
+/* =========================================================
+   ГЕНЕРАТОР УНИКАЛЬНЫХ ID
+
+   Возвращает СТРОКУ — не теряет точность (в отличие от чисел
+   больше Number.MAX_SAFE_INTEGER).
+   Формат: <timestamp в мс> + <6-значный счётчик>
+   Пример: "1792080743934000001"
+   ========================================================= */
 let _uidCounter = 0;
 function uid() {
-    _uidCounter = (_uidCounter + 1) % 100000;
-    return Date.now() * 100000 + _uidCounter;
+    _uidCounter = (_uidCounter + 1) % 1000000;
+    return String(Date.now()) + String(_uidCounter).padStart(6, "0");
 }
 
+/* =========================================================
+   ФОРМАТИРОВАНИЕ ДАТ
+   ========================================================= */
 function fmtDate(ts) {
     if (ts === null || ts === undefined) return "—";
     const d = new Date(ts);
@@ -370,15 +437,28 @@ function fmtDateTime(ts) {
     });
 }
 
+/* =========================================================
+   ДНЕЙ ДО ДАТЫ
+
+   Поддерживает форматы:
+   - "YYYY-MM-DD"
+   - "YYYY-MM-DDTHH:MM"     (ISO datetime-local)
+   - "YYYY-MM-DDTHH:MM:SS"  (ISO full)
+
+   Возвращает целое число дней (может быть отрицательным,
+   если дата в прошлом).
+   ========================================================= */
 function daysUntil(dateStr) {
     if (!dateStr) return 0;
-    const str = String(dateStr).trim();
-    const parts = str.split("-");
-    if (parts.length !== 3) return 0;
 
-    const y = Number(parts[0]);
-    const m = Number(parts[1]);
-    const d = Number(parts[2]);
+    const str = String(dateStr).trim();
+    // Извлекаем только YYYY-MM-DD через regex
+    const match = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!match) return 0;
+
+    const y = Number(match[1]);
+    const m = Number(match[2]);
+    const d = Number(match[3]);
     if (!y || !m || !d) return 0;
 
     const target = new Date(y, m - 1, d, 0, 0, 0, 0);

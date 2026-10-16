@@ -1,3 +1,8 @@
+/* =========================================================
+   MAMDANI — визуализация нечёткого вывода
+   Акцент: --accent-viz (индиго-фиолетовый)
+   ========================================================= */
+
 .mamdani-work {
     display: flex;
     justify-content: space-between;
@@ -53,9 +58,10 @@
     transition: border-color var(--t-fast);
 }
 .mamdani-select:focus {
-    border-color: rgb(99, 102, 241);
+    border-color: var(--accent-viz);
 }
 
+/* ============ HERO (вердикт) ============ */
 .mamdani-hero-final {
     display: flex;
     align-items: center;
@@ -152,6 +158,7 @@
     font-size: 10px;
 }
 
+/* ============ ДЕЙСТВИЯ ============ */
 .mamdani-actions {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -182,15 +189,16 @@
     transition: all var(--t-fast);
 }
 .action-btn:hover {
-    border-color: rgb(99, 102, 241);
-    background: rgba(99, 102, 241, 0.06);
-    color: rgb(99, 102, 241);
+    border-color: var(--accent-viz);
+    background: var(--accent-viz-soft);
+    color: var(--accent-viz);
     transform: translateY(-2px);
 }
 .action-btn:active {
     transform: translateY(0);
 }
 
+/* ============ ОСНОВНОЙ РЕЗУЛЬТАТ ============ */
 .mamdani-main {
     display: grid;
     grid-template-columns: 1.5fr 1fr;
@@ -306,6 +314,7 @@
     text-transform: capitalize;
 }
 
+/* ============ TODO (что делать) ============ */
 .mamdani-todo {
     padding: 24px 28px;
     border-radius: var(--r-lg);
@@ -327,12 +336,12 @@
     gap: 14px;
     padding: 14px 16px;
     border-radius: var(--r);
-    background: rgba(99, 102, 241, 0.05);
-    border-left: 3px solid rgb(99, 102, 241);
+    background: var(--accent-viz-soft);
+    border-left: 3px solid var(--accent-viz);
     transition: all var(--t-fast);
 }
 .todo-item:hover {
-    background: rgba(99, 102, 241, 0.09);
+    background: rgba(99, 102, 241, 0.14);
     transform: translateX(2px);
 }
 
@@ -360,6 +369,7 @@
     line-height: 1.5;
 }
 
+/* ============ ФАКТОРЫ ============ */
 .mamdani-factors {
     padding: 24px 28px;
     border-radius: var(--r-lg);
@@ -450,6 +460,7 @@
     font-weight: 500;
 }
 
+/* ============ ВКЛАДКИ ============ */
 .mamdani-tabs {
     display: flex;
     gap: 4px;
@@ -474,11 +485,12 @@
     color: var(--txt);
 }
 .mamdani-tabs button.active {
-    background: rgba(99, 102, 241, 0.1);
-    color: rgb(99, 102, 241);
+    background: var(--accent-viz-soft);
+    color: var(--accent-viz);
     font-weight: 600;
 }
 
+/* ============ PIPELINE ============ */
 .pipeline {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
@@ -507,8 +519,8 @@
     transition: all var(--t-fast);
 }
 .pipeline-step.active {
-    border-color: rgba(99, 102, 241, 0.4);
-    background: rgba(99, 102, 241, 0.08);
+    border-color: var(--accent-viz-glow);
+    background: var(--accent-viz-soft);
     transform: translateY(-2px);
 }
 .pipeline-step-num {
@@ -525,7 +537,7 @@
     margin-bottom: 8px;
 }
 .pipeline-step.active .pipeline-step-num {
-    background: rgb(99, 102, 241);
+    background: var(--accent-viz);
     color: #fff;
 }
 .pipeline-step-title {
@@ -539,11 +551,12 @@
     color: var(--txt-muted);
 }
 
+/* ============ EXPLAIN БЛОКИ ============ */
 .mamdani-explain {
     padding: 16px 18px;
     border-radius: var(--r);
-    background: rgba(99, 102, 241, 0.06);
-    border-left: 3px solid rgb(99, 102, 241);
+    background: var(--accent-viz-soft);
+    border-left: 3px solid var(--accent-viz);
     font-size: 13px;
     line-height: 1.65;
     color: var(--txt);
@@ -561,6 +574,7 @@
     margin-bottom: 12px;
 }
 
+/* ============ ФАЗЗИФИКАЦИЯ ============ */
 .fuzz-table {
     display: grid;
     gap: 8px;
@@ -661,6 +675,7 @@
     font-variant-numeric: tabular-nums;
 }
 
+/* ============ ПРАВИЛА ============ */
 .rule-clear {
     display: flex;
     gap: 16px;
@@ -708,7 +723,7 @@
     line-height: 1.5;
 }
 .rule-clear-then b {
-    color: rgb(99, 102, 241);
+    color: var(--accent-viz);
     font-weight: 600;
 }
 .rule-clear-label {
@@ -720,8 +735,8 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    background: rgba(99, 102, 241, 0.12);
-    color: rgb(99, 102, 241);
+    background: var(--accent-viz-soft);
+    color: var(--accent-viz);
 }
 .rule-clear-desc {
     font-size: 12px;
@@ -732,6 +747,7 @@
     color: var(--txt);
 }
 
+/* ============ АГРЕГАЦИЯ ============ */
 .aggr-card {
     padding: 20px 22px;
     border-radius: var(--r);
@@ -775,6 +791,7 @@
     margin-top: 8px;
 }
 
+/* ============ ДЕФАЗЗИФИКАЦИЯ ============ */
 .defuzz-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -814,6 +831,7 @@
     margin-top: 10px;
 }
 
+/* ============ СРАВНЕНИЕ АЛГОРИТМОВ ============ */
 .algo-compare {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -838,15 +856,15 @@
     transition: all var(--t-fast);
 }
 .algo-card.selected {
-    border-color: rgba(99, 102, 241, 0.4);
-    background: rgba(99, 102, 241, 0.08);
+    border-color: var(--accent-viz-glow);
+    background: var(--accent-viz-soft);
 }
 
 .algo-card-badge {
     position: absolute;
     top: -10px;
     right: 16px;
-    background: rgb(99, 102, 241);
+    background: var(--accent-viz);
     color: #fff;
     font-size: 10px;
     padding: 4px 10px;
@@ -876,6 +894,7 @@
     line-height: 1.5;
 }
 
+/* ============ ИСТОРИЯ ============ */
 .mamdani-history {
     padding: 24px 28px;
     border-radius: var(--r-lg);
@@ -908,8 +927,8 @@
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: rgb(99, 102, 241);
-    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12);
+    background: var(--accent-viz);
+    box-shadow: 0 0 0 4px var(--accent-viz-soft);
 }
 
 .history-time {
@@ -923,7 +942,9 @@
     font-weight: 500;
 }
 
-.chart-box {
+/* ============ CHART-BOX (для mamdani/simulate) ============ */
+.mamdani-main ~ .chart-box,
+.mamdani-history ~ .chart-box {
     position: relative;
     background: rgba(255, 255, 255, 0.5);
     border-radius: var(--r);
@@ -931,15 +952,18 @@
     margin-top: 12px;
     width: 100%;
 }
-.chart-box.h-260 {
+.mamdani-main ~ .chart-box.h-260,
+.mamdani-history ~ .chart-box.h-260 {
     height: 260px;
 }
-.chart-box canvas {
+.mamdani-main ~ .chart-box canvas,
+.mamdani-history ~ .chart-box canvas {
     width: 100% !important;
     height: 100% !important;
     display: block;
 }
 
+/* ============ MF-EDITOR (в mamdani.css, потом вынесем) ============ */
 .mf-canvas-wrap {
     position: relative;
     height: 260px;
@@ -972,12 +996,12 @@
     transition: all var(--t-fast);
 }
 .mf-var-card:hover {
-    border-color: rgba(99, 102, 241, 0.3);
+    border-color: var(--accent-viz-glow);
     transform: translateY(-2px);
 }
 .mf-var-card.active {
-    border-color: rgb(99, 102, 241);
-    background: rgba(99, 102, 241, 0.08);
+    border-color: var(--accent-viz);
+    background: var(--accent-viz-soft);
 }
 .mf-var-name {
     font-size: 13px;

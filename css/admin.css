@@ -18,8 +18,8 @@
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    background: var(--accent-soft);
-    color: var(--accent);
+    background: var(--info-soft);
+    color: var(--info);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -29,7 +29,7 @@
     cursor: pointer;
 }
 .user-avatar.teacher {
-    background: rgba(138, 155, 125, 0.15);
+    background: var(--sage-soft);
     color: var(--sage);
 }
 .user-avatar.admin {
@@ -64,17 +64,17 @@
 .role-chip.student {
     background: var(--info-soft);
     color: var(--info);
-    border-color: rgba(107, 124, 155, 0.25);
+    border-color: rgba(42, 92, 184, 0.25);
 }
 .role-chip.teacher {
-    background: var(--accent-soft);
-    color: var(--accent);
-    border-color: rgba(181, 113, 74, 0.25);
+    background: var(--sage-soft);
+    color: var(--sage);
+    border-color: rgba(92, 138, 90, 0.25);
 }
 .role-chip.admin {
     background: var(--bad-soft);
     color: var(--bad);
-    border-color: rgba(184, 90, 74, 0.25);
+    border-color: rgba(194, 58, 47, 0.25);
 }
 
 .blocked-chip {

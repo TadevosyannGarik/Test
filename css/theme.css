@@ -18,6 +18,16 @@
     --accent-hover: #2a2a2a;
     --accent-glow: rgba(17, 17, 17, 0.15);
 
+    /* =========================================================
+       АКЦЕНТ ДЛЯ ВИЗУАЛИЗАЦИИ АЛГОРИТМА (Мамдани, симулятор, ФП)
+       Отделён от --accent: основной UI строгий и чёрный,
+       а визуализация нечёткой логики — индиго-фиолетовая.
+       ========================================================= */
+    --accent-viz: #6366f1;
+    --accent-viz-hover: #4f46e5;
+    --accent-viz-soft: rgba(99, 102, 241, 0.1);
+    --accent-viz-glow: rgba(99, 102, 241, 0.2);
+
     --pop: #e85d2c;
     --pop-soft: #fef3ee;
 
@@ -457,9 +467,10 @@ h4,
     background: var(--info-soft);
     color: var(--info);
 }
+/* review — «на проверке» — нейтрально-фиолетовый, уникальный среди статусов */
 .badge.review {
-    background: var(--pop-soft);
-    color: var(--pop);
+    background: var(--purple-soft);
+    color: var(--purple);
 }
 .badge.approved {
     background: var(--ok-soft);

@@ -41,6 +41,9 @@ const Utils = (() => {
         { id: "done", title: "Готово" },
     ];
 
+    /* =========================================================
+       БАЗОВЫЕ ХЕЛПЕРЫ
+       ========================================================= */
     function escapeHtml(str) {
         if (str === null || str === undefined) return "";
         return String(str)
@@ -71,6 +74,9 @@ const Utils = (() => {
         return `<span class="badge ${s.badge}">${s.label}</span>`;
     }
 
+    /* =========================================================
+       ПРОГРЕСС ПО ЭТАПАМ
+       ========================================================= */
     function calcProgress(workId) {
         const stages = Storage.getStagesByWork(workId);
         if (stages.length === 0) return 0;
@@ -81,6 +87,14 @@ const Utils = (() => {
         return total === 0 ? 0 : Math.round((done / total) * 100);
     }
 
+    /* =========================================================
+       СБОР ВХОДНЫХ ДАННЫХ ДЛЯ НЕЧЁТКОГО ВЫВОДА
+
+       ВАЖНО: orig/supScore/gost передаются как null, если
+       руководитель ещё не оценивал работу. Это позволяет
+       fuzzy.js корректно отключать правила, зависящие от
+       этих переменных.
+       ========================================================= */
     function buildFuzzyInputs(work, progressOverride) {
         if (!work) return null;
 
@@ -117,12 +131,21 @@ const Utils = (() => {
             activity,
             edits: comments.length,
             volume: progress,
+
+            // null — значит «данных нет», fuzzy.js учтёт это
             orig: typeof work.orig === "number" ? work.orig : null,
             supScore: typeof work.supScore === "number" ? work.supScore : null,
             gost: typeof work.gost === "number" ? work.gost : null,
         };
     }
 
+    /* =========================================================
+       БЕЗОПАСНЫЙ ВЫЗОВ НЕЧЁТКОГО ВЫВОДА
+
+       НЕ подставляем дефолты для orig/supScore/gost — они
+       должны остаться null, если данных нет. Иначе правила
+       будут срабатывать «как будто оценка есть».
+       ========================================================= */
     function safeFuzzyInfer(inputs) {
         if (!inputs) return null;
         if (typeof Fuzzy === "undefined") return null;
@@ -133,22 +156,44 @@ const Utils = (() => {
             activity: inputs.activity ?? 5,
             edits: inputs.edits ?? 0,
             volume: inputs.volume ?? 0,
-            orig: inputs.orig ?? 65,
-            supScore: inputs.supScore ?? 5,
-            gost: inputs.gost ?? 70,
+
+            // null пропускаем как null — fuzzy.js сам решит
+            orig:
+                inputs.orig === null || inputs.orig === undefined
+                    ? null
+                    : inputs.orig,
+            supScore:
+                inputs.supScore === null || inputs.supScore === undefined
+                    ? null
+                    : inputs.supScore,
+            gost:
+                inputs.gost === null || inputs.gost === undefined
+                    ? null
+                    : inputs.gost,
         };
 
         const res = Fuzzy.infer(normalized);
+
+        // Совместимость: сохраняем hasData и hasAnyTeacherCheck
         res.hasData = {
-            orig: inputs.orig !== null && inputs.orig !== undefined,
-            supScore: inputs.supScore !== null && inputs.supScore !== undefined,
-            gost: inputs.gost !== null && inputs.gost !== undefined,
+            orig: normalized.orig !== null,
+            supScore: normalized.supScore !== null,
+            gost: normalized.gost !== null,
         };
         res.hasAnyTeacherCheck =
             res.hasData.orig || res.hasData.supScore || res.hasData.gost;
+
+        // Новое: список отсутствующих переменных
+        res.missingTeacherData = Object.keys(res.hasData).filter(
+            (k) => !res.hasData[k],
+        );
+
         return res;
     }
 
+    /* =========================================================
+       ПУСТОЕ СОСТОЯНИЕ
+       ========================================================= */
     function emptyState(title, text, iconFn, actionHtml) {
         return `
       <div class="empty-state">
@@ -160,6 +205,9 @@ const Utils = (() => {
     `;
     }
 
+    /* =========================================================
+       РЕНДЕР КОММЕНТАРИЯ
+       ========================================================= */
     function renderComment(c) {
         const author = Storage.getUserById(c.authorId);
         return `
@@ -173,6 +221,9 @@ const Utils = (() => {
     `;
     }
 
+    /* =========================================================
+       МИНИ-ЭТАПЫ
+       ========================================================= */
     function renderStagesMini(workId, limit = 5) {
         const stages = Storage.getStagesByWork(workId);
         if (!stages.length) {
@@ -227,6 +278,9 @@ const Utils = (() => {
     `;
     }
 
+    /* =========================================================
+       АКТИВНЫЕ / АРХИВНЫЕ РАБОТЫ
+       ========================================================= */
     function isActiveStatus(status) {
         return status !== "done" && status !== "rejected";
     }
@@ -253,6 +307,9 @@ const Utils = (() => {
         );
     }
 
+    /* =========================================================
+       ВИЗУАЛЬНЫЕ КЛАССЫ
+       ========================================================= */
     function progressClass(progress) {
         if (progress < 40) return "bad";
         if (progress < 70) return "warn";
@@ -267,6 +324,9 @@ const Utils = (() => {
         return term === "high" ? "ok" : term === "med" ? "warn" : "bad";
     }
 
+    /* =========================================================
+       ПРОВЕРКА ПРАВ
+       ========================================================= */
     function ensureOwnerWork(work, user) {
         if (!work || !user) return false;
         if (user.role === "admin") return true;
@@ -277,6 +337,9 @@ const Utils = (() => {
         return false;
     }
 
+    /* =========================================================
+       ПУБЛИЧНЫЙ API
+       ========================================================= */
     return {
         WORK_TYPES,
         WORK_TYPES_LIST,

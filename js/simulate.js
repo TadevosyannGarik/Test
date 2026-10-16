@@ -2,6 +2,8 @@ const Simulate = (() => {
     let workId = null;
     let currentWork = null;
     let baseCache = null;
+    /** Список «пустых» переменных — тех, где руководитель ещё не оценивал */
+    let missingVars = [];
 
     const escapeHtml = Utils.escapeHtml;
     const emptyState = Utils.emptyState;
@@ -15,6 +17,18 @@ const Simulate = (() => {
         s_orig: SVG.search,
         s_supScore: SVG.graduation,
         s_gost: SVG.fileText,
+    };
+
+    /**
+     * Дефолтные значения для отсутствующих данных.
+     * Симулятор — это «что если», поэтому мы даём пользователю
+     * возможность задать значения ползунками, даже если
+     * руководитель ещё не оценивал работу.
+     */
+    const DISPLAY_DEFAULTS = {
+        orig: 65,
+        supScore: 5,
+        gost: 70,
     };
 
     function getUser() {
@@ -34,15 +48,25 @@ const Simulate = (() => {
         const inputs = Utils.buildFuzzyInputs(work);
         if (!inputs) return null;
 
+        // Запоминаем, каких данных нет
+        missingVars = [];
+        if (inputs.orig === null || inputs.orig === undefined)
+            missingVars.push("orig");
+        if (inputs.supScore === null || inputs.supScore === undefined)
+            missingVars.push("supScore");
+        if (inputs.gost === null || inputs.gost === undefined)
+            missingVars.push("gost");
+
         return {
             progress: inputs.progress ?? 0,
             days: inputs.days ?? 30,
             activity: inputs.activity ?? 5,
             edits: inputs.edits ?? 0,
             volume: inputs.volume ?? 0,
-            orig: inputs.orig ?? 65,
-            supScore: inputs.supScore ?? 5,
-            gost: inputs.gost ?? 70,
+            // Для симулятора подставляем дефолт, если данных нет:
+            orig: inputs.orig ?? DISPLAY_DEFAULTS.orig,
+            supScore: inputs.supScore ?? DISPLAY_DEFAULTS.supScore,
+            gost: inputs.gost ?? DISPLAY_DEFAULTS.gost,
         };
     }
 
@@ -93,6 +117,21 @@ const Simulate = (() => {
           </div>
         </div>
       </div>
+
+      ${
+          missingVars.length > 0
+              ? `
+        <div class="notice" style="background:var(--warn-soft);border-left:3px solid var(--warn);margin-bottom:20px;">
+          ${SVG.info({ cls: "icon icon-sm" })}
+          <span>
+            Руководитель ещё не проверял работу. Для
+            <b>${missingVars.map((v) => VAR_LABELS_SIM[v] || v).join(", ")}</b>
+            подставлены средние значения. Их можно менять ползунками.
+          </span>
+        </div>
+      `
+              : ""
+      }
 
       <div class="sim-work">
         <div class="sim-work-info">
@@ -148,14 +187,14 @@ const Simulate = (() => {
             ${SVG.sliders({ cls: "icon icon-sm" })}
             Входные параметры
           </div>
-          ${slider("s_progress", "Прогресс", 0, 100, base.progress, "%")}
-          ${slider("s_days", "Дней до дедлайна", 0, 60, base.days, "")}
-          ${slider("s_activity", "Активность", 0, 10, base.activity, "")}
-          ${slider("s_edits", "Число правок", 0, 20, base.edits, "")}
-          ${slider("s_volume", "Объём", 0, 100, base.volume, "%")}
-          ${slider("s_orig", "Оригинальность", 0, 100, base.orig, "%")}
-          ${slider("s_supScore", "Оценка руководителя", 0, 10, base.supScore, "")}
-          ${slider("s_gost", "Соответствие ГОСТу", 0, 100, base.gost, "%")}
+          ${slider("s_progress", "Прогресс", 0, 100, base.progress, "%", false)}
+          ${slider("s_days", "Дней до дедлайна", 0, 60, base.days, "", false)}
+          ${slider("s_activity", "Активность", 0, 10, base.activity, "", false)}
+          ${slider("s_edits", "Число правок", 0, 20, base.edits, "", false)}
+          ${slider("s_volume", "Объём", 0, 100, base.volume, "%", false)}
+          ${slider("s_orig", "Оригинальность", 0, 100, base.orig, "%", missingVars.includes("orig"))}
+          ${slider("s_supScore", "Оценка руководителя", 0, 10, base.supScore, "", missingVars.includes("supScore"))}
+          ${slider("s_gost", "Соответствие ГОСТу", 0, 100, base.gost, "%", missingVars.includes("gost"))}
 
           <button class="btn-ghost sim-reset" onclick="Simulate.reset()">
             ${SVG.refresh({ cls: "icon icon-sm" })}
@@ -176,14 +215,19 @@ const Simulate = (() => {
     `;
     }
 
-    function slider(id, label, min, max, val, unit) {
+    function slider(id, label, min, max, val, unit, isMissing) {
         const IconFn = SLIDER_ICONS[id];
+        const missingNote = isMissing
+            ? '<span class="sim-slider-missing">нет данных</span>'
+            : "";
+
         return `
-      <div class="sim-slider">
+      <div class="sim-slider ${isMissing ? "sim-slider-missing-wrap" : ""}">
         <div class="sim-slider-head">
           <span class="sim-slider-label">
             ${IconFn ? IconFn({ cls: "icon icon-sm" }) : ""}
             ${escapeHtml(label)}
+            ${missingNote}
           </span>
           <span class="sim-slider-val" id="v_${id}">${val}${unit}</span>
         </div>
@@ -235,7 +279,7 @@ const Simulate = (() => {
                 ? Utils.riskClass(term)
                 : label === "Готовность"
                   ? Utils.readyClass(term)
-                  : "accent";
+                  : Utils.readyClass(term);
 
         const diffArrow = diff > 2 ? "up" : diff < -2 ? "down" : "";
         const diffClass =
@@ -486,6 +530,7 @@ const Simulate = (() => {
         if (isNaN(num)) return;
         workId = num;
         baseCache = null;
+        missingVars = [];
         renderView();
     }
 
@@ -494,6 +539,12 @@ const Simulate = (() => {
         if (!root) return;
         root.innerHTML = `<div class="view active">${render()}</div>`;
     }
+
+    const VAR_LABELS_SIM = {
+        orig: "Оригинальность",
+        supScore: "Оценка руководителя",
+        gost: "Соответствие ГОСТу",
+    };
 
     return {
         render,

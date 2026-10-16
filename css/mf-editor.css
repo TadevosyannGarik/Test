@@ -1,3 +1,9 @@
+/* =========================================================
+   MF-EDITOR — редактор функций принадлежности
+   Акцент: --accent-viz (индиго-фиолетовый)
+   ========================================================= */
+
+/* ============ HERO ============ */
 .mf-hero {
     display: flex;
     align-items: flex-start;
@@ -19,8 +25,8 @@
     width: 52px;
     height: 52px;
     border-radius: var(--r-md);
-    background: rgba(99, 102, 241, 0.15);
-    color: rgb(99, 102, 241);
+    background: var(--accent-viz-glow);
+    color: var(--accent-viz);
     flex-shrink: 0;
 }
 .mf-hero-title {
@@ -39,6 +45,7 @@
     color: var(--txt);
 }
 
+/* ============ NOTICE ============ */
 .mf-notice {
     display: flex;
     align-items: center;
@@ -60,6 +67,7 @@
     color: var(--txt);
 }
 
+/* ============ ПРЕСЕТЫ ============ */
 .mf-presets {
     padding: 20px 24px;
     border-radius: var(--r-lg);
@@ -100,8 +108,8 @@
     transition: all var(--t-fast);
 }
 .mf-preset:hover {
-    border-color: rgba(99, 102, 241, 0.4);
-    background: rgba(99, 102, 241, 0.06);
+    border-color: var(--accent-viz-glow);
+    background: var(--accent-viz-soft);
     transform: translateY(-2px);
 }
 .mf-preset-title {
@@ -116,6 +124,7 @@
     line-height: 1.4;
 }
 
+/* ============ LIVE-ТЕСТ ============ */
 .mf-live {
     padding: 24px 26px;
     border-radius: var(--r-lg);
@@ -123,7 +132,7 @@
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.5);
-    border-left: 4px solid rgb(99, 102, 241);
+    border-left: 4px solid var(--accent-viz);
     margin-bottom: 20px;
 }
 .mf-live-title {
@@ -164,9 +173,9 @@
     font-family: var(--font-mono);
     font-size: 14px;
     font-weight: 700;
-    color: rgb(99, 102, 241);
+    color: var(--accent-viz);
     font-variant-numeric: tabular-nums;
-    background: rgba(99, 102, 241, 0.1);
+    background: var(--accent-viz-soft);
     padding: 4px 12px;
     border-radius: 100px;
 }
@@ -188,11 +197,11 @@
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background: rgb(99, 102, 241);
+    background: var(--accent-viz);
     margin-top: -8px;
     cursor: pointer;
     border: 3px solid #fff;
-    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
+    box-shadow: 0 2px 8px var(--accent-viz-glow);
     transition: transform var(--t-fast);
 }
 .mf-live-slider input[type="range"]::-webkit-slider-thumb:hover {
@@ -207,13 +216,13 @@
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background: rgb(99, 102, 241);
+    background: var(--accent-viz);
     border: 3px solid #fff;
     cursor: pointer;
-    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
+    box-shadow: 0 2px 8px var(--accent-viz-glow);
 }
 
-/* Результат живого примера */
+/* ============ LIVE РЕЗУЛЬТАТ ============ */
 .mf-live-result {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -237,8 +246,8 @@
 }
 .mf-live-term.active {
     opacity: 1;
-    border-color: rgba(99, 102, 241, 0.3);
-    background: rgba(99, 102, 241, 0.05);
+    border-color: var(--accent-viz-glow);
+    background: var(--accent-viz-soft);
 }
 .mf-live-term-label {
     font-size: 11px;
@@ -274,21 +283,22 @@
     gap: 10px;
     padding: 12px 16px;
     border-radius: var(--r);
-    background: rgba(99, 102, 241, 0.08);
+    background: var(--accent-viz-soft);
     font-size: 13px;
     color: var(--txt);
     line-height: 1.5;
 }
 .mf-live-verdict .icon {
-    color: rgb(99, 102, 241);
+    color: var(--accent-viz);
     flex-shrink: 0;
 }
 .mf-live-verdict b {
-    color: rgb(99, 102, 241);
+    color: var(--accent-viz);
     font-weight: 600;
     text-transform: capitalize;
 }
 
+/* ============ LAYOUT (график + контролы) ============ */
 .mf-layout {
     display: grid;
     grid-template-columns: 1.3fr 1fr;
@@ -341,6 +351,7 @@
     display: block;
 }
 
+/* ============ ПОДСКАЗКИ К ГРАФИКУ ============ */
 .mf-chart-hints {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -379,6 +390,7 @@
     font-size: 10px;
 }
 
+/* ============ КОНТРОЛЫ ============ */
 .mf-controls-col {
     padding: 24px 26px;
     border-radius: var(--r-lg);
@@ -390,8 +402,8 @@
 .mf-var-info {
     padding: 14px 16px;
     border-radius: var(--r);
-    background: rgba(99, 102, 241, 0.06);
-    border-left: 3px solid rgb(99, 102, 241);
+    background: var(--accent-viz-soft);
+    border-left: 3px solid var(--accent-viz);
     margin-bottom: 20px;
 }
 .mf-var-info-title {
@@ -407,18 +419,30 @@
     line-height: 1.5;
 }
 
+/* ============ КАРТОЧКА ТЕРМА ============ */
 .mf-term-card {
     padding: 16px 18px;
     border-radius: var(--r);
     background: rgba(255, 255, 255, 0.5);
     border: 1px solid rgba(255, 255, 255, 0.5);
     margin-bottom: 12px;
+    transition:
+        border-color var(--t-fast),
+        background var(--t-fast);
 }
+
+/* Подсветка изменённого терма */
+.mf-term-card-changed {
+    border-color: var(--accent-viz-glow);
+    background: var(--accent-viz-soft);
+}
+
 .mf-term-head {
     display: flex;
     align-items: center;
     gap: 10px;
     margin-bottom: 6px;
+    flex-wrap: wrap;
 }
 .mf-term-dot {
     width: 10px;
@@ -430,6 +454,17 @@
     font-size: 13px;
     font-weight: 600;
     color: var(--txt);
+}
+.mf-term-changed {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 100px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background: var(--accent-viz-glow);
+    color: var(--accent-viz);
 }
 .mf-term-tri {
     margin-left: auto;
@@ -475,10 +510,11 @@
     font-variant-numeric: tabular-nums;
 }
 .mf-term-input input:focus {
-    border-color: rgb(99, 102, 241);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    border-color: var(--accent-viz);
+    box-shadow: 0 0 0 3px var(--accent-viz-soft);
 }
 
+/* ============ КНОПКИ ============ */
 .mf-actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -491,6 +527,7 @@
     justify-content: center;
 }
 
+/* ============ СЕЛЕКТОР ПЕРЕМЕННЫХ ============ */
 .mf-vars-section {
     padding: 24px 26px;
     border-radius: var(--r-lg);
@@ -526,12 +563,12 @@
     text-align: left;
 }
 .mf-var-card:hover {
-    border-color: rgba(99, 102, 241, 0.3);
+    border-color: var(--accent-viz-glow);
     transform: translateY(-2px);
 }
 .mf-var-card.active {
-    border-color: rgb(99, 102, 241);
-    background: rgba(99, 102, 241, 0.08);
+    border-color: var(--accent-viz);
+    background: var(--accent-viz-soft);
 }
 .mf-var-name {
     font-size: 13px;
@@ -558,11 +595,12 @@
     border-radius: 2px;
 }
 
+/* ============ HELP ============ */
 .mf-help {
     padding: 22px 24px;
     border-radius: var(--r-lg);
-    background: rgba(99, 102, 241, 0.05);
-    border-left: 3px solid rgb(99, 102, 241);
+    background: var(--accent-viz-soft);
+    border-left: 3px solid var(--accent-viz);
 }
 .mf-help-title {
     display: flex;

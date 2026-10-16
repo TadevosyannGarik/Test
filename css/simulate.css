@@ -1,3 +1,8 @@
+/* =========================================================
+   SIMULATE — симулятор «Что если»
+   Акцент: --accent-viz (индиго-фиолетовый)
+   ========================================================= */
+
 .sim-hero {
     display: flex;
     align-items: flex-start;
@@ -19,8 +24,8 @@
     width: 52px;
     height: 52px;
     border-radius: var(--r-md);
-    background: rgba(99, 102, 241, 0.15);
-    color: rgb(99, 102, 241);
+    background: var(--accent-viz-glow);
+    color: var(--accent-viz);
     flex-shrink: 0;
 }
 .sim-hero-title {
@@ -84,9 +89,10 @@
     transition: border-color var(--t-fast);
 }
 .sim-select:focus {
-    border-color: rgb(99, 102, 241);
+    border-color: var(--accent-viz);
 }
 
+/* ============ СЦЕНАРИИ ============ */
 .sim-scenarios {
     padding: 20px 24px;
     border-radius: var(--r-lg);
@@ -131,8 +137,8 @@
     width: 100%;
 }
 .sim-scenario:hover {
-    border-color: rgba(99, 102, 241, 0.4);
-    background: rgba(99, 102, 241, 0.06);
+    border-color: var(--accent-viz-glow);
+    background: var(--accent-viz-soft);
     transform: translateY(-2px);
 }
 .sim-scenario-icon {
@@ -142,8 +148,8 @@
     width: 40px;
     height: 40px;
     border-radius: var(--r-sm);
-    background: rgba(99, 102, 241, 0.1);
-    color: rgb(99, 102, 241);
+    background: var(--accent-viz-soft);
+    color: var(--accent-viz);
     flex-shrink: 0;
 }
 .sim-scenario-body {
@@ -163,6 +169,7 @@
     line-height: 1.4;
 }
 
+/* ============ СЕТКА УПРАВЛЕНИЯ ============ */
 .sim-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -194,6 +201,7 @@
     margin-bottom: 20px;
 }
 
+/* ============ СЛАЙДЕРЫ ============ */
 .sim-slider {
     margin-bottom: 18px;
 }
@@ -218,13 +226,31 @@
     font-family: var(--font-mono);
     font-size: 12px;
     font-weight: 600;
-    color: rgb(99, 102, 241);
+    color: var(--accent-viz);
     font-variant-numeric: tabular-nums;
-    background: rgba(99, 102, 241, 0.1);
+    background: var(--accent-viz-soft);
     padding: 3px 10px;
     border-radius: 100px;
 }
 
+/* Бейдж «нет данных» для ползунков */
+.sim-slider-missing {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 1px 8px;
+    border-radius: 100px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background: var(--warn-soft);
+    color: var(--warn);
+}
+.sim-slider-missing-wrap input[type="range"] {
+    opacity: 0.75;
+}
+
+/* Слайдеры — общие (input[type=range]) */
 input[type="range"] {
     width: 100%;
     -webkit-appearance: none;
@@ -242,11 +268,11 @@ input[type="range"]::-webkit-slider-thumb {
     width: 18px;
     height: 18px;
     border-radius: 50%;
-    background: rgb(99, 102, 241);
+    background: var(--accent-viz);
     margin-top: -7px;
     cursor: pointer;
     border: 3px solid #fff;
-    box-shadow: 0 2px 6px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 2px 6px var(--accent-viz-glow);
     transition: transform var(--t-fast);
 }
 input[type="range"]::-webkit-slider-thumb:hover {
@@ -261,10 +287,10 @@ input[type="range"]::-moz-range-thumb {
     width: 18px;
     height: 18px;
     border-radius: 50%;
-    background: rgb(99, 102, 241);
+    background: var(--accent-viz);
     border: 3px solid #fff;
     cursor: pointer;
-    box-shadow: 0 2px 6px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 2px 6px var(--accent-viz-glow);
 }
 
 .sim-reset {
@@ -274,6 +300,7 @@ input[type="range"]::-moz-range-thumb {
     font-size: 13px;
 }
 
+/* ============ ПАНЕЛЬ РЕЗУЛЬТАТА ============ */
 .sim-result-panel {
     padding: 24px 26px;
     border-radius: var(--r-lg);
@@ -353,6 +380,7 @@ input[type="range"]::-moz-range-thumb {
     color: var(--bad);
 }
 
+/* ============ СРАВНЕНИЕ ============ */
 .sim-compare {
     padding-top: 20px;
     border-top: 1px solid var(--line);
@@ -419,6 +447,7 @@ input[type="range"]::-moz-range-thumb {
     font-size: 10px;
 }
 
+/* ============ КОММЕНТАРИЙ ============ */
 .sim-comment {
     display: flex;
     gap: 12px;
@@ -442,8 +471,8 @@ input[type="range"]::-moz-range-thumb {
     color: var(--bad);
 }
 .sim-comment.neutral {
-    background: rgba(99, 102, 241, 0.06);
-    border-left-color: rgb(99, 102, 241);
+    background: var(--accent-viz-soft);
+    border-left-color: var(--accent-viz);
     color: var(--txt);
 }
 .sim-comment-icon {
