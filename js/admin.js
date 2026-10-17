@@ -18,13 +18,19 @@ const Admin = (() => {
     let workFilter = { status: "", type: "", q: "" };
     let analyticsFilter = { status: "", type: "", teacherId: "" };
 
-    /* ---------- Пагинация дашборда ---------- */
     let adminPage = {
         departments: 0,
         attention: 0,
         activity: 0,
         works: 0,
     };
+
+    function resetFilters() {
+        userFilter = { role: "", q: "" };
+        workFilter = { status: "", type: "", q: "" };
+        analyticsFilter = { status: "", type: "", teacherId: "" };
+        adminPage = { departments: 0, attention: 0, activity: 0, works: 0 };
+    }
 
     function nextPage(key, totalPages) {
         if (adminPage[key] < totalPages - 1) {
@@ -50,14 +56,15 @@ const Admin = (() => {
     }
 
     function getFuzzyResult(work) {
-        return Utils.safeFuzzyInfer(Utils.buildFuzzyInputs(work));
+        try {
+            return Utils.safeFuzzyInfer(Utils.buildFuzzyInputs(work));
+        } catch (e) {
+            return null;
+        }
     }
 
     const VIEWS = {};
 
-    /* =========================================================
-       ДЕМО-ДАННЫЕ
-       ========================================================= */
     VIEWS.demo = function () {
         const users = Storage.getUsers();
         const works = Storage.getWorks();
@@ -159,9 +166,6 @@ const Admin = (() => {
     `;
     };
 
-    /* =========================================================
-       DASHBOARD
-       ========================================================= */
     VIEWS.dashboard = function () {
         const users = Storage.getUsers();
         const works = Storage.getWorks();
@@ -233,7 +237,6 @@ const Admin = (() => {
         });
 
         return `
-      <!-- KPI -->
       <div class="kpi-row" style="margin-bottom:20px;">
         ${renderKpiTile({
             label: "Пользователей",
@@ -267,7 +270,6 @@ const Admin = (() => {
         })}
       </div>
 
-      <!-- АКТИВНОСТЬ -->
       <div class="card activity-hero-card">
         <div class="card-head" style="margin-bottom:16px;">
           <div class="card-title" style="margin-bottom:0;display:flex;align-items:center;gap:8px;">
@@ -304,7 +306,6 @@ const Admin = (() => {
         </div>
       </div>
 
-      <!-- 3 КРУГЛЫХ ГРАФИКА -->
       <div class="dash-grid" style="margin-bottom:20px;">
         <div class="card col-4">
           <div class="card-title" style="font-size:14px;">По рискам</div>
@@ -320,7 +321,6 @@ const Admin = (() => {
         </div>
       </div>
 
-      <!-- ТРИ КАРТОЧКИ С ПАГИНАЦИЕЙ -->
       <div class="dash-grid" style="margin-bottom:20px;">
         <div class="card col-4 dash-card-fixed">
           <div class="card-head">
@@ -339,7 +339,7 @@ const Admin = (() => {
               Требуют внимания
             </div>
           </div>
-          ${renderAttentionList({ pendingWorks, highRisk, overdue, blocked, noTeacher: [] })}
+          ${renderAttentionList({ pendingWorks, highRisk, overdue, blocked })}
         </div>
 
         <div class="card col-4 dash-card-fixed">
@@ -354,7 +354,6 @@ const Admin = (() => {
         </div>
       </div>
 
-      <!-- ТОП РАБОТ -->
       <div class="dash-table-card">
         <div class="card-head">
           <div class="card-title" style="margin-bottom:0;display:flex;align-items:center;gap:8px;">
@@ -465,9 +464,6 @@ const Admin = (() => {
         );
     };
 
-    /* =========================================================
-       ХЕЛПЕРЫ ДАШБОРДА
-       ========================================================= */
     function renderKpiTile({ label, value, iconFn, iconCls, trend, foot }) {
         let trendHtml = "";
         if (trend !== undefined) {
@@ -572,11 +568,16 @@ const Admin = (() => {
             const dept = t.department || "Без кафедры";
             if (!byDept[dept]) byDept[dept] = { name: dept, count: 0 };
         });
+
+        const teacherDeptById = {};
+        teachers.forEach((t) => {
+            teacherDeptById[String(t.id)] = t.department || "Без кафедры";
+        });
+
         works.forEach((w) => {
             if (w.status !== "active" && w.status !== "review") return;
-            const t = Storage.getUserById(w.teacherId);
-            if (!t) return;
-            const dept = t.department || "Без кафедры";
+            const dept = teacherDeptById[String(w.teacherId)];
+            if (!dept) return;
             if (!byDept[dept]) byDept[dept] = { name: dept, count: 0 };
             byDept[dept].count++;
         });
@@ -618,13 +619,7 @@ const Admin = (() => {
         </div>`;
     }
 
-    function renderAttentionList({
-        pendingWorks,
-        highRisk,
-        overdue,
-        noTeacher,
-        blocked,
-    }) {
+    function renderAttentionList({ pendingWorks, highRisk, overdue, blocked }) {
         const items = [];
 
         if (pendingWorks.length > 0) {
@@ -649,14 +644,6 @@ const Admin = (() => {
                 text: `<b>${overdue.length}</b> просроченных работ`,
                 link: "works",
                 tone: "bad",
-            });
-        }
-        if (noTeacher.length > 0) {
-            items.push({
-                icon: SVG.users,
-                text: `<b>${noTeacher.length}</b> работ без руководителя`,
-                link: "works",
-                tone: "warn",
             });
         }
         if (blocked.length > 0) {
@@ -757,7 +744,7 @@ const Admin = (() => {
     function renderTopWorksTable(works) {
         const enriched = works
             .map((w) => {
-                const res = Utils.safeFuzzyInfer(Utils.buildFuzzyInputs(w));
+                const res = getFuzzyResult(w);
                 return res ? { w, res } : null;
             })
             .filter(Boolean)
@@ -831,9 +818,6 @@ const Admin = (() => {
         });
     }
 
-    /* =========================================================
-       ПОЛЬЗОВАТЕЛИ
-       ========================================================= */
     VIEWS.users = function () {
         let users = Storage.getUsers();
 
@@ -874,6 +858,7 @@ const Admin = (() => {
             <option value="admin"   ${userFilter.role === "admin" ? "selected" : ""}>Администраторы</option>
           </select>
           <input type="text" placeholder="Поиск по ФИО или email..."
+            class="admin-users-search"
             value="${escapeHtml(userFilter.q)}"
             oninput="Admin.setUserFilter('q', this.value)">
         </div>
@@ -898,7 +883,8 @@ const Admin = (() => {
                   ? `${escapeHtml(u.department || "")}${u.degree ? " · " + escapeHtml(u.degree) : ""}`
                   : `${escapeHtml(u.department || "")} · ${escapeHtml(u.accessLevel || "")}`;
 
-        const isMe = Storage.sameId(u.id, getUser().id);
+        const me = getUser();
+        const isMe = me && Storage.sameId(u.id, me.id);
 
         return `
       <div class="user-row">
@@ -942,10 +928,22 @@ const Admin = (() => {
     function setUserFilter(key, val) {
         userFilter[key] = val;
         App.navigate("users");
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                const input = document.querySelector(".admin-users-search");
+                if (!input) return;
+                input.focus();
+                try {
+                    const len = input.value.length;
+                    input.setSelectionRange(len, len);
+                } catch (e) {}
+            }, 0);
+        });
     }
 
     function toggleBlock(id) {
         const me = getUser();
+        if (!me) return;
         if (Storage.sameId(me.id, id)) {
             App.toast("Нельзя заблокировать себя");
             return;
@@ -957,16 +955,18 @@ const Admin = (() => {
         u.blocked = !u.blocked;
         Storage.setUsers(users);
 
-        if (typeof Audit !== "undefined") {
-            Audit.log(
-                u.blocked
-                    ? "Пользователь заблокирован"
-                    : "Пользователь разблокирован",
-                u.fio,
-                "",
-                u.blocked ? "negative" : "positive",
-            );
-        }
+        try {
+            if (typeof Audit !== "undefined") {
+                Audit.log(
+                    u.blocked
+                        ? "Пользователь заблокирован"
+                        : "Пользователь разблокирован",
+                    u.fio,
+                    "",
+                    u.blocked ? "negative" : "positive",
+                );
+            }
+        } catch (e) {}
 
         App.toast(
             u.blocked
@@ -978,6 +978,7 @@ const Admin = (() => {
 
     function deleteUser(id) {
         const me = getUser();
+        if (!me) return;
         if (Storage.sameId(me.id, id)) {
             App.toast("Нельзя удалить себя");
             return;
@@ -1011,9 +1012,11 @@ const Admin = (() => {
                 }
             });
 
-        if (typeof Audit !== "undefined") {
-            Audit.log("Пользователь удалён", u.fio, u.role, "negative");
-        }
+        try {
+            if (typeof Audit !== "undefined") {
+                Audit.log("Пользователь удалён", u.fio, u.role, "negative");
+            }
+        } catch (e) {}
 
         App.toast("Пользователь удалён");
         App.navigate("users");
@@ -1194,13 +1197,14 @@ const Admin = (() => {
         if (createRole === "student") {
             roleData.faculty = Auth.getRefValue("cu_faculty");
             roleData.group = Auth.getRefValue("cu_group");
-            roleData.course = +document.getElementById("cu_course")?.value || 1;
+            const course = +document.getElementById("cu_course")?.value || 1;
+            roleData.course = Math.max(1, Math.min(6, course));
         } else if (createRole === "teacher") {
             roleData.department = Auth.getRefValue("cu_department");
             roleData.degree =
                 document.getElementById("cu_degree")?.value.trim() || "";
-            roleData.maxLoad =
-                +document.getElementById("cu_maxLoad")?.value || 8;
+            const maxLoad = +document.getElementById("cu_maxLoad")?.value || 8;
+            roleData.maxLoad = Math.max(1, Math.min(30, maxLoad));
         } else {
             roleData.department = Auth.getRefValue("cu_department");
             roleData.position =
@@ -1221,14 +1225,16 @@ const Admin = (() => {
         });
         Storage.setUsers(users);
 
-        if (typeof Audit !== "undefined") {
-            Audit.log(
-                "Создан пользователь",
-                fio,
-                ROLE_LABELS[createRole],
-                "positive",
-            );
-        }
+        try {
+            if (typeof Audit !== "undefined") {
+                Audit.log(
+                    "Создан пользователь",
+                    fio,
+                    ROLE_LABELS[createRole],
+                    "positive",
+                );
+            }
+        } catch (e) {}
 
         closeModal();
         App.toast("Пользователь создан");
@@ -1309,8 +1315,6 @@ const Admin = (() => {
     }
 
     function renderExtraFieldsForEdit(u) {
-        const escapeHtml = Utils.escapeHtml;
-
         if (u.role === "student") {
             return `
         <div class="row-2">
@@ -1404,11 +1408,13 @@ const Admin = (() => {
         if (u.role === "student") {
             u.faculty = Auth.getRefValue("eu_faculty");
             u.group = Auth.getRefValue("eu_group");
-            u.course = +document.getElementById("eu_course")?.value || 1;
+            const course = +document.getElementById("eu_course")?.value || 1;
+            u.course = Math.max(1, Math.min(6, course));
         } else if (u.role === "teacher") {
             u.department = Auth.getRefValue("eu_department");
             u.degree = document.getElementById("eu_degree")?.value.trim() || "";
-            u.maxLoad = +document.getElementById("eu_maxLoad")?.value || 8;
+            const maxLoad = +document.getElementById("eu_maxLoad")?.value || 8;
+            u.maxLoad = Math.max(1, Math.min(30, maxLoad));
         } else {
             u.department = Auth.getRefValue("eu_department");
             u.position =
@@ -1419,18 +1425,17 @@ const Admin = (() => {
 
         Storage.setUsers(users);
 
-        if (typeof Audit !== "undefined") {
-            Audit.log("Пользователь обновлён", u.fio, "", "info");
-        }
+        try {
+            if (typeof Audit !== "undefined") {
+                Audit.log("Пользователь обновлён", u.fio, "", "info");
+            }
+        } catch (e) {}
 
         closeModal();
         App.toast("Пользователь обновлён");
         App.navigate("users");
     }
 
-    /* =========================================================
-       РАБОТЫ
-       ========================================================= */
     VIEWS.works = function () {
         let works = Storage.getWorks();
 
@@ -1480,6 +1485,7 @@ const Admin = (() => {
                 .join("")}
           </select>
           <input type="text" placeholder="Поиск по теме или автору..."
+            class="admin-works-search"
             value="${escapeHtml(workFilter.q)}"
             oninput="Admin.setWorkFilter('q', this.value)">
         </div>
@@ -1525,6 +1531,17 @@ const Admin = (() => {
     function setWorkFilter(key, val) {
         workFilter[key] = val;
         App.navigate("works");
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                const input = document.querySelector(".admin-works-search");
+                if (!input) return;
+                input.focus();
+                try {
+                    const len = input.value.length;
+                    input.setSelectionRange(len, len);
+                } catch (e) {}
+            }, 0);
+        });
     }
 
     function deleteWork(id) {
@@ -1532,9 +1549,11 @@ const Admin = (() => {
             return;
         Storage.deleteWork(id);
 
-        if (typeof Audit !== "undefined") {
-            Audit.log("Работа удалена", "", `ID: ${id}`, "negative");
-        }
+        try {
+            if (typeof Audit !== "undefined") {
+                Audit.log("Работа удалена", "", `ID: ${id}`, "negative");
+            }
+        } catch (e) {}
 
         App.toast("Работа удалена");
         App.navigate("works");
@@ -1666,9 +1685,6 @@ const Admin = (() => {
     `;
     };
 
-    /* =========================================================
-       ПРАВИЛА
-       ========================================================= */
     VIEWS.rules = function () {
         const rules = Fuzzy.getRules();
         return `
@@ -1713,6 +1729,9 @@ const Admin = (() => {
         if (r) {
             r.enabled = enabled;
             Storage.setRules(rules);
+            if (typeof Fuzzy.invalidateRulesCache === "function") {
+                Fuzzy.invalidateRulesCache();
+            }
             App.toast("Правило обновлено");
         }
     }
@@ -1723,6 +1742,9 @@ const Admin = (() => {
         if (r) {
             r.desc = desc;
             Storage.setRules(rules);
+            if (typeof Fuzzy.invalidateRulesCache === "function") {
+                Fuzzy.invalidateRulesCache();
+            }
         }
     }
 
@@ -1730,6 +1752,9 @@ const Admin = (() => {
         if (!confirm("Удалить правило?")) return;
         const rules = Fuzzy.getRules().filter((r) => !Storage.sameId(r.id, id));
         Storage.setRules(rules);
+        if (typeof Fuzzy.invalidateRulesCache === "function") {
+            Fuzzy.invalidateRulesCache();
+        }
         App.navigate("rules");
         App.toast("Правило удалено");
     }
@@ -1737,13 +1762,13 @@ const Admin = (() => {
     function resetRules() {
         if (!confirm("Сбросить все правила к значениям по умолчанию?")) return;
         Storage.setRules(null);
+        if (typeof Fuzzy.invalidateRulesCache === "function") {
+            Fuzzy.invalidateRulesCache();
+        }
         App.toast("Правила сброшены");
         App.navigate("rules");
     }
 
-    /* =========================================================
-       АНАЛИТИКА
-       ========================================================= */
     VIEWS.analytics = function () {
         const filtered = getFilteredWorksForAnalytics();
         const metrics = calcAnalyticsMetrics(filtered);
@@ -2488,9 +2513,11 @@ const Admin = (() => {
         document.body.removeChild(a);
         setTimeout(() => URL.revokeObjectURL(a.href), 500);
 
-        if (typeof Audit !== "undefined") {
-            Audit.log("Экспорт резервной копии", "", "", "info");
-        }
+        try {
+            if (typeof Audit !== "undefined") {
+                Audit.log("Экспорт резервной копии", "", "", "info");
+            }
+        } catch (e) {}
 
         App.toast("Резервная копия скачана");
     }
@@ -2533,9 +2560,6 @@ const Admin = (() => {
         reader.readAsText(file);
     }
 
-    /* =========================================================
-       СПРАВОЧНИКИ
-       ========================================================= */
     const REF_KEY = "fp_refs";
 
     function getRefs() {
@@ -2619,9 +2643,6 @@ const Admin = (() => {
         App.navigate("refs");
     }
 
-    /* =========================================================
-       НАСТРОЙКИ
-       ========================================================= */
     const SETTINGS_KEY = "fp_settings";
 
     function getSettings() {
@@ -2688,9 +2709,11 @@ const Admin = (() => {
                 +document.getElementById("set_notify")?.value || 3,
         });
 
-        if (typeof Audit !== "undefined") {
-            Audit.log("Настройки сохранены", "", "", "info");
-        }
+        try {
+            if (typeof Audit !== "undefined") {
+                Audit.log("Настройки сохранены", "", "", "info");
+            }
+        } catch (e) {}
 
         App.toast("Настройки сохранены");
     }
@@ -2706,9 +2729,6 @@ const Admin = (() => {
         location.reload();
     }
 
-    /* =========================================================
-       ПРОФИЛЬ
-       ========================================================= */
     VIEWS.profile = function () {
         const u = getUser();
         if (!u) return "";
@@ -2727,9 +2747,6 @@ const Admin = (() => {
     `;
     };
 
-    /* =========================================================
-       ПРОФИЛЬ ПРЕПОДАВАТЕЛЯ
-       ========================================================= */
     VIEWS["teacher-profile"] = function (params) {
         const t = Storage.getUserById(params?.id);
         if (!t)
@@ -2895,9 +2912,6 @@ const Admin = (() => {
         );
     };
 
-    /* =========================================================
-       ПРОФИЛЬ СТУДЕНТА
-       ========================================================= */
     VIEWS["student-profile"] = function (params) {
         const s = Storage.getUserById(params?.id);
         if (!s)
@@ -2996,9 +3010,6 @@ const Admin = (() => {
     `;
     };
 
-    /* =========================================================
-       ПОДКЛЮЧЕНИЕ ВНЕШНИХ МОДУЛЕЙ
-       ========================================================= */
     VIEWS.mamdani = function (params) {
         return MamdaniViz.render(params);
     };
@@ -3020,6 +3031,7 @@ const Admin = (() => {
     VIEWS.consultations = function () {
         return Consult.renderPage(getUser());
     };
+
     VIEWS.announcements = function () {
         const list = Announcements.getAll().sort(
             (a, b) => (b.createdAt || 0) - (a.createdAt || 0),
@@ -3137,11 +3149,6 @@ const Admin = (() => {
     }
 
     function renderCreateAnnouncementModal() {
-        const teachers = Storage.getTeachers();
-        const students = Storage.getStudents();
-        const refs = Storage.get("fp_refs", { groups: [] });
-        const groups = Array.isArray(refs.groups) ? refs.groups : [];
-
         const html = `
       <div class="modal-back" onclick="if(event.target===this) Admin.closeModal()">
         <div class="modal" style="max-width:560px;">
@@ -3342,14 +3349,16 @@ const Admin = (() => {
             expiresAt,
         });
 
-        if (typeof Audit !== "undefined") {
-            Audit.log(
-                "Создано объявление",
-                title,
-                Announcements.AUDIENCE_LABELS[annAudience] || annAudience,
-                annPriority === "urgent" ? "warning" : "info",
-            );
-        }
+        try {
+            if (typeof Audit !== "undefined") {
+                Audit.log(
+                    "Создано объявление",
+                    title,
+                    Announcements.AUDIENCE_LABELS[annAudience] || annAudience,
+                    annPriority === "urgent" ? "warning" : "info",
+                );
+            }
+        } catch (e) {}
 
         closeModal();
         App.toast("Объявление опубликовано");
@@ -3365,9 +3374,11 @@ const Admin = (() => {
     function deleteAnnouncement(id) {
         if (!confirm("Удалить объявление?")) return;
         Announcements.remove(id);
-        if (typeof Audit !== "undefined") {
-            Audit.log("Удалено объявление", "", `ID: ${id}`, "negative");
-        }
+        try {
+            if (typeof Audit !== "undefined") {
+                Audit.log("Удалено объявление", "", `ID: ${id}`, "negative");
+            }
+        } catch (e) {}
         App.toast("Объявление удалено");
         App.navigate("announcements");
     }
@@ -3456,11 +3467,7 @@ const Admin = (() => {
         enriched.forEach((e) => {
             const g = e.student?.group || "Не указана";
             if (!groups[g]) {
-                groups[g] = {
-                    count: 0,
-                    sumProgress: 0,
-                    sumRisk: 0,
-                };
+                groups[g] = { count: 0, sumProgress: 0, sumRisk: 0 };
             }
             groups[g].count++;
             groups[g].sumProgress += e.progress;
@@ -3506,141 +3513,6 @@ const Admin = (() => {
     function resetAnalyticsFilter() {
         analyticsFilter = { status: "", type: "", teacherId: "" };
         App.navigate("analytics");
-    }
-
-    function renderRecentAudit() {
-        if (typeof Audit === "undefined") {
-            return '<div class="empty" style="padding:20px;">Журнал недоступен</div>';
-        }
-
-        const items = Audit.getAll().slice(0, 7);
-
-        if (items.length === 0) {
-            return `
-        <div class="empty" style="padding:30px;">
-          ${SVG.log({ cls: "icon icon-2xl" })}
-          <div style="margin-top:8px;">Активности пока нет</div>
-        </div>
-      `;
-        }
-
-        return items
-            .map((e) => {
-                const roleLabel =
-                    e.userRole === "student"
-                        ? "Студент"
-                        : e.userRole === "teacher"
-                          ? "Преподаватель"
-                          : "Админ";
-
-                return `
-        <div class="audit-row" style="grid-template-columns: 90px 1fr auto; padding:10px 0;">
-          <div class="audit-time" style="font-size:10px;">
-            ${fmtDateTime(e.createdAt).slice(0, 10)}
-          </div>
-          <div>
-            <span class="audit-action ${e.type || "info"}" style="font-size:12px;">
-              ${escapeHtml(e.action || "—")}
-            </span>
-            ${
-                e.target
-                    ? `<span style="color:var(--txt-muted);font-size:11px;"> · ${escapeHtml(e.target.slice(0, 40))}${e.target.length > 40 ? "…" : ""}</span>`
-                    : ""
-            }
-          </div>
-          <div style="text-align:right;">
-            <span class="role-chip ${e.userRole}" style="font-size:10px;">
-              ${roleLabel}
-            </span>
-          </div>
-        </div>
-      `;
-            })
-            .join("");
-    }
-
-    function renderNeedsAttention(users, works) {
-        const items = [];
-
-        const pending = works.filter((w) => w.status === "pending");
-        if (pending.length > 0) {
-            items.push(`
-        <div class="mini-project" onclick="App.navigate('works')">
-          <div>
-            <div class="mini-project-title">
-              ${SVG.clipboard({ cls: "icon icon-xs" })}
-              Заявок на утверждении: ${pending.length}
-            </div>
-            <div class="mini-project-sub">Ждут решения руководителя</div>
-          </div>
-          <span style="color:var(--txt-muted);font-size:18px;">›</span>
-        </div>
-      `);
-        }
-
-        const blocked = users.filter((u) => u.blocked);
-        if (blocked.length > 0) {
-            items.push(`
-        <div class="mini-project" onclick="App.navigate('users')">
-          <div>
-            <div class="mini-project-title">
-              ${SVG.lock({ cls: "icon icon-xs" })}
-              Заблокировано: ${blocked.length}
-            </div>
-            <div class="mini-project-sub">Проверьте аккаунты</div>
-          </div>
-          <span style="color:var(--txt-muted);font-size:18px;">›</span>
-        </div>
-      `);
-        }
-
-        const rejected = works.filter((w) => w.status === "rejected");
-        if (rejected.length > 0) {
-            items.push(`
-        <div class="mini-project" onclick="App.navigate('works')">
-          <div>
-            <div class="mini-project-title">
-              ${SVG.x({ cls: "icon icon-xs" })}
-              Отклонено: ${rejected.length}
-            </div>
-            <div class="mini-project-sub">Требуют пересмотра</div>
-          </div>
-          <span style="color:var(--txt-muted);font-size:18px;">›</span>
-        </div>
-      `);
-        }
-
-        const noTeacher = works.filter(
-            (w) => !w.teacherId || !Storage.getUserById(w.teacherId),
-        );
-        if (noTeacher.length > 0) {
-            items.push(`
-        <div class="mini-project" onclick="App.navigate('works')">
-          <div>
-            <div class="mini-project-title">
-              ${SVG.alertTriangle({ cls: "icon icon-xs" })}
-              Без руководителя: ${noTeacher.length}
-            </div>
-            <div class="mini-project-sub">Требуют назначения</div>
-          </div>
-          <span style="color:var(--txt-muted);font-size:18px;">›</span>
-        </div>
-      `);
-        }
-
-        if (items.length === 0) {
-            return `
-        <div class="empty-state" style="padding:40px 20px;">
-          ${SVG.checkCircle({ cls: "icon icon-2xl" })}
-          <h3 style="margin-top:12px;">Всё в порядке</h3>
-          <p style="color:var(--txt-muted);font-size:13px;">
-            Нет задач, требующих внимания администратора.
-          </p>
-        </div>
-      `;
-        }
-
-        return items.join("");
     }
 
     return {
@@ -3689,5 +3561,6 @@ const Admin = (() => {
         prevPage,
 
         closeModal,
+        resetFilters,
     };
 })();

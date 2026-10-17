@@ -1,10 +1,3 @@
-/* =========================================================
-   TEACHER — заявки, студенты, проверка, задачи
-   ========================================================= */
-
-/* =========================================================
-   REQUEST CARD — карточка заявки
-   ========================================================= */
 .request-card {
     border: 1px solid var(--line);
     border-radius: var(--r-lg);
@@ -13,6 +6,7 @@
     background: var(--bg-elev);
     transition: all var(--t-fast);
 }
+
 .request-card:hover {
     border-color: var(--line-strong);
     transform: translateY(-2px);
@@ -27,6 +21,7 @@
     margin-bottom: 12px;
     flex-wrap: wrap;
 }
+
 .request-topic {
     font-size: 15px;
     font-weight: 600;
@@ -35,16 +30,19 @@
     color: var(--txt);
     letter-spacing: -0.01em;
 }
+
 .request-meta {
     font-size: 12px;
     color: var(--txt-muted);
 }
+
 .request-body {
     font-size: 13px;
     color: var(--txt);
     line-height: 1.55;
     margin: 10px 0;
 }
+
 .request-actions {
     display: flex;
     gap: 8px;
@@ -53,9 +51,6 @@
     margin-top: 12px;
 }
 
-/* =========================================================
-   STUDENT ROW
-   ========================================================= */
 .student-row {
     display: grid;
     grid-template-columns: 1fr auto auto auto;
@@ -69,49 +64,65 @@
     cursor: pointer;
     transition: all var(--t-fast);
 }
+
 .student-row:hover {
     border-color: var(--line-strong);
     background: var(--bg-soft);
     transform: translateY(-1px);
     box-shadow: var(--shadow-sm);
 }
+
 .student-name {
     font-weight: 600;
     font-size: 14px;
     color: var(--txt);
     letter-spacing: -0.005em;
 }
+
 .student-sub {
     font-size: 12px;
     color: var(--txt-muted);
     margin-top: 2px;
 }
+
 .student-row .progress-mini {
     width: 90px;
 }
 
-/* =========================================================
-   RATE GRID (проверка)
-   ========================================================= */
 .rate-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 12px;
 }
-@media (max-width: 600px) {
+
+@media (max-width: 640px) {
     .rate-grid {
         grid-template-columns: 1fr;
     }
 }
 
-/* =========================================================
-   GOST CHECKS (проверка ГОСТа)
-   ========================================================= */
+.grade-btn {
+    padding: 14px 8px;
+    border-radius: var(--r-md);
+    background: var(--bg-elev);
+    border: 1.5px solid var(--line);
+    transition: all var(--t-fast);
+    cursor: pointer;
+    text-align: center;
+    color: var(--txt);
+}
+
+.grade-btn:hover {
+    border-color: var(--line-strong);
+    transform: translateY(-1px);
+}
+
 .gost-checks {
     display: grid;
     gap: 8px;
     margin-top: 10px;
 }
+
 .gost-item {
     display: flex;
     align-items: center;
@@ -125,14 +136,17 @@
     font-size: 13px;
     user-select: none;
 }
+
 .gost-item:hover {
     border-color: var(--line-strong);
     background: var(--bg-soft);
 }
+
 .gost-item.on {
     border-color: var(--ok);
     background: var(--ok-soft);
 }
+
 .gost-check {
     width: 20px;
     height: 20px;
@@ -145,20 +159,19 @@
     transition: all var(--t-fast);
     background: var(--bg-elev);
 }
+
 .gost-item.on .gost-check {
     background: var(--ok);
     border-color: var(--ok);
-    color: #fff;
+    color: #ffffff;
 }
+
 .gost-item.on .gost-check::before {
     content: "✓";
     font-size: 12px;
     font-weight: 700;
 }
 
-/* =========================================================
-   RULE BOX
-   ========================================================= */
 .rule-box {
     padding: 14px 16px;
     border: 1px solid var(--line);
@@ -170,14 +183,17 @@
     align-items: flex-start;
     transition: all var(--t-fast);
 }
+
 .rule-box:hover {
     border-color: var(--line-strong);
     transform: translateY(-1px);
     box-shadow: var(--shadow-sm);
 }
+
 .rule-box.off {
     opacity: 0.55;
 }
+
 .rule-box input[type="checkbox"] {
     margin-top: 4px;
     width: 18px;
@@ -186,19 +202,22 @@
     cursor: pointer;
     border-radius: 50%;
 }
+
 .rule-if {
     font-size: 12px;
     color: var(--txt-muted);
     margin-bottom: 6px;
-    font-family: "JetBrains Mono", monospace;
+    font-family: var(--font-mono);
 }
+
 .rule-then {
     font-size: 12px;
-    color: var(--accent-viz);
+    color: var(--accent);
     font-weight: 700;
-    font-family: "JetBrains Mono", monospace;
+    font-family: var(--font-mono);
     margin-bottom: 8px;
 }
+
 .rule-desc {
     width: 100%;
     font-size: 13px;
@@ -210,15 +229,13 @@
     outline: none;
     transition: all var(--t-fast);
 }
+
 .rule-desc:focus {
-    border-color: var(--accent-viz);
+    border-color: var(--accent);
     background: var(--bg-elev);
-    box-shadow: 0 0 0 4px var(--accent-viz-soft);
+    box-shadow: 0 0 0 4px var(--accent-soft);
 }
 
-/* =========================================================
-   STUDENT HERO (детали студента)
-   ========================================================= */
 .student-hero {
     background: var(--bg-elev);
     border: 1px solid var(--line);
@@ -226,6 +243,7 @@
     padding: 26px 28px;
     margin-bottom: 16px;
 }
+
 .student-hero-name {
     font-size: 19px;
     font-weight: 600;
@@ -233,10 +251,12 @@
     color: var(--txt);
     letter-spacing: -0.02em;
 }
+
 .student-hero-meta {
     font-size: 12px;
     color: var(--txt-muted);
 }
+
 .student-hero-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -245,15 +265,18 @@
     padding-top: 20px;
     border-top: 1px solid var(--line);
 }
-@media (max-width: 700px) {
+
+@media (max-width: 640px) {
     .student-hero-grid {
         grid-template-columns: 1fr 1fr;
     }
 }
+
 .stat-mini {
     text-align: center;
     padding: 6px;
 }
+
 .stat-mini .num {
     font-size: 24px;
     font-weight: 600;
@@ -262,6 +285,7 @@
     letter-spacing: -0.02em;
     line-height: 1.1;
 }
+
 .stat-mini .lbl {
     font-size: 11px;
     color: var(--txt-muted);
@@ -271,28 +295,26 @@
     font-weight: 600;
 }
 
-/* =========================================================
-   BACK LINK
-   ========================================================= */
-.back-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    color: var(--txt-muted);
-    margin-bottom: 14px;
-    cursor: pointer;
-    transition: color var(--t-fast);
-    padding: 4px 0;
-    font-weight: 500;
-}
-.back-link:hover {
-    color: var(--accent-viz);
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 8px;
 }
 
-/* =========================================================
-   CONSULT CARD
-   ========================================================= */
+.stat-lbl {
+    font-size: 12px;
+    color: var(--txt-muted);
+    font-weight: 500;
+}
+
+.stat-val {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--txt);
+    font-variant-numeric: tabular-nums;
+}
+
 .consult-card {
     padding: 18px 20px;
     border: 1px solid var(--line);
@@ -301,42 +323,232 @@
     background: var(--bg-elev);
     transition: all var(--t-fast);
 }
+
 .consult-card:hover {
     border-color: var(--line-strong);
     transform: translateY(-1px);
     box-shadow: var(--shadow-sm);
 }
+
 .consult-head {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     margin-bottom: 8px;
     flex-wrap: wrap;
     gap: 8px;
 }
-.consult-time {
+
+.consult-datetime-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+}
+
+.consult-datetime {
     font-weight: 600;
-    font-size: 14px;
+    font-size: 15px;
     color: var(--txt);
     letter-spacing: -0.005em;
+    font-variant-numeric: tabular-nums;
 }
+
+.consult-countdown {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: var(--r-pill);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-variant-numeric: tabular-nums;
+}
+
+.countdown-past {
+    background: var(--bg-soft);
+    color: var(--txt-soft);
+}
+
+.countdown-urgent {
+    background: var(--bad-soft);
+    color: var(--bad);
+}
+
+.countdown-soon {
+    background: var(--warn-soft);
+    color: var(--warn);
+}
+
+.countdown-far {
+    background: var(--bg-soft);
+    color: var(--txt-muted);
+}
+
 .consult-topic {
+    font-size: 13px;
+    color: var(--txt);
+    font-weight: 500;
+    margin-top: 2px;
+}
+
+.consult-participants {
     font-size: 12px;
     color: var(--txt-muted);
-    margin-top: 3px;
+    margin: 10px 0;
 }
+
+.consult-participant b {
+    color: var(--txt);
+    font-weight: 600;
+}
+
 .consult-comment {
     font-size: 13px;
     margin: 10px 0;
     line-height: 1.5;
     color: var(--txt);
+    padding: 10px 14px;
+    background: var(--bg-soft);
+    border-radius: var(--r-md);
+    border-left: 3px solid var(--line-strong);
 }
+
+.consult-rescheduled-note {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: var(--warn-soft);
+    border-left: 3px solid var(--warn);
+    border-radius: 0 var(--r-md) var(--r-md) 0;
+    font-size: 12px;
+    color: var(--txt);
+    margin: 10px 0;
+    line-height: 1.4;
+}
+
+.consult-response {
+    padding: 10px 14px;
+    border-radius: 0 var(--r-md) var(--r-md) 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--txt);
+    margin: 10px 0;
+}
+
+.consult-response-reject {
+    background: var(--bad-soft);
+    border-left: 3px solid var(--bad);
+}
+
+.consult-response-reject b {
+    color: var(--bad);
+}
+
+.consult-approved-note {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: var(--ok-soft);
+    border-left: 3px solid var(--ok);
+    border-radius: 0 var(--r-md) var(--r-md) 0;
+    font-size: 12px;
+    color: var(--txt);
+    margin: 10px 0;
+    line-height: 1.4;
+}
+
+.consult-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+}
+
+.consult-created {
+    font-size: 11px;
+    color: var(--txt-muted);
+    white-space: nowrap;
+}
+
+.consult-history {
+    flex: 1;
+    min-width: 200px;
+    max-width: 100%;
+}
+
+.consult-history summary {
+    font-size: 11px;
+    color: var(--txt-muted);
+    cursor: pointer;
+    padding: 4px 0;
+    user-select: none;
+    font-weight: 500;
+}
+
+.consult-history summary:hover {
+    color: var(--txt);
+}
+
+.consult-history-list {
+    display: grid;
+    gap: 8px;
+    margin-top: 8px;
+    padding: 10px 14px;
+    background: var(--bg-soft);
+    border-radius: var(--r-md);
+}
+
+.consult-history-item {
+    font-size: 12px;
+    line-height: 1.5;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed var(--line);
+}
+
+.consult-history-item:last-child {
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.consult-history-meta {
+    color: var(--txt-muted);
+    font-size: 11px;
+    margin-bottom: 2px;
+}
+
+.consult-history-meta b {
+    color: var(--txt);
+}
+
+.consult-history-datetime {
+    color: var(--txt);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+}
+
+.consult-history-comment {
+    color: var(--txt-muted);
+    margin-top: 2px;
+    font-style: italic;
+}
+
 .consult-actions {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
-    margin-top: 10px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
 }
+
 .consult-status {
     display: inline-block;
     padding: 4px 12px;
@@ -346,27 +558,35 @@
     border: 1px solid transparent;
     text-transform: uppercase;
     letter-spacing: 0.04em;
+    flex-shrink: 0;
 }
+
 .consult-status.pending {
     background: var(--warn-soft);
     color: var(--warn);
 }
+
+.consult-status.rescheduled {
+    background: var(--bg-soft);
+    color: var(--txt-muted);
+    border-color: var(--line);
+}
+
 .consult-status.approved {
     background: var(--ok-soft);
     color: var(--ok);
 }
+
 .consult-status.rejected {
     background: var(--bad-soft);
     color: var(--bad);
 }
+
 .consult-status.done {
     background: var(--bg-soft);
     color: var(--txt-muted);
 }
 
-/* =========================================================
-   REVIEW SECTION (проверка работ)
-   ========================================================= */
 .review-toolbar {
     display: flex;
     gap: 12px;
@@ -386,6 +606,7 @@
     outline: none;
     transition: all var(--t-fast);
 }
+
 .review-search:focus {
     border-color: var(--txt);
     box-shadow: 0 0 0 4px var(--accent-soft);
@@ -402,6 +623,7 @@
     cursor: pointer;
     transition: all var(--t-fast);
 }
+
 .review-sort:focus {
     border-color: var(--txt);
     box-shadow: 0 0 0 4px var(--accent-soft);
@@ -416,6 +638,7 @@
     background: var(--bg-elev);
     transition: all var(--t-fast);
 }
+
 .review-item:hover {
     background: var(--bg-soft);
     transform: translateY(-1px);
@@ -505,12 +728,13 @@
     color: var(--accent-viz);
     text-align: left;
     cursor: pointer;
-    transition: all var(--t-fast);
+    transition: background var(--t-fast);
 }
+
 .review-alert:hover {
     background: rgba(99, 102, 241, 0.18);
-    transform: translateY(-1px);
 }
+
 .review-alert span {
     flex: 1;
 }
@@ -521,7 +745,6 @@
     flex-wrap: wrap;
 }
 
-/* Оценка за защиту в карточке работы */
 .review-item-grade {
     display: flex;
     align-items: center;
@@ -546,9 +769,6 @@
     font-weight: 600;
 }
 
-/* =========================================================
-   TASK CARDS (раздел «Задачи»)
-   ========================================================= */
 .task-card-row {
     padding: 16px 18px;
     border: 1px solid var(--line);
@@ -558,6 +778,7 @@
     background: var(--bg-elev);
     transition: all var(--t-fast);
 }
+
 .task-card-row:hover {
     background: var(--bg-soft);
     transform: translateY(-1px);
@@ -605,6 +826,7 @@
     border-radius: 0 var(--r-md) var(--r-md) 0;
     color: var(--txt);
 }
+
 .task-note b {
     color: var(--bad);
 }
@@ -618,6 +840,7 @@
     border-radius: var(--r);
     font-weight: 500;
 }
+
 .task-approved b {
     color: var(--ok);
 }
@@ -638,10 +861,7 @@
     font-style: italic;
 }
 
-/* =========================================================
-   АДАПТИВ
-   ========================================================= */
-@media (max-width: 700px) {
+@media (max-width: 640px) {
     .student-hero {
         padding: 20px 22px;
         border-radius: var(--r-lg);
@@ -659,5 +879,9 @@
     .consult-card,
     .task-card-row {
         padding: 16px 18px;
+    }
+    .consult-actions {
+        padding-top: 10px;
+        margin-top: 10px;
     }
 }

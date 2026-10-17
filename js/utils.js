@@ -1,49 +1,41 @@
 const Utils = (() => {
-    const WORK_TYPES = {
-        course: {
-            title: "Курсовая работа",
-            desc: "1–2 курс, 30–50 стр.",
-        },
-        diploma: {
-            title: "Дипломная работа",
-            desc: "4 курс, 60–80 стр.",
-        },
-        vkr: {
-            title: "ВКР (бакалавриат)",
-            desc: "4 курс, 60–90 стр.",
-        },
+    const WORK_TYPES = Object.freeze({
+        course: { title: "Курсовая работа", desc: "1–2 курс, 30–50 стр." },
+        diploma: { title: "Дипломная работа", desc: "4 курс, 60–80 стр." },
+        vkr: { title: "ВКР (бакалавриат)", desc: "4 курс, 60–90 стр." },
         master: {
             title: "Магистерская диссертация",
             desc: "2 курс магистратуры",
         },
-    };
+    });
 
-    const WORK_TYPES_LIST = Object.keys(WORK_TYPES).map((id) => ({
-        id,
-        title: WORK_TYPES[id].title,
-        desc: WORK_TYPES[id].desc,
-    }));
+    const WORK_TYPES_LIST = Object.freeze(
+        Object.keys(WORK_TYPES).map((id) =>
+            Object.freeze({
+                id,
+                title: WORK_TYPES[id].title,
+                desc: WORK_TYPES[id].desc,
+            }),
+        ),
+    );
 
-    const WORK_STATUSES = {
-        draft: { label: "Черновик", badge: "draft" },
-        pending: { label: "На утверждении", badge: "pending" },
-        active: { label: "В работе", badge: "active" },
-        review: { label: "На проверке", badge: "review" },
-        approved: { label: "Допущена", badge: "approved" },
-        done: { label: "Защищена", badge: "done" },
-        rejected: { label: "Отклонена", badge: "rejected" },
-    };
+    const WORK_STATUSES = Object.freeze({
+        draft: Object.freeze({ label: "Черновик", badge: "draft" }),
+        pending: Object.freeze({ label: "На утверждении", badge: "pending" }),
+        active: Object.freeze({ label: "В работе", badge: "active" }),
+        review: Object.freeze({ label: "На проверке", badge: "review" }),
+        approved: Object.freeze({ label: "Допущена", badge: "approved" }),
+        done: Object.freeze({ label: "Защищена", badge: "done" }),
+        rejected: Object.freeze({ label: "Отклонена", badge: "rejected" }),
+    });
 
-    const TASK_COLS = [
-        { id: "todo", title: "К выполнению" },
-        { id: "progress", title: "В работе" },
-        { id: "review", title: "На проверке" },
-        { id: "done", title: "Готово" },
-    ];
+    const TASK_COLS = Object.freeze([
+        Object.freeze({ id: "todo", title: "К выполнению" }),
+        Object.freeze({ id: "progress", title: "В работе" }),
+        Object.freeze({ id: "review", title: "На проверке" }),
+        Object.freeze({ id: "done", title: "Готово" }),
+    ]);
 
-    /* =========================================================
-       БАЗОВЫЕ ХЕЛПЕРЫ
-       ========================================================= */
     function escapeHtml(str) {
         if (str === null || str === undefined) return "";
         return String(str)
@@ -56,11 +48,11 @@ const Utils = (() => {
 
     function initials(fio) {
         if (!fio || typeof fio !== "string") return "?";
-        const parts = fio.split(" ").filter(Boolean);
+        const parts = fio.trim().split(/\s+/).filter(Boolean);
         if (parts.length === 0) return "?";
         return parts
-            .map((w) => w[0])
             .slice(0, 2)
+            .map((w) => w[0])
             .join("")
             .toUpperCase();
     }
@@ -74,27 +66,21 @@ const Utils = (() => {
         return `<span class="badge ${s.badge}">${s.label}</span>`;
     }
 
-    /* =========================================================
-       ПРОГРЕСС ПО ЭТАПАМ
-       ========================================================= */
     function calcProgress(workId) {
         const stages = Storage.getStagesByWork(workId);
         if (stages.length === 0) return 0;
-        const total = stages.reduce((s, x) => s + (x.weight || 1), 0);
-        const done = stages
-            .filter((s) => s.done)
-            .reduce((s, x) => s + (x.weight || 1), 0);
+
+        let total = 0;
+        let done = 0;
+        for (const s of stages) {
+            const w =
+                typeof s.weight === "number" && s.weight > 0 ? s.weight : 1;
+            total += w;
+            if (s.done) done += w;
+        }
         return total === 0 ? 0 : Math.round((done / total) * 100);
     }
 
-    /* =========================================================
-       СБОР ВХОДНЫХ ДАННЫХ ДЛЯ НЕЧЁТКОГО ВЫВОДА
-
-       ВАЖНО: orig/supScore/gost передаются как null, если
-       руководитель ещё не оценивал работу. Это позволяет
-       fuzzy.js корректно отключать правила, зависящие от
-       этих переменных.
-       ========================================================= */
     function buildFuzzyInputs(work, progressOverride) {
         if (!work) return null;
 
@@ -131,21 +117,12 @@ const Utils = (() => {
             activity,
             edits: comments.length,
             volume: progress,
-
-            // null — значит «данных нет», fuzzy.js учтёт это
             orig: typeof work.orig === "number" ? work.orig : null,
             supScore: typeof work.supScore === "number" ? work.supScore : null,
             gost: typeof work.gost === "number" ? work.gost : null,
         };
     }
 
-    /* =========================================================
-       БЕЗОПАСНЫЙ ВЫЗОВ НЕЧЁТКОГО ВЫВОДА
-
-       НЕ подставляем дефолты для orig/supScore/gost — они
-       должны остаться null, если данных нет. Иначе правила
-       будут срабатывать «как будто оценка есть».
-       ========================================================= */
     function safeFuzzyInfer(inputs) {
         if (!inputs) return null;
         if (typeof Fuzzy === "undefined") return null;
@@ -156,8 +133,6 @@ const Utils = (() => {
             activity: inputs.activity ?? 5,
             edits: inputs.edits ?? 0,
             volume: inputs.volume ?? 0,
-
-            // null пропускаем как null — fuzzy.js сам решит
             orig:
                 inputs.orig === null || inputs.orig === undefined
                     ? null
@@ -172,9 +147,16 @@ const Utils = (() => {
                     : inputs.gost,
         };
 
-        const res = Fuzzy.infer(normalized);
+        let res;
+        try {
+            res = Fuzzy.infer(normalized);
+        } catch (e) {
+            console.warn("[Utils] safeFuzzyInfer error:", e);
+            return null;
+        }
 
-        // Совместимость: сохраняем hasData и hasAnyTeacherCheck
+        if (!res || !res.risk || !res.ready || !res.rating) return null;
+
         res.hasData = {
             orig: normalized.orig !== null,
             supScore: normalized.supScore !== null,
@@ -182,8 +164,6 @@ const Utils = (() => {
         };
         res.hasAnyTeacherCheck =
             res.hasData.orig || res.hasData.supScore || res.hasData.gost;
-
-        // Новое: список отсутствующих переменных
         res.missingTeacherData = Object.keys(res.hasData).filter(
             (k) => !res.hasData[k],
         );
@@ -191,13 +171,13 @@ const Utils = (() => {
         return res;
     }
 
-    /* =========================================================
-       ПУСТОЕ СОСТОЯНИЕ
-       ========================================================= */
     function emptyState(title, text, iconFn, actionHtml) {
+        const icon = iconFn
+            ? iconFn({ cls: "icon icon-2xl" })
+            : SVG.folder({ cls: "icon icon-2xl" });
         return `
       <div class="empty-state">
-        ${iconFn ? iconFn({ cls: "icon icon-2xl" }) : SVG.folder({ cls: "icon icon-2xl" })}
+        ${icon}
         <h3>${escapeHtml(title)}</h3>
         ${text ? `<p>${escapeHtml(text)}</p>` : ""}
         ${actionHtml || ""}
@@ -205,9 +185,6 @@ const Utils = (() => {
     `;
     }
 
-    /* =========================================================
-       РЕНДЕР КОММЕНТАРИЯ
-       ========================================================= */
     function renderComment(c) {
         const author = Storage.getUserById(c.authorId);
         return `
@@ -221,40 +198,10 @@ const Utils = (() => {
     `;
     }
 
-    /* =========================================================
-       МИНИ-ЭТАПЫ
-       ========================================================= */
-    function renderStagesMini(workId, limit = 5) {
-        const stages = Storage.getStagesByWork(workId);
-        if (!stages.length) {
-            return '<div class="empty" style="padding:16px;">Этапы не добавлены</div>';
-        }
-        const done = stages.filter((s) => s.done).length;
-        return `
-      <div style="font-size:12px;color:var(--txt-muted);margin-bottom:10px;">
-        Выполнено ${done} из ${stages.length}
-      </div>
-      ${stages
-          .slice(0, limit)
-          .map(
-              (s) => `
-        <div style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;">
-          <span style="color:var(--${s.done ? "ok" : "txt-soft"})">
-            ${s.done ? SVG.check({ cls: "icon icon-xs" }) : "○"}
-          </span>
-          <span style="${s.done ? "text-decoration:line-through;opacity:.6;" : ""}">
-            ${escapeHtml(s.name)}
-          </span>
-        </div>
-      `,
-          )
-          .join("")}
-    `;
-    }
-
     function renderStagesMiniForTeacher(workId) {
         const stages = Storage.getStagesByWork(workId);
         if (stages.length === 0) return '<div class="empty">Этапов нет</div>';
+
         const done = stages.filter((s) => s.done).length;
         return `
       <div style="font-size:12px;color:var(--txt-muted);margin-bottom:8px;">
@@ -278,9 +225,6 @@ const Utils = (() => {
     `;
     }
 
-    /* =========================================================
-       АКТИВНЫЕ / АРХИВНЫЕ РАБОТЫ
-       ========================================================= */
     function isActiveStatus(status) {
         return status !== "done" && status !== "rejected";
     }
@@ -307,9 +251,6 @@ const Utils = (() => {
         );
     }
 
-    /* =========================================================
-       ВИЗУАЛЬНЫЕ КЛАССЫ
-       ========================================================= */
     function progressClass(progress) {
         if (progress < 40) return "bad";
         if (progress < 70) return "warn";
@@ -324,9 +265,6 @@ const Utils = (() => {
         return term === "high" ? "ok" : term === "med" ? "warn" : "bad";
     }
 
-    /* =========================================================
-       ПРОВЕРКА ПРАВ
-       ========================================================= */
     function ensureOwnerWork(work, user) {
         if (!work || !user) return false;
         if (user.role === "admin") return true;
@@ -337,9 +275,6 @@ const Utils = (() => {
         return false;
     }
 
-    /* =========================================================
-       ПУБЛИЧНЫЙ API
-       ========================================================= */
     return {
         WORK_TYPES,
         WORK_TYPES_LIST,
@@ -365,7 +300,6 @@ const Utils = (() => {
 
         emptyState,
         renderComment,
-        renderStagesMini,
         renderStagesMiniForTeacher,
     };
 })();

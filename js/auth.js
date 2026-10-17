@@ -1,6 +1,7 @@
 const Auth = (() => {
     let selectedRole = "student";
     let currentUser = null;
+    let booted = false;
 
     const escapeHtml = Utils.escapeHtml;
 
@@ -15,7 +16,14 @@ const Auth = (() => {
 
     function getRefs() {
         const refs = Storage.get(REF_KEY, null);
-        if (!refs || typeof refs !== "object") return DEFAULT_REFS;
+        if (!refs || typeof refs !== "object") {
+            return {
+                faculties: [...DEFAULT_REFS.faculties],
+                departments: [...DEFAULT_REFS.departments],
+                groups: [...DEFAULT_REFS.groups],
+                directions: [...DEFAULT_REFS.directions],
+            };
+        }
         return {
             faculties: Array.isArray(refs.faculties) ? refs.faculties : [],
             departments: Array.isArray(refs.departments)
@@ -73,16 +81,20 @@ const Auth = (() => {
     }
 
     function onRefSelectChange(selectEl) {
-        if (!selectEl || !selectEl.id) return;
-        const custom = document.getElementById(selectEl.id + "_custom");
-        if (!custom) return;
+        try {
+            if (!selectEl || !selectEl.id) return;
+            const custom = document.getElementById(selectEl.id + "_custom");
+            if (!custom) return;
 
-        if (selectEl.value === "__custom__") {
-            custom.style.display = "block";
-            custom.focus();
-        } else {
-            custom.style.display = "none";
-            custom.value = "";
+            if (selectEl.value === "__custom__") {
+                custom.style.display = "block";
+                custom.focus();
+            } else {
+                custom.style.display = "none";
+                custom.value = "";
+            }
+        } catch (e) {
+            console.warn("[Auth] onRefSelectChange error:", e);
         }
     }
 
@@ -151,17 +163,19 @@ const Auth = (() => {
     }
 
     function seedDemo() {
-        const users = Storage.getUsers();
+        const existingUsers = Storage.getUsers();
+        const users = Array.isArray(existingUsers) ? [...existingUsers] : [];
         const existingEmails = new Set(users.map((u) => u.email));
         const demo = getDemoUsers();
 
         let changed = false;
-        demo.forEach((d) => {
+        for (const d of demo) {
             if (!existingEmails.has(d.email)) {
                 users.push(d);
+                existingEmails.add(d.email);
                 changed = true;
             }
-        });
+        }
 
         if (changed) Storage.setUsers(users);
     }
@@ -184,7 +198,9 @@ const Auth = (() => {
     }
 
     function pickRole(role) {
-        if (!["student", "teacher", "admin"].includes(role)) return;
+        if (!["student", "teacher", "admin"].includes(role)) {
+            role = "student";
+        }
         selectedRole = role;
 
         const picker = document.querySelector(".role-picker");
@@ -313,48 +329,54 @@ const Auth = (() => {
         hideMsg();
         let ok = true;
 
+        if (!["student", "teacher", "admin"].includes(selectedRole)) {
+            selectedRole = "student";
+        }
+
         const fio = document.getElementById("regFio")?.value.trim() || "";
         const fioParts = fio.split(/\s+/).filter(Boolean);
         const fioOk = fio.length >= 3 && fioParts.length >= 2;
-        ok &= markField("regFio", fioOk);
+        ok = markField("regFio", fioOk) && ok;
 
         const email =
             document.getElementById("regEmail")?.value.trim().toLowerCase() ||
             "";
         const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-        ok &= markField("regEmail", emailOk);
+        ok = markField("regEmail", emailOk) && ok;
 
         const pass = document.getElementById("regPass")?.value || "";
-        ok &= markField("regPass", pass.length >= 6);
+        ok = markField("regPass", pass.length >= 6) && ok;
 
         const pass2 = document.getElementById("regPass2")?.value || "";
-        ok &= markField("regPass2", pass === pass2 && pass2.length >= 6);
+        ok = markField("regPass2", pass === pass2 && pass2.length >= 6) && ok;
 
         const roleData = {};
 
         if (selectedRole === "student") {
-            ok &= validateRefField("r_faculty", true);
-            ok &= validateRefField("r_group", true);
+            ok = validateRefField("r_faculty", true) && ok;
+            ok = validateRefField("r_group", true) && ok;
             const c = document.getElementById("r_course");
-            if (c) ok &= markField("r_course", c.value !== "");
+            if (c) ok = markField("r_course", c.value !== "") && ok;
 
             roleData.faculty = getRefValue("r_faculty");
             roleData.group = getRefValue("r_group");
-            roleData.course = c ? +c.value : 1;
+            const course = c ? +c.value : 1;
+            roleData.course = Math.max(1, Math.min(6, course || 1));
         } else if (selectedRole === "teacher") {
-            ok &= validateRefField("r_department", true);
+            ok = validateRefField("r_department", true) && ok;
 
             roleData.department = getRefValue("r_department");
             roleData.degree =
                 document.getElementById("r_degree")?.value.trim() || "";
-            roleData.maxLoad =
-                +document.getElementById("r_maxLoad")?.value || 8;
+            const maxLoad = +document.getElementById("r_maxLoad")?.value || 8;
+            roleData.maxLoad = Math.max(1, Math.min(30, maxLoad));
         } else {
-            ok &= validateRefField("r_department", true);
+            ok = validateRefField("r_department", true) && ok;
             const p = document.getElementById("r_position");
-            if (p) ok &= markField("r_position", p.value.trim().length > 0);
+            if (p)
+                ok = markField("r_position", p.value.trim().length > 0) && ok;
             const a = document.getElementById("r_accessLevel");
-            if (a) ok &= markField("r_accessLevel", a.value !== "");
+            if (a) ok = markField("r_accessLevel", a.value !== "") && ok;
 
             roleData.department = getRefValue("r_department");
             roleData.position = p?.value.trim() || "";
@@ -390,7 +412,12 @@ const Auth = (() => {
         }
 
         showMsg("Аккаунт создан! Выполняется вход...", "ok");
-        setTimeout(() => loginAs(newUser), 600);
+
+        setTimeout(() => {
+            const authScreen = document.getElementById("authScreen");
+            if (!authScreen || authScreen.style.display === "none") return;
+            loginAs(newUser);
+        }, 600);
     }
 
     function login() {
@@ -440,6 +467,7 @@ const Auth = (() => {
 
     function loginAs(user) {
         if (!user) return;
+        if (booted) return;
 
         if (user.blocked) {
             showMsg("Аккаунт заблокирован. Обратитесь к администратору.");
@@ -447,6 +475,7 @@ const Auth = (() => {
         }
 
         currentUser = user;
+        booted = true;
         Storage.setSession({ userId: user.id, loginAt: Date.now() });
 
         const authScreen = document.getElementById("authScreen");
@@ -463,6 +492,7 @@ const Auth = (() => {
                 App.boot(user);
             } catch (err) {
                 console.error("[Auth] Ошибка boot:", err);
+                booted = false;
             }
         }
     }
@@ -474,10 +504,7 @@ const Auth = (() => {
 
         Storage.clearSession();
         currentUser = null;
-
-        if (typeof Student !== "undefined" && Student.clearSelectedWork) {
-            Student.clearSelectedWork();
-        }
+        booted = false;
 
         location.reload();
     }
@@ -496,6 +523,10 @@ const Auth = (() => {
 
         if (u.blocked) {
             Storage.clearSession();
+            showMsg(
+                "Аккаунт заблокирован. Обратитесь к администратору.",
+                "error",
+            );
             return false;
         }
 

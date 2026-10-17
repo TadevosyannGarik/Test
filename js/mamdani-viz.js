@@ -1,6 +1,7 @@
 const MamdaniViz = (() => {
     let selectedWorkId = null;
     let currentStep = "all";
+    let _chartTimer = null;
 
     const escapeHtml = Utils.escapeHtml;
     const emptyState = Utils.emptyState;
@@ -88,14 +89,6 @@ const MamdaniViz = (() => {
         },
     };
 
-    const RECOMMENDATION = {
-        risk: {
-            low: "Работа идёт по плану — вмешательство не требуется.",
-            med: "Есть небольшие отставания — стоит ускориться на этой неделе.",
-            high: "Высокий риск срыва — срочно нужны действия!",
-        },
-    };
-
     const DISPLAY_DEFAULTS = {
         orig: 65,
         supScore: 5,
@@ -155,42 +148,6 @@ const MamdaniViz = (() => {
         };
     }
 
-    function buildInputsForDisplay(work) {
-        const base = buildInputs(work);
-        if (!base) return null;
-
-        return {
-            ...base,
-            orig: base.orig ?? DISPLAY_DEFAULTS.orig,
-            supScore: base.supScore ?? DISPLAY_DEFAULTS.supScore,
-            gost: base.gost ?? DISPLAY_DEFAULTS.gost,
-        };
-    }
-
-    function computeAverage(user, exceptWorkId) {
-        const works = getAvailableWorks(user).filter(
-            (w) => !Storage.sameId(w.id, exceptWorkId),
-        );
-        if (works.length === 0) return null;
-
-        const results = works
-            .map((w) => {
-                const inputs = buildInputs(w);
-                if (!inputs) return null;
-                return Utils.safeFuzzyInfer(inputs);
-            })
-            .filter(Boolean);
-
-        if (results.length === 0) return null;
-
-        return {
-            count: results.length,
-            risk:
-                results.reduce((a, r) => a + r.risk.value, 0) / results.length,
-        };
-    }
-
-    /* ---------- Склонение слова «день» ---------- */
     function pluralDays(n) {
         const n10 = n % 10;
         const n100 = n % 100;
@@ -199,9 +156,6 @@ const MamdaniViz = (() => {
         return "дней";
     }
 
-    /* =========================================================
-       ГЛАВНЫЙ РЕНДЕР
-       ========================================================= */
     function render(params) {
         const user = Auth.getUser();
         if (!user) return emptyState("Не авторизован", "", SVG.lock);
@@ -248,7 +202,7 @@ const MamdaniViz = (() => {
   </div>
   ${renderHowItWorks()}
   ${renderThreeNumbers(result)}
-  ${renderForecast(result, work, inputs)}
+  ${renderForecast(result, inputs)}
   <div class="mamdani-two-col">
     ${renderQuickActions(result, work, inputs)}
     ${renderFactors(inputs, work)}
@@ -258,9 +212,6 @@ const MamdaniViz = (() => {
 `;
     }
 
-    /* =========================================================
-       БЛОК «КАК ЭТО РАБОТАЕТ»
-       ========================================================= */
     function renderHowItWorks() {
         return `
       <div class="how-it-works">
@@ -324,21 +275,21 @@ const MamdaniViz = (() => {
     }
 
     function toggleHowItWorks(btn) {
-        const body = btn.closest(".how-it-works").querySelector(".how-body");
+        const box = btn?.closest(".how-it-works");
+        if (!box) return;
+        const body = box.querySelector(".how-body");
+        if (!body) return;
         const isHidden = body.style.display === "none";
         body.style.display = isHidden ? "block" : "none";
         btn.textContent = isHidden ? "Скрыть" : "Показать";
     }
 
-    /* =========================================================
-       БАННЕР СТАТУСА (с фиксом просрочки)
-       ========================================================= */
     function renderStatusBanner(result, work, inputs) {
         const riskTerm = result.risk.term;
         const daysLeft = work.deadline ? daysUntil(work.deadline) : null;
         const isOverdue = daysLeft !== null && daysLeft < 0;
 
-        let status = {};
+        let status;
 
         if (isOverdue) {
             status = {
@@ -397,9 +348,6 @@ const MamdaniViz = (() => {
     `;
     }
 
-    /* =========================================================
-       ТРИ ГЛАВНЫЕ ЦИФРЫ
-       ========================================================= */
     function renderThreeNumbers(result) {
         const riskTerm = result.risk.term;
         const readyTerm = result.ready.term;
@@ -477,10 +425,7 @@ const MamdaniViz = (() => {
     `;
     }
 
-    /* =========================================================
-       ПРОГНОЗ НА НЕДЕЛЮ (NEW)
-       ========================================================= */
-    function renderForecast(result, work, inputs) {
+    function renderForecast(result, inputs) {
         const futureInputs = {
             ...inputs,
             days: Math.max(0, (inputs.days || 0) - 7),
@@ -531,13 +476,9 @@ const MamdaniViz = (() => {
     `;
     }
 
-    /* =========================================================
-       БЫСТРЫЕ ДЕЙСТВИЯ (с фиксом просрочки)
-       ========================================================= */
     function renderQuickActions(result, work, inputs) {
         const actions = [];
 
-        // 1. Просрочен дедлайн — самая срочная проблема
         if (work.deadline && daysUntil(work.deadline) < 0) {
             actions.push({
                 icon: SVG.alertTriangle,
@@ -559,7 +500,6 @@ const MamdaniViz = (() => {
             });
         }
 
-        // 2. Прогресс низкий
         if (inputs.progress < 50) {
             actions.push({
                 icon: SVG.trending,
@@ -571,7 +511,6 @@ const MamdaniViz = (() => {
             });
         }
 
-        // 3. ГОСТ
         if (
             inputs.gost === null ||
             inputs.gost === undefined ||
@@ -593,7 +532,6 @@ const MamdaniViz = (() => {
             });
         }
 
-        // 4. Активность низкая
         if (inputs.activity < 4) {
             actions.push({
                 icon: SVG.activity,
@@ -605,7 +543,6 @@ const MamdaniViz = (() => {
             });
         }
 
-        // 5. Нет оценки руководителя
         if (inputs.supScore === null || inputs.supScore === undefined) {
             actions.push({
                 icon: SVG.messageCircle,
@@ -667,9 +604,6 @@ const MamdaniViz = (() => {
     `;
     }
 
-    /* =========================================================
-       ФАКТОРЫ (с показом реальных дней)
-       ========================================================= */
     function renderFactors(inputs, work) {
         const vars = ["progress", "days", "activity", "edits"];
 
@@ -686,7 +620,6 @@ const MamdaniViz = (() => {
                   let displayVal = val;
                   let unit = "";
 
-                  // Для «дней до дедлайна» показываем реальное значение
                   if (v === "days" && work.deadline) {
                       const realDays = daysUntil(work.deadline);
                       displayVal = realDays;
@@ -698,7 +631,6 @@ const MamdaniViz = (() => {
                   let termLabel = TERM_LABELS[dt.term];
                   let termCls = `factor-term-${dt.term}`;
 
-                  // Переопределяем смысл и цвет для просроченного дедлайна
                   if (v === "days" && displayVal < 0) {
                       meaning = `просрочено на ${Math.abs(displayVal)} ${pluralDays(Math.abs(displayVal))}`;
                       termLabel = "просрочено";
@@ -727,15 +659,12 @@ const MamdaniViz = (() => {
     `;
     }
 
-    /* =========================================================
-       ПОДРОБНЫЙ РАЗБОР
-       ========================================================= */
     function renderDetailedAnalysis(inputs, result, work) {
         return `
       <div class="mamdani-detailed-card">
-    <div class="card-head">
-      <div class="card-title">Подробный разбор</div>
-    </div>
+        <div class="card-head">
+          <div class="card-title">Подробный разбор</div>
+        </div>
         <p style="font-size:13px;color:var(--txt-muted);margin-bottom:20px;line-height:1.6;">
           Пошагово — как система пришла к результату.
           Нажми на любой шаг, чтобы увидеть детали.
@@ -799,9 +728,6 @@ const MamdaniViz = (() => {
         }
     }
 
-    /* =========================================================
-       ОБЗОР
-       ========================================================= */
     function renderOverview(inputs, result) {
         const ratingColor = Utils.readyClass(result.rating.term);
 
@@ -838,9 +764,6 @@ const MamdaniViz = (() => {
     `;
     }
 
-    /* =========================================================
-       ФАЗЗИФИКАЦИЯ
-       ========================================================= */
     function renderFuzzDetail(inputs) {
         const vars = [
             "progress",
@@ -875,11 +798,11 @@ const MamdaniViz = (() => {
                 const isEmpty = raw === null || raw === undefined;
                 const val = isEmpty
                     ? v === "orig"
-                        ? 65
+                        ? DISPLAY_DEFAULTS.orig
                         : v === "supScore"
-                          ? 5
+                          ? DISPLAY_DEFAULTS.supScore
                           : v === "gost"
-                            ? 70
+                            ? DISPLAY_DEFAULTS.gost
                             : 0
                     : raw;
 
@@ -933,9 +856,6 @@ const MamdaniViz = (() => {
     `;
     }
 
-    /* =========================================================
-       ПРАВИЛА
-       ========================================================= */
     function renderRulesDetail(inputs, result) {
         const allFired = [
             ...(result.risk.fired || []),
@@ -943,13 +863,14 @@ const MamdaniViz = (() => {
             ...(result.rating.fired || []),
         ];
 
-        const uniq = {};
-        allFired.forEach((f) => {
-            const id = f.rule?.id;
-            if (id === undefined) return;
-            if (!uniq[id] || uniq[id].strength < f.strength) uniq[id] = f;
-        });
-        const fired = Object.values(uniq).sort(
+        const uniq = new Map();
+        for (const f of allFired) {
+            const id = f?.rule?.id;
+            if (id === undefined) continue;
+            const prev = uniq.get(id);
+            if (!prev || prev.strength < f.strength) uniq.set(id, f);
+        }
+        const fired = [...uniq.values()].sort(
             (a, b) => b.strength - a.strength,
         );
 
@@ -1010,9 +931,6 @@ const MamdaniViz = (() => {
     `;
     }
 
-    /* =========================================================
-       АГРЕГАЦИЯ
-       ========================================================= */
     function renderAggrDetail(result) {
         const acc = result.risk.acc;
 
@@ -1059,9 +977,6 @@ const MamdaniViz = (() => {
     `;
     }
 
-    /* =========================================================
-       ДЕФАЗЗИФИКАЦИЯ
-       ========================================================= */
     function renderDefuzzDetail(result) {
         return `
       <div class="mamdani-explain">
@@ -1113,9 +1028,6 @@ const MamdaniViz = (() => {
     `;
     }
 
-    /* =========================================================
-       СРАВНЕНИЕ
-       ========================================================= */
     function renderCompareDetail(inputs, mamdani) {
         const sugeno = Fuzzy.sugenoInfer(inputs);
         const crisp = Fuzzy.crispInfer(inputs);
@@ -1200,9 +1112,6 @@ const MamdaniViz = (() => {
     `;
     }
 
-    /* =========================================================
-       ИСТОРИЯ
-       ========================================================= */
     function renderHistory(work) {
         const comments = Storage.getCommentsByWork(work.id);
         const stages = Storage.getStagesByWork(work.id);
@@ -1248,13 +1157,9 @@ const MamdaniViz = (() => {
     `;
     }
 
-    /* =========================================================
-       СЕЛЕКТОР РАБОТЫ
-       ========================================================= */
     function renderWorkSelector(works, work) {
         const student = Storage.getUserById(work.studentId);
-        return `
-      <div class="mamdani-work">
+        const info = `
         <div class="mamdani-work-info">
           <div class="mamdani-work-label">Оценка работы</div>
           <div class="mamdani-work-topic">${escapeHtml(work.topic)}</div>
@@ -1263,6 +1168,15 @@ const MamdaniViz = (() => {
             ${student?.group ? `· ${escapeHtml(student.group)}` : ""}
           </div>
         </div>
+    `;
+
+        if (works.length <= 1) {
+            return `<div class="mamdani-work">${info}</div>`;
+        }
+
+        return `
+      <div class="mamdani-work">
+        ${info}
         <select onchange="MamdaniViz.selectWork(this.value)" class="mamdani-select">
           ${works
               .map(
@@ -1278,9 +1192,6 @@ const MamdaniViz = (() => {
     `;
     }
 
-    /* =========================================================
-       ГРАФИКИ
-       ========================================================= */
     function drawCharts() {
         if (typeof Charts === "undefined" || !Charts.hasChart()) return;
 
@@ -1294,7 +1205,6 @@ const MamdaniViz = (() => {
 
         const C = Charts.COLORS;
 
-        /* ---------- График агрегации ---------- */
         const x = Array.from({ length: 101 }, (_, i) => i);
         const acc = result.risk.acc;
 
@@ -1307,121 +1217,123 @@ const MamdaniViz = (() => {
             Math.max(dataLow[i], dataMed[i], dataHigh[i]),
         );
 
-        Charts.line(
-            "vizAggrChart",
-            x,
-            [
+        try {
+            Charts.line(
+                "vizAggrChart",
+                x,
+                [
+                    {
+                        label: "Низкий",
+                        data: dataLow,
+                        color: C.ok,
+                        borderWidth: 1.5,
+                        tension: 0,
+                        fill: false,
+                    },
+                    {
+                        label: "Средний",
+                        data: dataMed,
+                        color: C.warn,
+                        borderWidth: 1.5,
+                        tension: 0,
+                        fill: false,
+                    },
+                    {
+                        label: "Высокий",
+                        data: dataHigh,
+                        color: C.bad,
+                        borderWidth: 1.5,
+                        tension: 0,
+                        fill: false,
+                    },
+                    {
+                        label: "Итоговая функция",
+                        data: dataMax,
+                        color: C.accent,
+                        borderWidth: 3,
+                        tension: 0,
+                        fill: true,
+                        fillAlpha: 0.15,
+                        order: -1,
+                    },
+                ],
                 {
-                    label: "Низкий",
-                    data: dataLow,
-                    color: C.ok,
-                    borderWidth: 1.5,
-                    tension: 0,
-                    fill: false,
-                },
-                {
-                    label: "Средний",
-                    data: dataMed,
-                    color: C.warn,
-                    borderWidth: 1.5,
-                    tension: 0,
-                    fill: false,
-                },
-                {
-                    label: "Высокий",
-                    data: dataHigh,
-                    color: C.bad,
-                    borderWidth: 1.5,
-                    tension: 0,
-                    fill: false,
-                },
-                {
-                    label: "Итоговая функция",
-                    data: dataMax,
-                    color: C.accent,
-                    borderWidth: 3,
-                    tension: 0,
-                    fill: true,
-                    fillAlpha: 0.15,
-                    order: -1,
-                },
-            ],
-            {
-                min: 0,
-                max: 1,
-                scales: {
-                    x: {
-                        ticks: {
-                            color: C.txtMuted,
-                            font: { size: 10 },
-                            maxTicksLimit: 11,
+                    min: 0,
+                    max: 1,
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: C.txtMuted,
+                                font: { size: 10 },
+                                maxTicksLimit: 11,
+                            },
+                        },
+                        y: {
+                            min: 0,
+                            max: 1,
+                            ticks: { stepSize: 0.25 },
                         },
                     },
-                    y: {
-                        min: 0,
-                        max: 1,
-                        ticks: { stepSize: 0.25 },
+                },
+            );
+
+            const centerValue = result.risk.value;
+            const centerIndex = Math.round(centerValue);
+            const centerY = dataMax[centerIndex] || 0.5;
+
+            Charts.line(
+                "vizDefuzzChart",
+                x,
+                [
+                    {
+                        label: "Итоговая функция",
+                        data: dataMax,
+                        color: C.accent,
+                        borderWidth: 2.5,
+                        tension: 0,
+                        fill: true,
+                        fillAlpha: 0.2,
                     },
-                },
-            },
-        );
-
-        /* ---------- График дефаззификации ---------- */
-        const centerValue = result.risk.value;
-        const centerIndex = Math.round(centerValue);
-        const centerY = dataMax[centerIndex] || 0.5;
-
-        Charts.line(
-            "vizDefuzzChart",
-            x,
-            [
+                    {
+                        label: `Центр тяжести = ${centerValue.toFixed(1)}`,
+                        data: x.map((v) =>
+                            v === centerIndex ? centerY : null,
+                        ),
+                        color: C.bad,
+                        borderWidth: 0,
+                        showLine: false,
+                        pointRadius: 8,
+                        pointBackgroundColor: C.bad,
+                        pointBorderColor: "#ffffff",
+                        pointBorderWidth: 3,
+                        pointHoverRadius: 10,
+                        spanGaps: true,
+                    },
+                ],
                 {
-                    label: "Итоговая функция",
-                    data: dataMax,
-                    color: C.accent,
-                    borderWidth: 2.5,
-                    tension: 0,
-                    fill: true,
-                    fillAlpha: 0.2,
-                },
-                {
-                    label: `Центр тяжести = ${centerValue.toFixed(1)}`,
-                    data: x.map((v) => (v === centerIndex ? centerY : null)),
-                    color: C.bad,
-                    borderWidth: 0,
-                    showLine: false,
-                    pointRadius: 8,
-                    pointBackgroundColor: C.bad,
-                    pointBorderColor: "#ffffff",
-                    pointBorderWidth: 3,
-                    pointHoverRadius: 10,
-                    spanGaps: true,
-                },
-            ],
-            {
-                min: 0,
-                max: 1,
-                scales: {
-                    x: {
-                        ticks: {
-                            color: C.txtMuted,
-                            font: { size: 10 },
-                            maxTicksLimit: 11,
+                    min: 0,
+                    max: 1,
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: C.txtMuted,
+                                font: { size: 10 },
+                                maxTicksLimit: 11,
+                            },
+                        },
+                        y: {
+                            min: 0,
+                            max: 1,
+                            ticks: { stepSize: 0.25 },
                         },
                     },
-                    y: {
-                        min: 0,
-                        max: 1,
-                        ticks: { stepSize: 0.25 },
-                    },
                 },
-            },
-        );
+            );
+        } catch (e) {
+            console.warn("[MamdaniViz] drawCharts error:", e);
+        }
     }
 
-    /* =========================================================
-       ДЕЙСТВИЯ
-       ========================================================= */
     function step(s) {
         currentStep = s;
         renderView();
@@ -1430,7 +1342,6 @@ const MamdaniViz = (() => {
     function selectWork(id) {
         if (!id) return;
         selectedWorkId = id;
-        currentStep = "all";
         renderView();
     }
 
@@ -1487,14 +1398,18 @@ const MamdaniViz = (() => {
             kind: "review",
         });
 
-        if (typeof Notifications !== "undefined") {
-            Notifications.add({
-                userId: work.studentId,
-                type: "comment",
-                title: "Новое замечание руководителя",
-                text: text.slice(0, 100),
-                link: { view: "my-work" },
-            });
+        try {
+            if (typeof Notifications !== "undefined") {
+                Notifications.add({
+                    userId: work.studentId,
+                    type: "comment",
+                    title: "Новое замечание руководителя",
+                    text: text.slice(0, 100),
+                    link: { view: "my-work" },
+                });
+            }
+        } catch (e) {
+            console.warn("[MamdaniViz] notify error:", e);
         }
 
         App.closeModal();
@@ -1505,9 +1420,21 @@ const MamdaniViz = (() => {
     function renderView() {
         const root = document.getElementById("viewRoot");
         if (!root) return;
+
+        if (typeof Charts !== "undefined" && Charts.destroyAll) {
+            Charts.destroyAll();
+        }
+        if (_chartTimer) {
+            clearTimeout(_chartTimer);
+            _chartTimer = null;
+        }
+
         root.innerHTML = `<div class="view active">${render()}</div>`;
 
-        setTimeout(() => drawCharts(), 50);
+        _chartTimer = setTimeout(() => {
+            _chartTimer = null;
+            drawCharts();
+        }, 50);
     }
 
     return {

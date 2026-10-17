@@ -1,8 +1,7 @@
 const Teacher = (() => {
     const WORK_STATUSES = Utils.WORK_STATUSES;
-    const WORK_TYPES = Utils.WORK_TYPES;
 
-    const GOST_ITEMS = [
+    const GOST_ITEMS = Object.freeze([
         "Шрифт Times New Roman, 14 пт",
         "Поля: левое 30 мм, правое 15 мм, верх/низ 20 мм",
         "Межстрочный интервал 1.5",
@@ -11,7 +10,7 @@ const Teacher = (() => {
         "Заголовки: без точки в конце, с прописной",
         "Таблицы и рисунки подписаны",
         "Список литературы по ГОСТ Р 7.0.5–2008",
-    ];
+    ]);
 
     const escapeHtml = Utils.escapeHtml;
     const statusBadge = Utils.statusBadge;
@@ -20,7 +19,31 @@ const Teacher = (() => {
     const renderComment = Utils.renderComment;
 
     function getUser() {
-        return Auth.getUser();
+        if (typeof Auth === "undefined") return null;
+        try {
+            return Auth.getUser();
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function requireUser() {
+        const u = getUser();
+        if (!u) {
+            App.toast("Требуется авторизация");
+            return null;
+        }
+        return u;
+    }
+
+    function getFuzzyResult(work, progressOverride) {
+        try {
+            return Utils.safeFuzzyInfer(
+                Utils.buildFuzzyInputs(work, progressOverride),
+            );
+        } catch (e) {
+            return null;
+        }
     }
 
     function getMyStudents() {
@@ -40,17 +63,8 @@ const Teacher = (() => {
         );
     }
 
-    function getFuzzyResult(work, progressOverride) {
-        return Utils.safeFuzzyInfer(
-            Utils.buildFuzzyInputs(work, progressOverride),
-        );
-    }
-
     const VIEWS = {};
 
-    /* =========================================================
-       ДАШБОРД
-       ========================================================= */
     VIEWS.dashboard = function () {
         const u = getUser();
         if (!u) return "";
@@ -59,11 +73,13 @@ const Teacher = (() => {
         const active = getMyActiveStudents();
         const requests = students.filter((x) => x.work.status === "pending");
 
-        const withRisk = active.map((x) => ({
-            ...x,
-            progress: calcProgress(x.work.id),
-            res: getFuzzyResult(x.work),
-        }));
+        const withRisk = active
+            .map((x) => {
+                const res = getFuzzyResult(x.work);
+                if (!res) return null;
+                return { ...x, progress: calcProgress(x.work.id), res };
+            })
+            .filter(Boolean);
 
         const highRisk = withRisk.filter(
             (x) => x.res.risk.term === "high",
@@ -245,11 +261,15 @@ const Teacher = (() => {
     VIEWS.dashboard_after = function () {
         if (!Charts.hasChart()) return;
         const active = getMyActiveStudents();
-        const withRisk = active.map((x) => ({
-            ...x,
-            progress: calcProgress(x.work.id),
-            res: getFuzzyResult(x.work),
-        }));
+        const withRisk = active
+            .map((x) => {
+                const res = getFuzzyResult(x.work);
+                if (!res) return null;
+                return { ...x, progress: calcProgress(x.work.id), res };
+            })
+            .filter(Boolean);
+
+        if (withRisk.length === 0) return;
 
         const low = withRisk.filter((x) => x.res.risk.term === "low").length;
         const med = withRisk.filter((x) => x.res.risk.term === "med").length;
@@ -262,26 +282,21 @@ const Teacher = (() => {
             [Charts.COLORS.ok, Charts.COLORS.warn, Charts.COLORS.bad],
         );
 
-        if (withRisk.length > 0) {
-            Charts.bar(
-                "teacherProgressChart",
-                withRisk.map((x) => x.student.fio.split(" ")[0]),
-                withRisk.map((x) => x.progress),
-                withRisk.map((x) =>
-                    x.res.risk.term === "high"
-                        ? Charts.COLORS.bad
-                        : x.res.risk.term === "med"
-                          ? Charts.COLORS.warn
-                          : Charts.COLORS.ok,
-                ),
-                { label: "Прогресс, %", max: 100 },
-            );
-        }
+        Charts.bar(
+            "teacherProgressChart",
+            withRisk.map((x) => x.student.fio.split(" ")[0]),
+            withRisk.map((x) => x.progress),
+            withRisk.map((x) =>
+                x.res.risk.term === "high"
+                    ? Charts.COLORS.bad
+                    : x.res.risk.term === "med"
+                      ? Charts.COLORS.warn
+                      : Charts.COLORS.ok,
+            ),
+            { label: "Прогресс, %", max: 100 },
+        );
     };
 
-    /* =========================================================
-       ДАШБОРД — хелперы
-       ========================================================= */
     function getTasksForReview() {
         const u = getUser();
         if (!u) return [];
@@ -330,7 +345,7 @@ const Teacher = (() => {
                 .filter((s) => s.deadline && !s.done)
                 .forEach((s) => {
                     const days = daysUntil(s.deadline);
-                    if (days >= -30 && days <= 90) {
+                    if (days >= 0 && days <= 90) {
                         events.push({
                             date: s.deadline,
                             days,
@@ -343,7 +358,7 @@ const Teacher = (() => {
 
             if (x.work.deadline) {
                 const days = daysUntil(x.work.deadline);
-                if (days >= -30 && days <= 365) {
+                if (days >= 0 && days <= 365) {
                     events.push({
                         date: x.work.deadline,
                         days,
@@ -355,10 +370,7 @@ const Teacher = (() => {
             }
         });
 
-        return events
-            .filter((e) => e.days >= 0)
-            .sort((a, b) => a.days - b.days)
-            .slice(0, limit);
+        return events.sort((a, b) => a.days - b.days).slice(0, limit);
     }
 
     function renderTaskReviewMini({ t, student }) {
@@ -501,9 +513,6 @@ const Teacher = (() => {
     `;
     }
 
-    /* =========================================================
-       ЗАЯВКИ
-       ========================================================= */
     let requestFilter = "all";
 
     VIEWS.requests = function () {
@@ -767,10 +776,13 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
     };
 
     function approveWork(workId) {
+        const u = requireUser();
+        if (!u) return;
+
         const w = Storage.getWorkById(workId);
         if (!w) return;
 
-        if (!Storage.sameId(w.teacherId, getUser().id)) {
+        if (!Storage.sameId(w.teacherId, u.id)) {
             App.toast("Это не ваша заявка");
             return;
         }
@@ -785,28 +797,35 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
         w.updatedAt = Date.now();
         Storage.saveWork(w);
 
-        if (typeof Notifications !== "undefined") {
-            Notifications.add({
-                userId: w.studentId,
-                type: "approve",
-                title: "Заявка утверждена",
-                text: `«${w.topic}» принята в работу`,
-                link: { view: "my-work" },
-            });
-        }
+        try {
+            if (typeof Notifications !== "undefined") {
+                Notifications.add({
+                    userId: w.studentId,
+                    type: "approve",
+                    title: "Заявка утверждена",
+                    text: `«${w.topic}» принята в работу`,
+                    link: { view: "my-work" },
+                });
+            }
+        } catch (e) {}
 
-        if (typeof Audit !== "undefined") {
-            Audit.log("Заявка утверждена", w.topic, "", "positive");
-        }
+        try {
+            if (typeof Audit !== "undefined") {
+                Audit.log("Заявка утверждена", w.topic, "", "positive");
+            }
+        } catch (e) {}
 
         App.toast("Заявка утверждена");
         App.navigate("requests");
     }
 
     function openRejectModal(workId) {
+        const u = requireUser();
+        if (!u) return;
+
         const w = Storage.getWorkById(workId);
         if (!w) return;
-        if (!Storage.sameId(w.teacherId, getUser().id)) {
+        if (!Storage.sameId(w.teacherId, u.id)) {
             App.toast("Это не ваша заявка");
             return;
         }
@@ -835,6 +854,9 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
     }
 
     function rejectWork(workId) {
+        const u = requireUser();
+        if (!u) return;
+
         const reason = document.getElementById("rj_reason")?.value.trim();
         if (!reason) {
             App.toast("Укажите причину");
@@ -843,7 +865,7 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
 
         const w = Storage.getWorkById(workId);
         if (!w) return;
-        if (!Storage.sameId(w.teacherId, getUser().id)) {
+        if (!Storage.sameId(w.teacherId, u.id)) {
             App.toast("Это не ваша заявка");
             return;
         }
@@ -860,34 +882,35 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
         Storage.saveComment({
             id: uid(),
             workId: w.id,
-            authorId: getUser().id,
+            authorId: u.id,
             text: "Заявка отклонена: " + reason,
             createdAt: Date.now(),
             kind: "reject",
         });
 
-        if (typeof Notifications !== "undefined") {
-            Notifications.add({
-                userId: w.studentId,
-                type: "reject",
-                title: "Заявка отклонена",
-                text: reason,
-                link: { view: "archived" },
-            });
-        }
+        try {
+            if (typeof Notifications !== "undefined") {
+                Notifications.add({
+                    userId: w.studentId,
+                    type: "reject",
+                    title: "Заявка отклонена",
+                    text: reason,
+                    link: { view: "archived" },
+                });
+            }
+        } catch (e) {}
 
-        if (typeof Audit !== "undefined") {
-            Audit.log("Заявка отклонена", w.topic, reason, "negative");
-        }
+        try {
+            if (typeof Audit !== "undefined") {
+                Audit.log("Заявка отклонена", w.topic, reason, "negative");
+            }
+        } catch (e) {}
 
         closeModal();
         App.toast("Заявка отклонена");
         App.navigate("requests");
     }
 
-    /* =========================================================
-       МОИ РАБОТЫ — все работы преподавателя
-       ========================================================= */
     let myWorksShowActive = false;
     let myWorksType = "";
     let myWorksSearch = "";
@@ -997,7 +1020,7 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
 
         <div class="review-toolbar" style="margin-top:14px;">
           <input type="text"
-            class="review-search"
+            class="my-works-search review-search"
             placeholder="Поиск по студенту, теме, группе…"
             value="${escapeHtml(myWorksSearch)}"
             oninput="Teacher.setMyWorksSearch(this.value)">
@@ -1091,20 +1114,26 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
                 : ""
         }
 
-        <div class="review-item-stats">
-          <span class="review-stat">
-            <span class="review-stat-label">Прогресс</span>
-            <span class="review-stat-value" style="color:var(--${Utils.progressClass(progress)});">${progress}%</span>
-          </span>
-          <span class="review-stat">
-            <span class="review-stat-label">Риск</span>
-            <span class="review-stat-value" style="color:var(--${Utils.riskClass(res.risk.term)});">${res.risk.value.toFixed(0)}</span>
-          </span>
-          <span class="review-stat">
-            <span class="review-stat-label">Рейтинг</span>
-            <span class="review-stat-value" style="color:var(--accent-viz);">${res.rating.value.toFixed(0)}</span>
-          </span>
-        </div>
+        ${
+            res
+                ? `
+          <div class="review-item-stats">
+            <span class="review-stat">
+              <span class="review-stat-label">Прогресс</span>
+              <span class="review-stat-value" style="color:var(--${Utils.progressClass(progress)});">${progress}%</span>
+            </span>
+            <span class="review-stat">
+              <span class="review-stat-label">Риск</span>
+              <span class="review-stat-value" style="color:var(--${Utils.riskClass(res.risk.term)});">${res.risk.value.toFixed(0)}</span>
+            </span>
+            <span class="review-stat">
+              <span class="review-stat-label">Рейтинг</span>
+              <span class="review-stat-value" style="color:var(--accent-viz);">${res.rating.value.toFixed(0)}</span>
+            </span>
+          </div>
+        `
+                : ""
+        }
 
         <div class="review-item-actions">
           <button class="btn-ghost btn-sm"
@@ -1135,14 +1164,17 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
     function setMyWorksSearch(q) {
         myWorksSearch = q;
         App.navigate("my-works");
-        setTimeout(() => {
-            const input = document.querySelector(".review-search");
-            if (input) {
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                const input = document.querySelector(".my-works-search");
+                if (!input) return;
                 input.focus();
-                const len = input.value.length;
-                input.setSelectionRange(len, len);
-            }
-        }, 0);
+                try {
+                    const len = input.value.length;
+                    input.setSelectionRange(len, len);
+                } catch (e) {}
+            }, 0);
+        });
     }
 
     function setMyWorksSort(sort) {
@@ -1150,9 +1182,6 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
         App.navigate("my-works");
     }
 
-    /* =========================================================
-       СТУДЕНТЫ
-       ========================================================= */
     VIEWS.students = function () {
         const students = getMyStudents();
         const active = students.filter((x) =>
@@ -1194,6 +1223,26 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
     function renderStudentRow(x) {
         const progress = calcProgress(x.work.id);
         const res = getFuzzyResult(x.work);
+
+        if (!res) {
+            return `
+        <div class="student-row" onclick="App.navigate('student-profile', {id: '${x.student.id}'})">
+          <div>
+            <div class="student-name">${escapeHtml(x.student.fio)}</div>
+            <div class="student-sub">${escapeHtml(x.work.topic)}</div>
+          </div>
+          <div class="progress-mini">
+            <div style="font-size:11px;color:var(--txt-muted);margin-bottom:3px;">${progress}%</div>
+            <div class="progress ${Utils.progressClass(progress)}">
+              <div style="width:${progress}%"></div>
+            </div>
+          </div>
+          <div><span class="badge">нет оценки</span></div>
+          <div style="color:var(--txt-muted);font-size:18px;">›</div>
+        </div>
+      `;
+        }
+
         const cls = res.risk.term;
         const lbl = Fuzzy.termLabel(cls, "risk");
 
@@ -1223,7 +1272,8 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
         if (!w || !s)
             return '<div class="card"><div class="empty">Студент не найден</div></div>';
 
-        if (!Storage.sameId(w.teacherId, getUser().id)) {
+        const u = getUser();
+        if (!u || !Storage.sameId(w.teacherId, u.id)) {
             return `
         <div class="card">
           ${emptyState("Это не ваш студент", "Работа относится к другому руководителю.", SVG.lock)}
@@ -1238,7 +1288,16 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
         const comments = Storage.getCommentsByWork(w.id);
 
         const inputs = Utils.buildFuzzyInputs(w);
-        const res = Utils.safeFuzzyInfer(inputs);
+        const res = inputs ? Utils.safeFuzzyInfer(inputs) : null;
+
+        if (!res) {
+            return `
+        <div class="card">
+          ${emptyState("Не удалось рассчитать оценку", "Проверьте правила нечёткого вывода.", SVG.alertTriangle)}
+        </div>
+      `;
+        }
+
         const rec = Fuzzy.recommendation(inputs, res);
         const recCls = Utils.riskClass(res.risk.term);
 
@@ -1438,9 +1497,8 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
         const studentWorks = Storage.getWorks().filter((w) =>
             Storage.sameId(w.studentId, studentId),
         );
-        const allowed = studentWorks.some((w) =>
-            Storage.sameId(w.teacherId, u.id),
-        );
+        const allowed =
+            u && studentWorks.some((w) => Storage.sameId(w.teacherId, u.id));
 
         if (!allowed) {
             return `
@@ -1463,9 +1521,13 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
             totalRating = 0,
             cnt = 0;
         studentWorks.forEach((w) => {
-            totalProgress += calcProgress(w.id);
-            totalRating += getFuzzyResult(w).rating.value;
-            cnt++;
+            const progress = calcProgress(w.id);
+            const res = getFuzzyResult(w);
+            totalProgress += progress;
+            if (res) {
+                totalRating += res.rating.value;
+                cnt++;
+            }
         });
         const avg = (x) => (cnt ? Math.round(x / cnt) : 0);
 
@@ -1563,7 +1625,7 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
               </div>
               <div style="text-align:right;">
                 <div style="font-size:14px;font-weight:600;">${progress}%</div>
-                <div style="font-size:11px;color:var(--txt-muted);">риск ${res.risk.value.toFixed(0)}</div>
+                <div style="font-size:11px;color:var(--txt-muted);">риск ${res ? res.risk.value.toFixed(0) : "—"}</div>
               </div>
             </div>
           `;
@@ -1578,6 +1640,7 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
         const s = Storage.getUserById(params?.id);
         if (!s) return;
         const u = getUser();
+        if (!u) return;
 
         const works = Storage.getWorks().filter((w) =>
             Storage.sameId(w.studentId, s.id),
@@ -1617,6 +1680,9 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
     };
 
     function openVersionCommentModal(versionId) {
+        const u = requireUser();
+        if (!u) return;
+
         const version = Storage.getVersions().find((v) =>
             Storage.sameId(v.id, versionId),
         );
@@ -1625,7 +1691,7 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
             return;
         }
         const work = Storage.getWorkById(version.workId);
-        if (!work || !Storage.sameId(work.teacherId, getUser().id)) {
+        if (!work || !Storage.sameId(work.teacherId, u.id)) {
             App.toast("Это не ваша версия");
             return;
         }
@@ -1654,6 +1720,9 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
     }
 
     function saveVersionComment(versionId) {
+        const u = requireUser();
+        if (!u) return;
+
         const text = document.getElementById("vc_text")?.value.trim();
         if (!text) {
             App.toast("Введите текст");
@@ -1669,7 +1738,7 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
         }
 
         const work = Storage.getWorkById(version.workId);
-        if (!work || !Storage.sameId(work.teacherId, getUser().id)) {
+        if (!work || !Storage.sameId(work.teacherId, u.id)) {
             App.toast("Это не ваша версия");
             return;
         }
@@ -1678,38 +1747,39 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
             id: uid(),
             workId: version.workId,
             versionId: version.id,
-            authorId: getUser().id,
+            authorId: u.id,
             text,
             createdAt: Date.now(),
             kind: "version",
         });
 
-        if (typeof Notifications !== "undefined") {
-            Notifications.add({
-                userId: work.studentId,
-                type: "comment",
-                title: "Новое замечание к версии",
-                text: text.slice(0, 100),
-                link: { view: "my-work" },
-            });
-        }
+        try {
+            if (typeof Notifications !== "undefined") {
+                Notifications.add({
+                    userId: work.studentId,
+                    type: "comment",
+                    title: "Новое замечание к версии",
+                    text: text.slice(0, 100),
+                    link: { view: "my-work" },
+                });
+            }
+        } catch (e) {}
 
-        if (typeof Audit !== "undefined") {
-            Audit.log(
-                "Замечание к версии",
-                work.topic,
-                text.slice(0, 60),
-                "info",
-            );
-        }
+        try {
+            if (typeof Audit !== "undefined") {
+                Audit.log(
+                    "Замечание к версии",
+                    work.topic,
+                    text.slice(0, 60),
+                    "info",
+                );
+            }
+        } catch (e) {}
 
         closeModal();
         App.toast("Замечание добавлено");
     }
 
-    /* =========================================================
-       ПРОВЕРКА РАБОТ
-       ========================================================= */
     let reviewFilter = "all";
     let reviewSearch = "";
     let reviewSort = "risk";
@@ -1721,25 +1791,28 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
             ["active", "review", "approved"].includes(x.work.status),
         );
 
-        const enriched = all.map((x) => {
-            const progress = calcProgress(x.work.id);
-            const res = getFuzzyResult(x.work);
-            const tasksReview = Storage.getTasksByWork(x.work.id).filter(
-                (t) => t.col === "review",
-            );
-            const versions = Storage.getVersionsByWork(x.work.id);
-            const comments = Storage.getCommentsByWork(x.work.id);
+        const enriched = all
+            .map((x) => {
+                const progress = calcProgress(x.work.id);
+                const res = getFuzzyResult(x.work);
+                if (!res) return null;
+                const tasksReview = Storage.getTasksByWork(x.work.id).filter(
+                    (t) => t.col === "review",
+                );
+                const versions = Storage.getVersionsByWork(x.work.id);
+                const comments = Storage.getCommentsByWork(x.work.id);
 
-            return {
-                ...x,
-                progress,
-                res,
-                tasksReview,
-                versions,
-                comments,
-                hasTeacherCheck: res && res.hasAnyTeacherCheck,
-            };
-        });
+                return {
+                    ...x,
+                    progress,
+                    res,
+                    tasksReview,
+                    versions,
+                    comments,
+                    hasTeacherCheck: res.hasAnyTeacherCheck,
+                };
+            })
+            .filter(Boolean);
 
         const active = enriched.filter((e) => e.work.status === "active");
         const review = enriched.filter((e) => e.work.status === "review");
@@ -1789,7 +1862,7 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
 
         <div class="review-toolbar">
           <input type="text"
-            class="review-search"
+            class="review-search-page"
             placeholder="Поиск по студенту, теме, группе…"
             value="${escapeHtml(reviewSearch)}"
             oninput="Teacher.setReviewSearch(this.value)">
@@ -1836,14 +1909,17 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
     function setReviewSearch(q) {
         reviewSearch = q;
         App.navigate("review");
-        setTimeout(() => {
-            const newInput = document.querySelector(".review-search");
-            if (newInput) {
-                newInput.focus();
-                const len = newInput.value.length;
-                newInput.setSelectionRange(len, len);
-            }
-        }, 0);
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                const input = document.querySelector(".review-search-page");
+                if (!input) return;
+                input.focus();
+                try {
+                    const len = input.value.length;
+                    input.setSelectionRange(len, len);
+                } catch (e) {}
+            }, 0);
+        });
     }
 
     function setReviewSort(sort) {
@@ -1967,9 +2043,6 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
     `;
     }
 
-    /* =========================================================
-       ЗАДАЧИ — полный список по всем работам
-       ========================================================= */
     let taskFilter = "all";
     let taskSearch = "";
     let taskSort = "date";
@@ -2071,7 +2144,7 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
 
         <div class="review-toolbar">
           <input type="text"
-            class="review-search"
+            class="task-search-page"
             placeholder="Поиск по задаче, студенту, работе…"
             value="${escapeHtml(taskSearch)}"
             oninput="Teacher.setTaskSearch(this.value)">
@@ -2118,14 +2191,17 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
     function setTaskSearch(q) {
         taskSearch = q;
         App.navigate("tasks-review");
-        setTimeout(() => {
-            const input = document.querySelector(".review-search");
-            if (input) {
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                const input = document.querySelector(".task-search-page");
+                if (!input) return;
                 input.focus();
-                const len = input.value.length;
-                input.setSelectionRange(len, len);
-            }
-        }, 0);
+                try {
+                    const len = input.value.length;
+                    input.setSelectionRange(len, len);
+                } catch (e) {}
+            }, 0);
+        });
     }
 
     function setTaskSort(sort) {
@@ -2234,6 +2310,9 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
     }
 
     function taskApprove(taskId) {
+        const u = requireUser();
+        if (!u) return;
+
         const tasks = Storage.getTasks();
         const t = tasks.find((x) => Storage.sameId(x.id, taskId));
         if (!t) return;
@@ -2244,41 +2323,49 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
         }
 
         const work = Storage.getWorkById(t.workId);
-        if (!work || !Storage.sameId(work.teacherId, getUser().id)) {
+        if (!work || !Storage.sameId(work.teacherId, u.id)) {
             App.toast("Это не ваша задача");
             return;
         }
 
         t.col = "done";
-        t.reviewedBy = getUser().id;
+        t.reviewedBy = u.id;
         t.reviewedAt = Date.now();
         t.reviewStatus = "approved";
+        t.reviewComment = "";
         Storage.setTasks(tasks);
 
-        if (typeof Notifications !== "undefined") {
-            Notifications.add({
-                userId: work.studentId,
-                type: "approve",
-                title: "Задача одобрена",
-                text: `«${t.title}» — проверено руководителем`,
-                link: { view: "my-work" },
-            });
-        }
+        try {
+            if (typeof Notifications !== "undefined") {
+                Notifications.add({
+                    userId: work.studentId,
+                    type: "approve",
+                    title: "Задача одобрена",
+                    text: `«${t.title}» — проверено руководителем`,
+                    link: { view: "my-work" },
+                });
+            }
+        } catch (e) {}
 
-        if (typeof Audit !== "undefined") {
-            Audit.log(
-                "Задача одобрена",
-                t.title,
-                `студент: ${Storage.getUserById(work.studentId)?.fio || ""}`,
-                "positive",
-            );
-        }
+        try {
+            if (typeof Audit !== "undefined") {
+                Audit.log(
+                    "Задача одобрена",
+                    t.title,
+                    `студент: ${Storage.getUserById(work.studentId)?.fio || ""}`,
+                    "positive",
+                );
+            }
+        } catch (e) {}
 
         App.toast("Задача одобрена");
         App.navigate("tasks-review");
     }
 
     function taskReject(taskId) {
+        const u = requireUser();
+        if (!u) return;
+
         const tasks = Storage.getTasks();
         const t = tasks.find((x) => Storage.sameId(x.id, taskId));
         if (!t) return;
@@ -2289,37 +2376,44 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
         }
 
         const work = Storage.getWorkById(t.workId);
-        if (!work || !Storage.sameId(work.teacherId, getUser().id)) {
+        if (!work || !Storage.sameId(work.teacherId, u.id)) {
             App.toast("Это не ваша задача");
             return;
         }
 
         t.col = "progress";
-        t.reviewedBy = getUser().id;
+        t.reviewedBy = u.id;
         t.reviewedAt = Date.now();
         t.reviewStatus = "rejected";
         t.reviewComment = "";
         Storage.setTasks(tasks);
 
-        if (typeof Notifications !== "undefined") {
-            Notifications.add({
-                userId: work.studentId,
-                type: "reject",
-                title: "Задача возвращена в работу",
-                text: `«${t.title}» — нужны доработки`,
-                link: { view: "my-work" },
-            });
-        }
+        try {
+            if (typeof Notifications !== "undefined") {
+                Notifications.add({
+                    userId: work.studentId,
+                    type: "reject",
+                    title: "Задача возвращена в работу",
+                    text: `«${t.title}» — нужны доработки`,
+                    link: { view: "my-work" },
+                });
+            }
+        } catch (e) {}
 
-        if (typeof Audit !== "undefined") {
-            Audit.log("Задача возвращена", t.title, "", "negative");
-        }
+        try {
+            if (typeof Audit !== "undefined") {
+                Audit.log("Задача возвращена", t.title, "", "negative");
+            }
+        } catch (e) {}
 
         App.toast("Задача возвращена в работу");
         App.navigate("tasks-review");
     }
 
     function taskRejectWithComment(taskId) {
+        const u = requireUser();
+        if (!u) return;
+
         const t = Storage.getTasks().find((x) => Storage.sameId(x.id, taskId));
         if (!t) return;
 
@@ -2329,7 +2423,7 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
         }
 
         const work = Storage.getWorkById(t.workId);
-        if (!work || !Storage.sameId(work.teacherId, getUser().id)) {
+        if (!work || !Storage.sameId(work.teacherId, u.id)) {
             App.toast("Это не ваша задача");
             return;
         }
@@ -2358,6 +2452,9 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
     }
 
     function saveTaskReject(taskId) {
+        const u = requireUser();
+        if (!u) return;
+
         const comment = document.getElementById("task_comment")?.value.trim();
         if (!comment) {
             App.toast("Введите замечание");
@@ -2374,13 +2471,13 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
         }
 
         const work = Storage.getWorkById(t.workId);
-        if (!work || !Storage.sameId(work.teacherId, getUser().id)) {
+        if (!work || !Storage.sameId(work.teacherId, u.id)) {
             App.toast("Это не ваша задача");
             return;
         }
 
         t.col = "progress";
-        t.reviewedBy = getUser().id;
+        t.reviewedBy = u.id;
         t.reviewedAt = Date.now();
         t.reviewStatus = "rejected";
         t.reviewComment = comment;
@@ -2389,46 +2486,50 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
         Storage.saveComment({
             id: uid(),
             workId: work.id,
-            authorId: getUser().id,
+            authorId: u.id,
             text: `Замечание к задаче «${t.title}»: ${comment}`,
             createdAt: Date.now(),
             kind: "task-review",
         });
 
-        if (typeof Notifications !== "undefined") {
-            Notifications.add({
-                userId: work.studentId,
-                type: "comment",
-                title: "Замечание к задаче",
-                text: `«${t.title}»: ${comment.slice(0, 80)}`,
-                link: { view: "my-work" },
-            });
-        }
+        try {
+            if (typeof Notifications !== "undefined") {
+                Notifications.add({
+                    userId: work.studentId,
+                    type: "comment",
+                    title: "Замечание к задаче",
+                    text: `«${t.title}»: ${comment.slice(0, 80)}`,
+                    link: { view: "my-work" },
+                });
+            }
+        } catch (e) {}
 
-        if (typeof Audit !== "undefined") {
-            Audit.log(
-                "Задача возвращена с замечанием",
-                t.title,
-                comment,
-                "warning",
-            );
-        }
+        try {
+            if (typeof Audit !== "undefined") {
+                Audit.log(
+                    "Задача возвращена с замечанием",
+                    t.title,
+                    comment,
+                    "warning",
+                );
+            }
+        } catch (e) {}
 
         App.closeModal();
         App.toast("Замечание отправлено");
         App.navigate("tasks-review");
     }
 
-    /* =========================================================
-       ОЦЕНКА ЗАЩИТЫ
-       ========================================================= */
     let pickedGrade = 5;
 
     function markAsDone(workId) {
+        const u = requireUser();
+        if (!u) return;
+
         const w = Storage.getWorkById(workId);
         if (!w) return;
 
-        if (!Storage.sameId(w.teacherId, getUser().id)) {
+        if (!Storage.sameId(w.teacherId, u.id)) {
             App.toast("Это не ваша работа");
             return;
         }
@@ -2438,6 +2539,7 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
         }
 
         const student = Storage.getUserById(w.studentId);
+        pickedGrade = 5;
 
         const html = `
       <div class="modal-back" onclick="if(event.target===this) Teacher.closeModal()">
@@ -2499,9 +2601,11 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
     }
 
     function pickGrade(g) {
-        pickedGrade = g;
+        const val = Number(g);
+        if (![2, 3, 4, 5].includes(val)) return;
+        pickedGrade = val;
         document.querySelectorAll(".grade-btn").forEach((btn) => {
-            const active = +btn.dataset.grade === g;
+            const active = +btn.dataset.grade === val;
             btn.style.borderColor = active ? "var(--accent)" : "var(--line)";
             btn.style.background = active
                 ? "var(--accent-soft)"
@@ -2511,10 +2615,13 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
     }
 
     function saveFinalGrade(workId) {
+        const u = requireUser();
+        if (!u) return;
+
         const w = Storage.getWorkById(workId);
         if (!w) return;
 
-        if (!Storage.sameId(w.teacherId, getUser().id)) {
+        if (!Storage.sameId(w.teacherId, u.id)) {
             App.toast("Это не ваша работа");
             return;
         }
@@ -2522,6 +2629,8 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
             App.toast("Работа не допущена к защите");
             return;
         }
+
+        if (![2, 3, 4, 5].includes(pickedGrade)) pickedGrade = 5;
 
         const comment =
             document.getElementById("grade_comment")?.value.trim() || "";
@@ -2534,24 +2643,28 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
         w.updatedAt = Date.now();
         Storage.saveWork(w);
 
-        if (typeof Notifications !== "undefined") {
-            Notifications.add({
-                userId: w.studentId,
-                type: "approve",
-                title: "Работа защищена",
-                text: `«${w.topic}» — оценка ${pickedGrade}. ${comment}`,
-                link: { view: "archived" },
-            });
-        }
+        try {
+            if (typeof Notifications !== "undefined") {
+                Notifications.add({
+                    userId: w.studentId,
+                    type: "approve",
+                    title: "Работа защищена",
+                    text: `«${w.topic}» — оценка ${pickedGrade}. ${comment}`,
+                    link: { view: "archived" },
+                });
+            }
+        } catch (e) {}
 
-        if (typeof Audit !== "undefined") {
-            Audit.log(
-                "Работа защищена",
-                w.topic,
-                `оценка: ${pickedGrade}`,
-                "positive",
-            );
-        }
+        try {
+            if (typeof Audit !== "undefined") {
+                Audit.log(
+                    "Работа защищена",
+                    w.topic,
+                    `оценка: ${pickedGrade}`,
+                    "positive",
+                );
+            }
+        } catch (e) {}
 
         pickedGrade = 5;
         closeModal();
@@ -2560,10 +2673,13 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
     }
 
     function returnFromApproved(workId) {
+        const u = requireUser();
+        if (!u) return;
+
         const w = Storage.getWorkById(workId);
         if (!w) return;
 
-        if (!Storage.sameId(w.teacherId, getUser().id)) {
+        if (!Storage.sameId(w.teacherId, u.id)) {
             App.toast("Это не ваша работа");
             return;
         }
@@ -2577,27 +2693,28 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
         w.updatedAt = Date.now();
         Storage.saveWork(w);
 
-        if (typeof Notifications !== "undefined") {
-            Notifications.add({
-                userId: w.studentId,
-                type: "info",
-                title: "Работа возвращена на доработку",
-                text: `«${w.topic}» требует доработки`,
-                link: { view: "my-work" },
-            });
-        }
+        try {
+            if (typeof Notifications !== "undefined") {
+                Notifications.add({
+                    userId: w.studentId,
+                    type: "info",
+                    title: "Работа возвращена на доработку",
+                    text: `«${w.topic}» требует доработки`,
+                    link: { view: "my-work" },
+                });
+            }
+        } catch (e) {}
 
-        if (typeof Audit !== "undefined") {
-            Audit.log("Работа возвращена", w.topic, "", "warning");
-        }
+        try {
+            if (typeof Audit !== "undefined") {
+                Audit.log("Работа возвращена", w.topic, "", "warning");
+            }
+        } catch (e) {}
 
         App.toast("Работа возвращена в проверку");
         App.navigate("students");
     }
 
-    /* =========================================================
-       ПРАВИЛА
-       ========================================================= */
     VIEWS.rules = function () {
         const rules = Fuzzy.getRules();
 
@@ -2619,12 +2736,12 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
                 (r) => `
           <div class="rule-box ${r.enabled ? "" : "off"}">
             <input type="checkbox" ${r.enabled ? "checked" : ""}
-              onchange="Teacher.toggleRule(${r.id}, this.checked)">
+              onchange="Teacher.toggleRule('${r.id}', this.checked)">
             <div style="flex:1;">
               <div class="rule-if">ЕСЛИ ${escapeHtml(r.if.join(" И "))}</div>
               <div class="rule-then">ТО ${escapeHtml(r.then)}</div>
               <input type="text" class="rule-desc" value="${escapeHtml(r.desc)}"
-                onchange="Teacher.updateRuleDesc(${r.id}, this.value)">
+                onchange="Teacher.updateRuleDesc('${r.id}', this.value)">
             </div>
           </div>
         `,
@@ -2640,6 +2757,9 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
         if (r) {
             r.enabled = enabled;
             Storage.setRules(rules);
+            if (typeof Fuzzy.invalidateRulesCache === "function") {
+                Fuzzy.invalidateRulesCache();
+            }
             App.toast(enabled ? "Правило включено" : "Правило выключено");
         }
     }
@@ -2650,19 +2770,22 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
         if (r) {
             r.desc = desc;
             Storage.setRules(rules);
+            if (typeof Fuzzy.invalidateRulesCache === "function") {
+                Fuzzy.invalidateRulesCache();
+            }
         }
     }
 
     function resetRules() {
         if (!confirm("Сбросить все правила к значениям по умолчанию?")) return;
         Storage.setRules(null);
+        if (typeof Fuzzy.invalidateRulesCache === "function") {
+            Fuzzy.invalidateRulesCache();
+        }
         App.toast("Правила сброшены");
         App.navigate("rules");
     }
 
-    /* =========================================================
-       ПРОФИЛЬ
-       ========================================================= */
     VIEWS.profile = function () {
         const u = getUser();
         if (!u) return "";
@@ -2719,18 +2842,17 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
     `;
     };
 
-    /* =========================================================
-       СТАТИСТИКА
-       ========================================================= */
     VIEWS.stats = function () {
         const students = getMyStudents();
         const active = getMyActiveStudents();
 
-        const withRisk = active.map((x) => ({
-            ...x,
-            progress: calcProgress(x.work.id),
-            res: getFuzzyResult(x.work),
-        }));
+        const withRisk = active
+            .map((x) => {
+                const res = getFuzzyResult(x.work);
+                if (!res) return null;
+                return { ...x, progress: calcProgress(x.work.id), res };
+            })
+            .filter(Boolean);
 
         const avgProgress = active.length
             ? Math.round(
@@ -2796,12 +2918,18 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
     VIEWS.stats_after = function () {
         if (!Charts.hasChart()) return;
         const active = getMyActiveStudents();
-        const withData = active.map((x) => ({
-            student: x.student,
-            work: x.work,
-            progress: calcProgress(x.work.id),
-            res: getFuzzyResult(x.work),
-        }));
+        const withData = active
+            .map((x) => {
+                const res = getFuzzyResult(x.work);
+                if (!res) return null;
+                return {
+                    student: x.student,
+                    work: x.work,
+                    progress: calcProgress(x.work.id),
+                    res,
+                };
+            })
+            .filter(Boolean);
 
         if (withData.length > 0) {
             const avg = (fn) =>
@@ -2863,9 +2991,6 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
         }
     };
 
-    /* =========================================================
-       КАЛЕНДАРЬ
-       ========================================================= */
     VIEWS.calendar = function () {
         const students = getMyStudents();
         const events = [];
@@ -2979,16 +3104,25 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
     `;
     };
 
-    /* =========================================================
-       МОДАЛКА ПРОВЕРКИ
-       ========================================================= */
     let reviewGostState = {};
     let reviewWorkId = null;
 
+    function computeGostPct(checks) {
+        if (!checks || typeof checks !== "object") return null;
+        const keys = Object.keys(checks);
+        if (keys.length === 0) return null;
+        const total = GOST_ITEMS.length;
+        const done = keys.filter((k) => checks[k]).length;
+        return Math.round((done / total) * 100);
+    }
+
     function openReviewModal(workId) {
+        const u = requireUser();
+        if (!u) return;
+
         const w = Storage.getWorkById(workId);
         if (!w) return;
-        if (!Storage.sameId(w.teacherId, getUser().id)) {
+        if (!Storage.sameId(w.teacherId, u.id)) {
             App.toast("Это не ваша работа");
             return;
         }
@@ -3085,19 +3219,13 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
     }
 
     function toggleGost2(i) {
-        reviewGostState[i] = !reviewGostState[i];
+        const idx = String(i);
+        reviewGostState[idx] = !reviewGostState[idx];
         document.querySelectorAll("#gostList .gost-item").forEach((el) => {
-            const idx = +el.dataset.idx;
-            el.classList.toggle("on", !!reviewGostState[idx]);
+            const k = el.dataset.idx;
+            el.classList.toggle("on", !!reviewGostState[k]);
         });
         recomputeReviewFuzzy();
-    }
-
-    function computeGostPct(checks) {
-        if (!checks || typeof checks !== "object") return 0;
-        const total = GOST_ITEMS.length;
-        const done = GOST_ITEMS.filter((_, i) => checks[i]).length;
-        return Math.round((done / total) * 100);
     }
 
     function recomputeReviewFuzzy() {
@@ -3109,14 +3237,26 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
         const orig = +(document.getElementById("rv_orig")?.value || 65);
 
         const gl = document.getElementById("gostLabel");
-        if (gl) gl.textContent = `Соответствие ГОСТу (${gostPct}%)`;
+        if (gl)
+            gl.textContent =
+                gostPct === null
+                    ? "Соответствие ГОСТу (не оценено)"
+                    : `Соответствие ГОСТу (${gostPct}%)`;
 
         const base = Utils.buildFuzzyInputs(w);
+        if (!base) return;
         const inputs = { ...base, supScore, orig, gost: gostPct };
         const res = Utils.safeFuzzyInfer(inputs);
 
         const box = document.getElementById("reviewFuzzy");
         if (!box) return;
+        if (!res) {
+            box.innerHTML = `<div class="notice" style="background:var(--warn-soft);border-left:3px solid var(--warn);font-size:12px;">
+                ${SVG.alertTriangle({ cls: "icon icon-xs" })}
+                Не удалось рассчитать оценку. Проверьте правила.
+            </div>`;
+            return;
+        }
 
         box.innerHTML = `
       <div class="fuzzy-panel" style="grid-template-columns:1fr 1fr 1fr;">
@@ -3154,9 +3294,12 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
     }
 
     function saveReview(workId) {
+        const u = requireUser();
+        if (!u) return;
+
         const w = Storage.getWorkById(workId);
         if (!w) return;
-        if (!Storage.sameId(w.teacherId, getUser().id)) {
+        if (!Storage.sameId(w.teacherId, u.id)) {
             App.toast("Это не ваша работа");
             return;
         }
@@ -3183,31 +3326,35 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
             Storage.saveComment({
                 id: uid(),
                 workId: w.id,
-                authorId: getUser().id,
+                authorId: u.id,
                 text: comment,
                 createdAt: Date.now(),
                 kind: "review",
             });
 
-            if (typeof Notifications !== "undefined") {
-                Notifications.add({
-                    userId: w.studentId,
-                    type: "comment",
-                    title: "Новое замечание руководителя",
-                    text: comment.slice(0, 100),
-                    link: { view: "my-work" },
-                });
-            }
+            try {
+                if (typeof Notifications !== "undefined") {
+                    Notifications.add({
+                        userId: w.studentId,
+                        type: "comment",
+                        title: "Новое замечание руководителя",
+                        text: comment.slice(0, 100),
+                        link: { view: "my-work" },
+                    });
+                }
+            } catch (e) {}
         }
 
-        if (typeof Audit !== "undefined") {
-            Audit.log(
-                "Проверка сохранена",
-                w.topic,
-                `оценка: ${w.supScore}, ГОСТ: ${w.gost}%`,
-                "info",
-            );
-        }
+        try {
+            if (typeof Audit !== "undefined") {
+                Audit.log(
+                    "Проверка сохранена",
+                    w.topic,
+                    `оценка: ${w.supScore}, ГОСТ: ${w.gost === null ? "—" : w.gost + "%"}`,
+                    "info",
+                );
+            }
+        } catch (e) {}
 
         closeModal();
         App.toast("Проверка сохранена");
@@ -3215,9 +3362,12 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
     }
 
     function markReview(workId) {
+        const u = requireUser();
+        if (!u) return;
+
         const w = Storage.getWorkById(workId);
         if (!w) return;
-        if (!Storage.sameId(w.teacherId, getUser().id)) {
+        if (!Storage.sameId(w.teacherId, u.id)) {
             App.toast("Это не ваша работа");
             return;
         }
@@ -3227,24 +3377,29 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
         w.updatedAt = Date.now();
         Storage.saveWork(w);
 
-        if (typeof Notifications !== "undefined") {
-            Notifications.add({
-                userId: w.studentId,
-                type: "info",
-                title: "Работа на проверке",
-                text: `«${w.topic}» — руководитель проверяет`,
-                link: { view: "my-work" },
-            });
-        }
+        try {
+            if (typeof Notifications !== "undefined") {
+                Notifications.add({
+                    userId: w.studentId,
+                    type: "info",
+                    title: "Работа на проверке",
+                    text: `«${w.topic}» — руководитель проверяет`,
+                    link: { view: "my-work" },
+                });
+            }
+        } catch (e) {}
 
         App.toast("Статус: На проверке");
         App.navigate("students");
     }
 
     function markActive(workId) {
+        const u = requireUser();
+        if (!u) return;
+
         const w = Storage.getWorkById(workId);
         if (!w) return;
-        if (!Storage.sameId(w.teacherId, getUser().id)) {
+        if (!Storage.sameId(w.teacherId, u.id)) {
             App.toast("Это не ваша работа");
             return;
         }
@@ -3254,24 +3409,29 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
         w.updatedAt = Date.now();
         Storage.saveWork(w);
 
-        if (typeof Notifications !== "undefined") {
-            Notifications.add({
-                userId: w.studentId,
-                type: "info",
-                title: "Работа возвращена в работу",
-                text: `«${w.topic}»`,
-                link: { view: "my-work" },
-            });
-        }
+        try {
+            if (typeof Notifications !== "undefined") {
+                Notifications.add({
+                    userId: w.studentId,
+                    type: "info",
+                    title: "Работа возвращена в работу",
+                    text: `«${w.topic}»`,
+                    link: { view: "my-work" },
+                });
+            }
+        } catch (e) {}
 
         App.toast("Статус: В работе");
         App.navigate("students");
     }
 
     function approveFinal(workId) {
+        const u = requireUser();
+        if (!u) return;
+
         const w = Storage.getWorkById(workId);
         if (!w) return;
-        if (!Storage.sameId(w.teacherId, getUser().id)) {
+        if (!Storage.sameId(w.teacherId, u.id)) {
             App.toast("Это не ваша работа");
             return;
         }
@@ -3286,19 +3446,23 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
         w.updatedAt = Date.now();
         Storage.saveWork(w);
 
-        if (typeof Notifications !== "undefined") {
-            Notifications.add({
-                userId: w.studentId,
-                type: "approve",
-                title: "Работа допущена к защите",
-                text: `«${w.topic}»`,
-                link: { view: "my-work" },
-            });
-        }
+        try {
+            if (typeof Notifications !== "undefined") {
+                Notifications.add({
+                    userId: w.studentId,
+                    type: "approve",
+                    title: "Работа допущена к защите",
+                    text: `«${w.topic}»`,
+                    link: { view: "my-work" },
+                });
+            }
+        } catch (e) {}
 
-        if (typeof Audit !== "undefined") {
-            Audit.log("Работа допущена к защите", w.topic, "", "positive");
-        }
+        try {
+            if (typeof Audit !== "undefined") {
+                Audit.log("Работа допущена к защите", w.topic, "", "positive");
+            }
+        } catch (e) {}
 
         App.toast("Работа допущена к защите");
         App.navigate("students");
@@ -3334,9 +3498,6 @@ ${w.deadline ? `<div class="request-meta">Планируемая защита: $
         App.closeModal();
     }
 
-    /* =========================================================
-       ПУБЛИЧНЫЙ API
-       ========================================================= */
     return {
         VIEWS,
 

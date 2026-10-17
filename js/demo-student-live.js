@@ -7,11 +7,13 @@ const DemoStudentLive = (() => {
         steps: [],
         timers: [],
         typingTimerId: null,
-        createdWorkId: null,
     };
 
     function sleep(ms, interruptible = true) {
         return new Promise((resolve) => {
+            if (!state.active && interruptible) {
+                return resolve();
+            }
             if (interruptible && state.skipRequested) {
                 state.skipRequested = false;
                 return resolve();
@@ -195,6 +197,10 @@ const DemoStudentLive = (() => {
         setTimeout(() => ripple.remove(), 900);
 
         await sleep(250);
+        if (!state.active) {
+            if (cursor) cursor.classList.remove("clicking");
+            return;
+        }
 
         try {
             element.click();
@@ -233,7 +239,7 @@ const DemoStudentLive = (() => {
             await sleep(speed, false);
         }
 
-        await sleep(400);
+        await sleep(400, true);
         input.classList.remove("demo-typing");
         input.blur();
     }
@@ -245,6 +251,7 @@ const DemoStudentLive = (() => {
         const dataTransfer = new DataTransfer();
 
         await moveCursorTo(sourceEl);
+        if (!state.active) return;
 
         const dragStartEvent = new DragEvent("dragstart", {
             bubbles: true,
@@ -255,6 +262,10 @@ const DemoStudentLive = (() => {
 
         sourceEl.classList.add("demo-dragging");
         await sleep(400);
+        if (!state.active) {
+            sourceEl.classList.remove("demo-dragging");
+            return;
+        }
 
         const cursor = document.getElementById("demoCursor");
         if (cursor) {
@@ -300,6 +311,11 @@ const DemoStudentLive = (() => {
             });
         }
 
+        if (!state.active) {
+            sourceEl.classList.remove("demo-dragging");
+            return;
+        }
+
         const dragOverEvent = new DragEvent("dragover", {
             bubbles: true,
             cancelable: true,
@@ -308,6 +324,11 @@ const DemoStudentLive = (() => {
         targetEl.dispatchEvent(dragOverEvent);
         targetEl.classList.add("drag-over");
         await sleep(500);
+        if (!state.active) {
+            targetEl.classList.remove("drag-over");
+            sourceEl.classList.remove("demo-dragging");
+            return;
+        }
 
         const dropEvent = new DragEvent("drop", {
             bubbles: true,
@@ -361,6 +382,7 @@ const DemoStudentLive = (() => {
             }, 16);
         });
     }
+
     function buildSteps() {
         return [
             {
@@ -520,7 +542,10 @@ const DemoStudentLive = (() => {
                         await moveCursorTo(deadline);
                         const d = new Date();
                         d.setDate(d.getDate() + 30);
-                        deadline.value = d.toISOString().slice(0, 10);
+                        const y = d.getFullYear();
+                        const m = String(d.getMonth() + 1).padStart(2, "0");
+                        const day = String(d.getDate()).padStart(2, "0");
+                        deadline.value = `${y}-${m}-${day}`;
                         deadline.dispatchEvent(new Event("input"));
                     }
                     await sleep(400);
@@ -583,8 +608,7 @@ const DemoStudentLive = (() => {
                         const u = Auth.getUser();
                         const works = Storage.getWorksByStudent(u.id);
                         if (works.length > 0) {
-                            state.createdWorkId = works[works.length - 1].id;
-                            log(`✓ РАБОТА СОЗДАНА. ID: ${state.createdWorkId}`);
+                            log(`✓ РАБОТА СОЗДАНА`);
                         }
                     }
                     await sleep(700);
@@ -664,7 +688,10 @@ const DemoStudentLive = (() => {
                         await moveCursorTo(deadline);
                         const d = new Date();
                         d.setDate(d.getDate() + 10);
-                        deadline.value = d.toISOString().slice(0, 10);
+                        const y = d.getFullYear();
+                        const m = String(d.getMonth() + 1).padStart(2, "0");
+                        const day = String(d.getDate()).padStart(2, "0");
+                        deadline.value = `${y}-${m}-${day}`;
                     }
                     await sleep(400);
                 },
@@ -752,7 +779,10 @@ const DemoStudentLive = (() => {
                         await moveCursorTo(deadline);
                         const d = new Date();
                         d.setDate(d.getDate() + 7);
-                        deadline.value = d.toISOString().slice(0, 10);
+                        const y = d.getFullYear();
+                        const m = String(d.getMonth() + 1).padStart(2, "0");
+                        const day = String(d.getDate()).padStart(2, "0");
+                        deadline.value = `${y}-${m}-${day}`;
                     }
                     await sleep(400);
                 },
@@ -1004,7 +1034,12 @@ const DemoStudentLive = (() => {
                         const d = new Date();
                         d.setDate(d.getDate() + 3);
                         d.setHours(14, 0, 0, 0);
-                        dtInput.value = d.toISOString().slice(0, 16);
+                        const y = d.getFullYear();
+                        const m = String(d.getMonth() + 1).padStart(2, "0");
+                        const day = String(d.getDate()).padStart(2, "0");
+                        const hh = String(d.getHours()).padStart(2, "0");
+                        const mm = String(d.getMinutes()).padStart(2, "0");
+                        dtInput.value = `${y}-${m}-${day}T${hh}:${mm}`;
                         dtInput.dispatchEvent(new Event("input"));
                     }
                     await sleep(500);
@@ -1263,7 +1298,7 @@ const DemoStudentLive = (() => {
                     if (!slider) return;
                     await moveCursorTo(slider);
                     for (let v = +slider.value; v <= 80; v += 5) {
-                        if (state.skipRequested) break;
+                        if (state.skipRequested || !state.active) break;
                         slider.value = v;
                         slider.dispatchEvent(
                             new Event("input", { bubbles: true }),
@@ -1282,7 +1317,7 @@ const DemoStudentLive = (() => {
                     if (!slider) return;
                     await moveCursorTo(slider);
                     for (let v = +slider.value; v <= 45; v += 3) {
-                        if (state.skipRequested) break;
+                        if (state.skipRequested || !state.active) break;
                         slider.value = v;
                         slider.dispatchEvent(
                             new Event("input", { bubbles: true }),
@@ -1327,7 +1362,7 @@ const DemoStudentLive = (() => {
                     if (!slider) return;
                     await moveCursorTo(slider);
                     for (let v = +slider.value; v <= 80; v += 5) {
-                        if (state.skipRequested) break;
+                        if (state.skipRequested || !state.active) break;
                         slider.value = v;
                         slider.dispatchEvent(
                             new Event("input", { bubbles: true }),
@@ -1581,6 +1616,8 @@ const DemoStudentLive = (() => {
                 }
             }
 
+            if (!state.active) return;
+
             if (step.finish) {
                 showFinish();
                 return;
@@ -1690,15 +1727,19 @@ const DemoStudentLive = (() => {
     function stop() {
         state.active = false;
         state.paused = false;
-        state.skipRequested = false;
         interruptSleeps();
-        if (state.typingTimerId) clearInterval(state.typingTimerId);
+        state.skipRequested = false;
+        if (state.typingTimerId) {
+            clearInterval(state.typingTimerId);
+            state.typingTimerId = null;
+        }
         cleanup();
         App.toast("Демонстрация остановлена");
         log("Демонстрация остановлена");
     }
 
     function cleanup() {
+        interruptSleeps();
         document.body.classList.remove("demo-active");
         ["demoCursor", "demoLivePanel", "demoLiveFinish"].forEach((id) => {
             const el = document.getElementById(id);
@@ -1724,6 +1765,7 @@ const DemoStudentLive = (() => {
 
     function showFinish() {
         state.active = false;
+        interruptSleeps();
         document.body.classList.remove("demo-active");
 
         const c = document.getElementById("demoCursor");
@@ -1770,6 +1812,7 @@ const DemoStudentLive = (() => {
 
     function restart() {
         cleanup();
+        state.active = false;
         start();
     }
 

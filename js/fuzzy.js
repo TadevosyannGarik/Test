@@ -1,40 +1,28 @@
 const Fuzzy = (() => {
-    /* =========================================================
-       ТРЕУГОЛЬНАЯ ФУНКЦИЯ ПРИНАДЛЕЖНОСТИ
-       ========================================================= */
     function trimf(x, a, b, c) {
         if (typeof x !== "number" || isNaN(x)) return 0;
 
-        // Точечная функция (единственная точка)
         if (a === b && b === c) {
             return x === a ? 1 : 0;
         }
 
-        // Левый вырожденный: a === b (Z-shape)
-        // 1 при x <= a, линейно спадает до 0 при x >= c
         if (a === b) {
             if (x <= a) return 1;
             if (x >= c) return 0;
             return (c - x) / (c - a);
         }
 
-        // Правый вырожденный: b === c (S-shape)
-        // 0 при x <= a, линейно растёт до 1 при x >= b
         if (b === c) {
             if (x <= a) return 0;
             if (x >= b) return 1;
             return (x - a) / (b - a);
         }
 
-        // Обычный треугольник
         if (x <= a || x >= c) return 0;
         if (x === b) return 1;
         return x < b ? (x - a) / (b - a) : (c - x) / (c - b);
     }
 
-    /* =========================================================
-       ВХОДНЫЕ ПЕРЕМЕННЫЕ
-       ========================================================= */
     const MF = {
         progress: {
             low: (x) => trimf(x, 0, 0, 50),
@@ -78,9 +66,6 @@ const Fuzzy = (() => {
         },
     };
 
-    /* =========================================================
-       ВЫХОДНЫЕ ПЕРЕМЕННЫЕ
-       ========================================================= */
     const OUT = {
         risk: {
             low: (x) => trimf(x, 0, 0, 40),
@@ -99,9 +84,6 @@ const Fuzzy = (() => {
         },
     };
 
-    /* =========================================================
-       SUGENO
-       ========================================================= */
     const SUGENO_OUTPUTS = {
         risk: { low: 20, med: 50, high: 85 },
         ready: { low: 20, med: 50, high: 85 },
@@ -110,25 +92,10 @@ const Fuzzy = (() => {
 
     const THRESHOLDS = { low: 40, high: 65 };
 
-    /* =========================================================
-       ПЕРЕМЕННЫЕ, ЗАВИСЯЩИЕ ОТ ПРОВЕРКИ РУКОВОДИТЕЛЯ
-       ========================================================= */
     const TEACHER_DEPENDENT = ["orig", "supScore", "gost"];
 
-    /* =========================================================
-       БАЗА ПРАВИЛ (40 правил)
-       ---------------------------------------------------------
-       Risk:    14 правил (id 1-14)  — не зависят от проверки
-       Ready:   12 правил (id 15-26) — используют orig/supScore/gost
-       Ready:    4 правила (id 27-30) — «якорные», без проверки
-       Rating:   8 правил (id 31-38) — используют orig/supScore/gost
-       Rating:   2 правила (id 39-40) — «якорные», без проверки
-       ========================================================= */
     function defaultRules() {
         return [
-            /* ============ RISK: 18 правил ============ */
-
-            /* --- HIGH --- */
             {
                 id: 1,
                 if: ["progress=low", "days=low"],
@@ -171,8 +138,6 @@ const Fuzzy = (() => {
                 enabled: true,
                 desc: "Низкий прогресс и средние сроки — высокий риск",
             },
-
-            /* --- LOW --- */
             {
                 id: 7,
                 if: ["progress=high", "days=high"],
@@ -215,8 +180,6 @@ const Fuzzy = (() => {
                 enabled: true,
                 desc: "Высокий прогресс и мало правок — низкий риск",
             },
-
-            /* --- MED --- */
             {
                 id: 13,
                 if: ["progress=med", "days=med"],
@@ -259,8 +222,6 @@ const Fuzzy = (() => {
                 enabled: true,
                 desc: "Низкий прогресс, но запас дней — средний риск",
             },
-
-            /* ============ READY: 12 правил с проверкой ============ */
             {
                 id: 19,
                 if: ["volume=high", "orig=high", "gost=high"],
@@ -289,7 +250,6 @@ const Fuzzy = (() => {
                 enabled: true,
                 desc: "Высокий объём и оригинальность — высокая готовность",
             },
-
             {
                 id: 23,
                 if: ["volume=low", "orig=low"],
@@ -318,7 +278,6 @@ const Fuzzy = (() => {
                 enabled: true,
                 desc: "Низкая оригинальность — низкая готовность",
             },
-
             {
                 id: 27,
                 if: ["orig=med"],
@@ -347,9 +306,6 @@ const Fuzzy = (() => {
                 enabled: true,
                 desc: "Средний объём и оригинальность — средняя готовность",
             },
-
-            /* ============ READY: 4 «якорных» правила ============ */
-            /* Специально ослаблены: дают med, а не high, чтобы не перебивать */
             {
                 id: 31,
                 if: ["progress=high", "activity=high"],
@@ -378,8 +334,6 @@ const Fuzzy = (() => {
                 enabled: true,
                 desc: "Низкий прогресс — низкая готовность",
             },
-
-            /* ============ RATING: 8 правил с проверкой ============ */
             {
                 id: 35,
                 if: ["progress=high", "supScore=high"],
@@ -401,7 +355,6 @@ const Fuzzy = (() => {
                 enabled: true,
                 desc: "Высокая оценка и активность — высокий рейтинг",
             },
-
             {
                 id: 38,
                 if: ["supScore=low"],
@@ -416,7 +369,6 @@ const Fuzzy = (() => {
                 enabled: true,
                 desc: "Низкая оригинальность — низкий рейтинг",
             },
-
             {
                 id: 40,
                 if: ["supScore=med"],
@@ -438,9 +390,6 @@ const Fuzzy = (() => {
                 enabled: true,
                 desc: "Частично соответствует ГОСТу — средний рейтинг",
             },
-
-            /* ============ RATING: 4 «якорных» правила ============ */
-            /* Ослаблены до med, чтобы якорь не перебивал реальные данные */
             {
                 id: 43,
                 if: ["progress=high", "activity=high"],
@@ -472,26 +421,36 @@ const Fuzzy = (() => {
         ];
     }
 
-    /* =========================================================
-       ПРАВИЛА (с миграцией medium → med)
-       ========================================================= */
-    function getRules() {
-        if (typeof Storage === "undefined") return defaultRules();
-        const stored = Storage.getRules();
-        if (!Array.isArray(stored)) return defaultRules();
+    let _cachedRules = null;
 
-        stored.forEach((r) => {
+    function getRules() {
+        if (_cachedRules) return _cachedRules;
+
+        if (typeof Storage === "undefined") {
+            _cachedRules = defaultRules();
+            return _cachedRules;
+        }
+
+        const stored = Storage.getRules();
+        if (!Array.isArray(stored)) {
+            _cachedRules = defaultRules();
+            return _cachedRules;
+        }
+
+        for (const r of stored) {
             if (r.then === "risk=medium") r.then = "risk=med";
             if (r.then === "ready=medium") r.then = "ready=med";
             if (r.then === "rating=medium") r.then = "rating=med";
-        });
+        }
 
-        return stored;
+        _cachedRules = stored;
+        return _cachedRules;
     }
 
-    /* =========================================================
-       СИЛА ПРАВИЛА
-       ========================================================= */
+    function invalidateRulesCache() {
+        _cachedRules = null;
+    }
+
     function ruleStrength(rule, inputs) {
         if (!rule || !Array.isArray(rule.if)) return 0;
         if (rule.if.length === 0) return 0;
@@ -504,11 +463,7 @@ const Fuzzy = (() => {
 
             const val = inputs[v];
 
-            if (val === null || val === undefined) {
-                if (TEACHER_DEPENDENT.includes(v)) return 0;
-                return 0;
-            }
-
+            if (val === null || val === undefined) return 0;
             if (typeof val !== "number" || isNaN(val)) return 0;
 
             vals.push(mf[t](val));
@@ -517,9 +472,6 @@ const Fuzzy = (() => {
         return vals.length === 0 ? 0 : Math.min(...vals);
     }
 
-    /* =========================================================
-       АГРЕГАЦИЯ
-       ========================================================= */
     function aggregate(outVar, rules, inputs) {
         const acc = { low: 0, med: 0, high: 0 };
         const fired = [];
@@ -541,9 +493,6 @@ const Fuzzy = (() => {
         return { acc, fired };
     }
 
-    /* =========================================================
-       ДЕФАЗЗИФИКАЦИЯ
-       ========================================================= */
     function defuzzify(outVar, acc) {
         const outMF = OUT[outVar];
         if (!outMF) return 0;
@@ -562,14 +511,11 @@ const Fuzzy = (() => {
             den += mu * STEP;
         }
 
-        if (den === 0) return 0;
+        if (den < 1e-9) return 0;
         const result = num / den;
-        return isNaN(result) ? 0 : result;
+        return isNaN(result) || !isFinite(result) ? 0 : result;
     }
 
-    /* =========================================================
-       КЛАССИФИКАЦИЯ
-       ========================================================= */
     function classify(v) {
         if (typeof v !== "number" || isNaN(v)) return "low";
         return v < THRESHOLDS.low
@@ -579,9 +525,6 @@ const Fuzzy = (() => {
               : "high";
     }
 
-    /* =========================================================
-       ЯРЛЫКИ
-       ========================================================= */
     function termLabel(term, kind) {
         const map = {
             low: { risk: "низкий", ready: "низкая", rating: "низкий" },
@@ -592,9 +535,6 @@ const Fuzzy = (() => {
         return row[kind] || "—";
     }
 
-    /* =========================================================
-       НОРМАЛИЗАЦИЯ
-       ========================================================= */
     function normalizeInputs(inputs) {
         return {
             progress: inputs.progress ?? 0,
@@ -631,9 +571,6 @@ const Fuzzy = (() => {
         };
     }
 
-    /* =========================================================
-       МАМДАНИ
-       ========================================================= */
     function infer(inputs) {
         if (!inputs || typeof inputs !== "object") return emptyResult();
 
@@ -665,11 +602,8 @@ const Fuzzy = (() => {
         };
     }
 
-    /* =========================================================
-       РЕКОМЕНДАЦИЯ
-       ========================================================= */
     function recommendation(inputs, res) {
-        if (!res) return "";
+        if (!res || !res.risk || !res.ready) return "";
 
         let rec = "";
         if (res.risk.term === "high") {
@@ -692,9 +626,6 @@ const Fuzzy = (() => {
         return rec;
     }
 
-    /* =========================================================
-       СУГЕНО
-       ========================================================= */
     function sugenoInfer(inputs) {
         if (!inputs || typeof inputs !== "object") return emptyResult();
 
@@ -737,22 +668,37 @@ const Fuzzy = (() => {
         };
     }
 
-    /* =========================================================
-       ЧЁТКАЯ ФОРМУЛА
-       ========================================================= */
     function crispInfer(inputs) {
         if (!inputs || typeof inputs !== "object") inputs = {};
 
-        const clamp = (v) => Math.max(0, Math.min(100, v));
+        const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
-        const progress = inputs.progress || 0;
-        const days = Math.min(inputs.days || 0, 60);
-        const activity = inputs.activity || 0;
-        const edits = Math.min(inputs.edits || 0, 20);
-        const volume = inputs.volume || 0;
-        const orig = inputs.orig ?? 65;
-        const supScore = inputs.supScore ?? 5;
-        const gost = inputs.gost ?? 70;
+        const progress = clamp(Number(inputs.progress) || 0, 0, 100);
+        const days = clamp(Number(inputs.days) || 0, 0, 60);
+        const activity = clamp(Number(inputs.activity) || 0, 0, 10);
+        const edits = clamp(Number(inputs.edits) || 0, 0, 20);
+        const volume = clamp(Number(inputs.volume) || 0, 0, 100);
+        const orig = clamp(
+            inputs.orig === null || inputs.orig === undefined
+                ? 65
+                : Number(inputs.orig),
+            0,
+            100,
+        );
+        const supScore = clamp(
+            inputs.supScore === null || inputs.supScore === undefined
+                ? 5
+                : Number(inputs.supScore),
+            0,
+            10,
+        );
+        const gost = clamp(
+            inputs.gost === null || inputs.gost === undefined
+                ? 70
+                : Number(inputs.gost),
+            0,
+            100,
+        );
 
         const riskRaw =
             (100 - progress) * 0.35 +
@@ -766,9 +712,9 @@ const Fuzzy = (() => {
         const ratingRaw =
             progress * 0.3 + activity * 4 + orig * 0.2 + supScore * 3;
 
-        const rv = clamp(riskRaw);
-        const gv = clamp(readyRaw);
-        const tv = clamp(ratingRaw);
+        const rv = clamp(riskRaw, 0, 100);
+        const gv = clamp(readyRaw, 0, 100);
+        const tv = clamp(ratingRaw, 0, 100);
 
         return {
             risk: { value: rv, term: classify(rv) },
@@ -777,9 +723,6 @@ const Fuzzy = (() => {
         };
     }
 
-    /* =========================================================
-       СЛОВАРИ
-       ========================================================= */
     const VAR_LABELS = {
         progress: { label: "Прогресс", unit: "%" },
         days: { label: "Дней до дедлайна", unit: "дн." },
@@ -843,7 +786,10 @@ const Fuzzy = (() => {
         return { term: best, mu: bestMu };
     }
 
-    function escapeHtml(str) {
+    function esc(str) {
+        if (typeof Utils !== "undefined" && Utils.escapeHtml) {
+            return Utils.escapeHtml(str);
+        }
         if (str === null || str === undefined) return "";
         return String(str)
             .replace(/&/g, "&amp;")
@@ -852,11 +798,8 @@ const Fuzzy = (() => {
             .replace(/"/g, "&quot;");
     }
 
-    /* =========================================================
-       ОБЪЯСНЕНИЕ
-       ========================================================= */
     function explain(inputs, result) {
-        if (!inputs || !result) return "";
+        if (!inputs || !result || !result.risk || !result.ready) return "";
 
         const riskTerm = result.risk.term;
         const riskWord =
@@ -874,23 +817,22 @@ const Fuzzy = (() => {
                   : "низкая";
 
         const intro =
-            `<b>Риск ${riskWord}</b> (${result.risk.value.toFixed(0)}/100), ` +
-            `<b>готовность ${readyWord}</b> (${result.ready.value.toFixed(0)}/100).`;
+            `<b>Риск ${riskWord}</b> (${Number(result.risk.value || 0).toFixed(0)}/100), ` +
+            `<b>готовность ${readyWord}</b> (${Number(result.ready.value || 0).toFixed(0)}/100).`;
 
         const contributions = [];
         for (const varName of ["progress", "days", "activity", "edits"]) {
             const v = inputs[varName] ?? 0;
             const dt = dominantTerm(varName, v);
             const lbl = VAR_LABELS[varName].label.toLowerCase();
-            const term = TERM_LABELS[dt.term][varName];
+            const term = TERM_LABELS[dt.term]?.[varName] || "";
             const unit = VAR_LABELS[varName].unit;
             contributions.push(
                 `${lbl} — <b>${term}</b> (${v}${unit ? " " + unit : ""})`,
             );
         }
 
-        const riskFired = (result.risk.fired || [])
-            .filter((f) => f.rule.then.startsWith("risk="))
+        const riskFired = [...(result.risk.fired || [])]
             .sort((a, b) => b.strength - a.strength)
             .slice(0, 3);
 
@@ -918,7 +860,7 @@ const Fuzzy = (() => {
         <ul>${riskFired
             .map(
                 (f) =>
-                    `<li>Правило #${f.rule.id}: «${escapeHtml(f.rule.desc)}» — сила <b>${f.strength.toFixed(2)}</b></li>`,
+                    `<li>Правило #${f.rule.id}: «${esc(f.rule.desc)}» — сила <b>${f.strength.toFixed(2)}</b></li>`,
             )
             .join("")}</ul>`;
         } else {
@@ -932,25 +874,25 @@ const Fuzzy = (() => {
     }
 
     function explainRating(inputs, result) {
-        if (!inputs || !result) return "";
+        if (!inputs || !result || !result.rating) return "";
 
         const term = result.rating.term;
         const word =
             term === "high" ? "высокий" : term === "med" ? "средний" : "низкий";
 
-        const top = (result.rating.fired || [])
+        const top = [...(result.rating.fired || [])]
             .sort((a, b) => b.strength - a.strength)
             .slice(0, 3);
 
         let html = `<div class="explain">
-      <p><b>Рейтинг ${word}</b> (${result.rating.value.toFixed(0)}/100).</p>`;
+      <p><b>Рейтинг ${word}</b> (${Number(result.rating.value || 0).toFixed(0)}/100).</p>`;
 
         if (top.length > 0) {
             html += `<p style="margin-top:10px;"><b>Определяющие правила:</b></p>
         <ul>${top
             .map(
                 (f) =>
-                    `<li>«${escapeHtml(f.rule.desc)}» — сила <b>${f.strength.toFixed(2)}</b></li>`,
+                    `<li>«${esc(f.rule.desc)}» — сила <b>${f.strength.toFixed(2)}</b></li>`,
             )
             .join("")}</ul>`;
         } else {
@@ -969,6 +911,7 @@ const Fuzzy = (() => {
 
         defaultRules,
         getRules,
+        invalidateRulesCache,
 
         infer,
         sugenoInfer,

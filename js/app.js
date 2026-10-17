@@ -1,15 +1,9 @@
-/* =========================================================
-   APP — запуск, навигация, рендер разделов, модалки, toast
-   ========================================================= */
 const App = (() => {
     let currentUser = null;
     let toastTimer = null;
+    let _afterTimer = null;
 
-    /* =========================================================
-       НАВИГАЦИЯ — ЕДИНЫЙ ИСТОЧНИК ПРАВДЫ
-       ========================================================= */
     const NAV_ITEMS = [
-        // Общие для всех
         {
             id: "dashboard",
             icon: SVG.dashboard,
@@ -17,8 +11,6 @@ const App = (() => {
             roles: ["student", "teacher", "admin"],
             order: 10,
         },
-
-        // Студент
         {
             id: "my-work",
             icon: SVG.folder,
@@ -47,7 +39,6 @@ const App = (() => {
             roles: ["student"],
             order: 60,
         },
-
         {
             id: "calendar",
             icon: SVG.calendar,
@@ -62,8 +53,6 @@ const App = (() => {
             roles: ["student"],
             order: 100,
         },
-
-        // Преподаватель
         {
             id: "announcements",
             icon: SVG.bell,
@@ -113,7 +102,6 @@ const App = (() => {
             roles: ["teacher", "admin"],
             order: 70,
         },
-
         {
             id: "rules",
             icon: SVG.settings,
@@ -121,8 +109,6 @@ const App = (() => {
             roles: ["teacher", "admin"],
             order: 120,
         },
-
-        // Админ
         {
             id: "users",
             icon: SVG.users,
@@ -179,8 +165,6 @@ const App = (() => {
             roles: ["admin"],
             order: 140,
         },
-
-        // Общие (продолжение)
         {
             id: "mamdani",
             icon: SVG.brain,
@@ -225,10 +209,6 @@ const App = (() => {
         },
     ];
 
-    /**
-     * Возвращает массив пунктов меню для заданной роли,
-     * отсортированных по order.
-     */
     function navItems(role) {
         if (!role) return [];
         return NAV_ITEMS.filter((it) => it.roles.includes(role)).sort(
@@ -236,9 +216,6 @@ const App = (() => {
         );
     }
 
-    /* =========================================================
-       МАППИНГ ДОЧЕРНИХ VIEW → РОДИТЕЛЬСКИМ ВКЛАДКАМ
-       ========================================================= */
     const VIEW_PARENT_MAP = {
         "create-work": "dashboard",
         "my-work": "dashboard",
@@ -259,9 +236,6 @@ const App = (() => {
         return VIEW_PARENT_MAP[viewId] || null;
     }
 
-    /* =========================================================
-       ХЕЛПЕРЫ
-       ========================================================= */
     function roleName(r) {
         return r === "student"
             ? "Студент"
@@ -270,30 +244,6 @@ const App = (() => {
               : "Администратор";
     }
 
-    function initials(fio) {
-        if (!fio || typeof fio !== "string") return "?";
-        const parts = fio.split(" ").filter(Boolean);
-        if (parts.length === 0) return "?";
-        return parts
-            .map((w) => w[0])
-            .slice(0, 2)
-            .join("")
-            .toUpperCase();
-    }
-
-    function escapeHtml(str) {
-        if (str === null || str === undefined) return "";
-        return String(str)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
-    }
-
-    /* =========================================================
-       BOOT
-       ========================================================= */
     function boot(user) {
         if (!user) return;
 
@@ -313,12 +263,10 @@ const App = (() => {
 
         if (nameEl) nameEl.textContent = user.fio || "—";
         if (roleEl) roleEl.textContent = roleName(user.role);
-        if (avEl) avEl.textContent = initials(user.fio);
+        if (avEl) avEl.textContent = Utils.initials(user.fio);
 
-        // ВСЕГДА рендерим верхнюю навигацию
         renderNav(user.role);
 
-        // Для админа дополнительно — левый сайдбар-виджет
         if (user.role === "admin") {
             document.body.classList.add("admin-layout");
             renderAdminSidebar(user);
@@ -336,9 +284,6 @@ const App = (() => {
         return "dashboard";
     }
 
-    /* =========================================================
-       РЕНДЕР ВЕРХНЕЙ НАВИГАЦИИ
-       ========================================================= */
     function renderNav(role) {
         const nav = document.getElementById("mainNav");
         if (!nav) return;
@@ -383,9 +328,6 @@ const App = (() => {
         nav.innerHTML = html;
     }
 
-    /* =========================================================
-       САЙДБАР АДМИНА — стеклянный, с виджетами
-       ========================================================= */
     function renderAdminSidebar(user) {
         let sb = document.getElementById("adminSidebar");
         if (!sb) {
@@ -397,9 +339,26 @@ const App = (() => {
 
         const users = Storage.getUsers();
         const works = Storage.getWorks();
-        const consults = typeof Consult !== "undefined" ? Consult.getAll() : [];
+        const consults =
+            typeof Consult !== "undefined"
+                ? (() => {
+                      try {
+                          return Consult.getAll();
+                      } catch (e) {
+                          return [];
+                      }
+                  })()
+                : [];
         const announcements =
-            typeof Announcements !== "undefined" ? Announcements.getAll() : [];
+            typeof Announcements !== "undefined"
+                ? (() => {
+                      try {
+                          return Announcements.getAll();
+                      } catch (e) {
+                          return [];
+                      }
+                  })()
+                : [];
         const blocked = users.filter((u) => u.blocked);
 
         const activeWorks = works.filter(
@@ -407,8 +366,12 @@ const App = (() => {
         );
         const pendingWorks = works.filter((w) => w.status === "pending");
         const highRisk = works.filter((w) => {
-            const res = Utils.safeFuzzyInfer(Utils.buildFuzzyInputs(w));
-            return res && res.risk.term === "high";
+            try {
+                const res = Utils.safeFuzzyInfer(Utils.buildFuzzyInputs(w));
+                return res && res.risk.term === "high";
+            } catch (e) {
+                return false;
+            }
         });
         const overdue = works.filter((w) => {
             if (!w.deadline) return false;
@@ -532,9 +495,6 @@ const App = (() => {
     `;
     }
 
-    /* =========================================================
-       НАВИГАЦИЯ
-       ========================================================= */
     function navigate(viewId, params) {
         if (!viewId) return;
 
@@ -553,7 +513,6 @@ const App = (() => {
         renderView(viewId, params);
         window.scrollTo(0, 0);
 
-        // Обновляем бейдж непрочитанных объявлений после рендера
         if (
             currentUser &&
             typeof Announcements !== "undefined" &&
@@ -563,9 +522,6 @@ const App = (() => {
         }
     }
 
-    /**
-     * Обновляет только бейджи в nav без перерисовки всего меню.
-     */
     function renderNavBadges() {
         if (!currentUser) return;
         if (typeof Announcements === "undefined") return;
@@ -587,9 +543,6 @@ const App = (() => {
         }
     }
 
-    /**
-     * Рендер раздела.
-     */
     function renderView(viewId, params) {
         const root = document.getElementById("viewRoot");
         if (!root) return;
@@ -597,6 +550,14 @@ const App = (() => {
         if (!currentUser) {
             root.innerHTML = placeholder("Пользователь не авторизован");
             return;
+        }
+
+        if (typeof Charts !== "undefined" && Charts.destroyAll) {
+            Charts.destroyAll();
+        }
+        if (_afterTimer) {
+            clearTimeout(_afterTimer);
+            _afterTimer = null;
         }
 
         let views = {};
@@ -629,7 +590,8 @@ const App = (() => {
                 return;
             }
             if (afterFn) {
-                setTimeout(() => {
+                _afterTimer = setTimeout(() => {
+                    _afterTimer = null;
                     try {
                         afterFn(params);
                     } catch (err) {
@@ -651,16 +613,13 @@ const App = (() => {
       <div class="card">
         <div class="placeholder">
           <div class="placeholder-ico">${SVG.alertTriangle({ cls: "icon icon-2xl" })}</div>
-          <div style="font-weight:500;margin-bottom:6px;">${text}</div>
-          ${hint ? `<div style="font-size:12px;color:var(--txt-muted);">${hint}</div>` : ""}
+          <div style="font-weight:500;margin-bottom:6px;">${Utils.escapeHtml(text)}</div>
+          ${hint ? `<div style="font-size:12px;color:var(--txt-muted);">${Utils.escapeHtml(hint)}</div>` : ""}
         </div>
       </div>
     `;
     }
 
-    /* =========================================================
-       МОДАЛКИ
-       ========================================================= */
     function openModal(html) {
         closeModal();
         const div = document.createElement("div");
@@ -694,7 +653,6 @@ const App = (() => {
     function refreshNotifications() {
         if (!currentUser) return;
 
-        // 1. Колокольчик
         if (typeof Notifications !== "undefined") {
             try {
                 const count = Notifications.unreadCount(currentUser.id);
@@ -715,7 +673,6 @@ const App = (() => {
             }
         }
 
-        // 2. Бейдж объявлений в nav
         try {
             if (
                 (currentUser.role === "student" ||
@@ -729,6 +686,34 @@ const App = (() => {
         }
     }
 
+    function resetUIState() {
+        if (typeof Admin !== "undefined" && Admin.resetFilters) {
+            try {
+                Admin.resetFilters();
+            } catch (e) {}
+        }
+        if (typeof Teacher !== "undefined" && Teacher.resetFilters) {
+            try {
+                Teacher.resetFilters();
+            } catch (e) {}
+        }
+        if (typeof Student !== "undefined" && Student.clearSelectedWork) {
+            try {
+                Student.clearSelectedWork();
+            } catch (e) {}
+        }
+        if (typeof MamdaniViz !== "undefined" && MamdaniViz.resetSelection) {
+            try {
+                MamdaniViz.resetSelection();
+            } catch (e) {}
+        }
+        if (typeof Simulate !== "undefined" && Simulate.resetSelection) {
+            try {
+                Simulate.resetSelection();
+            } catch (e) {}
+        }
+    }
+
     return {
         boot,
         navigate,
@@ -736,6 +721,7 @@ const App = (() => {
         closeModal,
         toast,
         refreshNotifications,
+        resetUIState,
         getUser: () => currentUser,
         NAV_ITEMS,
         navItems,

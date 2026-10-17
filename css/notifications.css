@@ -1,10 +1,3 @@
-/* =========================================================
-   NOTIFICATIONS — панель уведомлений
-   ========================================================= */
-
-/* =========================================================
-   КОЛОКОЛЬЧИК
-   ========================================================= */
 .notif-bell {
     position: relative;
     width: 38px;
@@ -17,27 +10,27 @@
     color: var(--txt-muted);
     transition: all var(--t-fast);
 }
+
 .notif-bell:hover {
     background: var(--bg-soft);
     color: var(--txt);
     transform: scale(1.05);
 }
+
 .notif-bell.has-new {
-    color: var(--accent-viz);
-}
-.notif-bell.has-new:hover {
-    background: var(--accent-viz-soft);
+    color: var(--txt);
 }
 
-/* =========================================================
-   СЧЁТЧИК
-   ========================================================= */
+.notif-bell.has-new:hover {
+    background: var(--bg-soft);
+}
+
 .notif-count {
     position: absolute;
     top: 2px;
     right: 2px;
     background: var(--bad);
-    color: #fff;
+    color: #ffffff;
     font-size: 10px;
     font-weight: 700;
     min-width: 18px;
@@ -52,9 +45,6 @@
     line-height: 1;
 }
 
-/* =========================================================
-   ПАНЕЛЬ
-   ========================================================= */
 .notif-panel {
     position: absolute;
     top: 52px;
@@ -67,7 +57,6 @@
     border-radius: var(--r-xl);
     box-shadow: var(--shadow-lg);
     z-index: 500;
-    animation: fadeUp 0.25s ease;
 }
 
 .notif-panel-head {
@@ -82,6 +71,7 @@
     z-index: 1;
     border-radius: var(--r-xl) var(--r-xl) 0 0;
 }
+
 .notif-panel-head h4 {
     font-size: 14px;
     font-weight: 600;
@@ -91,22 +81,22 @@
     align-items: center;
     gap: 8px;
 }
+
 .notif-panel-head h4 .count-chip {
     margin-left: 4px;
 }
+
 .notif-panel-head button {
     font-size: 12px;
-    color: var(--accent-viz);
+    color: var(--accent);
     font-weight: 500;
     transition: color var(--t-fast);
 }
+
 .notif-panel-head button:hover {
-    color: var(--accent-viz-hover);
+    color: var(--txt);
 }
 
-/* =========================================================
-   ЭЛЕМЕНТ УВЕДОМЛЕНИЯ
-   ========================================================= */
 .notif-item {
     padding: 14px 20px;
     border-bottom: 1px solid var(--line);
@@ -114,16 +104,20 @@
     transition: background var(--t-fast);
     position: relative;
 }
+
 .notif-item:hover {
     background: var(--bg-soft);
 }
+
 .notif-item:last-child {
     border-bottom: none;
     border-radius: 0 0 var(--r-xl) var(--r-xl);
 }
+
 .notif-item.unread {
-    background: var(--accent-viz-soft);
+    background: var(--bg-soft);
 }
+
 .notif-item.unread::before {
     content: "";
     position: absolute;
@@ -135,8 +129,9 @@
     border-radius: 50%;
     background: var(--bad);
 }
+
 .notif-item.unread:hover {
-    background: rgba(99, 102, 241, 0.18);
+    background: var(--bg-hover);
 }
 
 .notif-item-head {
@@ -145,6 +140,7 @@
     gap: 10px;
     margin-bottom: 6px;
 }
+
 .notif-item-ico {
     display: inline-flex;
     align-items: center;
@@ -152,14 +148,16 @@
     width: 26px;
     height: 26px;
     border-radius: 50%;
-    background: var(--accent-viz-soft);
-    color: var(--accent-viz);
+    background: var(--bg-soft);
+    color: var(--txt-muted);
     font-size: 11px;
     flex-shrink: 0;
 }
+
 .notif-item-ico svg {
     stroke: currentColor;
 }
+
 .notif-item-title {
     font-size: 13px;
     font-weight: 600;
@@ -167,6 +165,7 @@
     letter-spacing: -0.005em;
     line-height: 1.35;
 }
+
 .notif-item-text {
     font-size: 12px;
     color: var(--txt-muted);
@@ -174,6 +173,7 @@
     line-height: 1.5;
     padding-left: 36px;
 }
+
 .notif-item-time {
     font-size: 11px;
     color: var(--txt-soft);
@@ -181,9 +181,6 @@
     font-variant-numeric: tabular-nums;
 }
 
-/* =========================================================
-   ПУСТОЕ СОСТОЯНИЕ
-   ========================================================= */
 .notif-empty {
     display: flex;
     flex-direction: column;
@@ -193,30 +190,28 @@
     color: var(--txt-muted);
     font-size: 13px;
 }
+
 .notif-empty svg {
     opacity: 0.35;
     margin-bottom: 12px;
 }
 
-/* =========================================================
-   ДЕЙСТВИЯ
-   ========================================================= */
 .notif-action {
     font-size: 11px;
-    color: var(--accent-viz);
+    color: #ffffff;
     cursor: pointer;
     padding: 6px 12px;
     border-radius: var(--r-pill);
-    background: var(--accent-viz-soft);
+    background: var(--txt);
     border: none;
     transition: all var(--t-fast);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
 }
+
 .notif-action:hover {
-    background: var(--accent-viz);
-    color: #fff;
+    background: var(--accent-hover);
 }
 
 .notif-close {
@@ -232,36 +227,32 @@
     cursor: pointer;
     transition: all var(--t-fast);
 }
+
 .notif-close:hover {
     background: var(--bad-soft);
     color: var(--bad);
     transform: rotate(90deg);
 }
 
-/* =========================================================
-   СПИСОК
-   ========================================================= */
 .notif-list {
     max-height: 420px;
     overflow-y: auto;
 }
 
-/* Кастомный скроллбар для списка */
 .notif-list::-webkit-scrollbar {
     width: 6px;
 }
+
 .notif-list::-webkit-scrollbar-thumb {
     background: var(--line-strong);
     border-radius: var(--r-pill);
 }
+
 .notif-list::-webkit-scrollbar-thumb:hover {
     background: var(--txt-soft);
 }
 
-/* =========================================================
-   АДАПТИВ
-   ========================================================= */
-@media (max-width: 500px) {
+@media (max-width: 640px) {
     .notif-panel {
         position: fixed;
         top: 60px;

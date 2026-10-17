@@ -7,10 +7,12 @@
     cursor: pointer;
     transition: all var(--t-fast);
 }
+
 .docx-drop:hover {
     border-color: var(--accent);
     background: var(--accent-soft);
 }
+
 .docx-drop.drag {
     border-color: var(--accent);
     background: var(--accent-soft);
@@ -30,6 +32,7 @@
     border: 1px solid var(--line);
     flex-wrap: wrap;
 }
+
 .docx-score-ring {
     width: 88px;
     height: 88px;
@@ -41,7 +44,12 @@
     font-weight: 600;
     position: relative;
     flex-shrink: 0;
+    background: conic-gradient(
+        var(--ring-color, var(--accent)) var(--pct, 0%),
+        var(--bg-soft) 0%
+    );
 }
+
 .docx-score-ring::before {
     content: "";
     position: absolute;
@@ -49,15 +57,18 @@
     border-radius: 50%;
     background: var(--bg-soft);
 }
+
 .docx-score-ring > span {
     position: relative;
     z-index: 1;
     font-variant-numeric: tabular-nums;
 }
+
 .docx-checks {
     flex: 1;
     min-width: 240px;
 }
+
 .docx-check {
     display: flex;
     align-items: center;
@@ -66,9 +77,11 @@
     border-bottom: 1px solid var(--line);
     font-size: 13px;
 }
+
 .docx-check:last-child {
     border-bottom: none;
 }
+
 .docx-check-status {
     width: 20px;
     height: 20px;
@@ -80,27 +93,32 @@
     font-weight: 700;
     flex-shrink: 0;
 }
+
 .docx-check-status.ok {
     background: var(--ok-soft);
     color: var(--ok);
 }
+
 .docx-check-status.warn {
     background: var(--warn-soft);
     color: var(--warn);
 }
+
 .docx-check-status.bad {
     background: var(--bad-soft);
     color: var(--bad);
 }
+
 .docx-check-status.skip {
     background: var(--bg-soft);
     color: var(--txt-muted);
 }
+
 .docx-check-detail {
     font-size: 11px;
     color: var(--txt-muted);
     margin-left: auto;
-    font-family: "JetBrains Mono", monospace;
+    font-family: var(--font-mono);
 }
 
 .docx-preview {
@@ -112,7 +130,7 @@
     max-height: 200px;
     overflow-y: auto;
     margin-top: 12px;
-    font-family: "JetBrains Mono", monospace;
+    font-family: var(--font-mono);
     line-height: 1.5;
     white-space: pre-wrap;
     word-break: break-word;
@@ -126,6 +144,7 @@
     margin-top: 12px;
     font-size: 12px;
 }
+
 .docx-detail {
     padding: 8px 10px;
     background: var(--bg-soft);
@@ -134,13 +153,11 @@
     justify-content: space-between;
     border: 1px solid var(--line);
 }
+
 .docx-detail b {
     color: var(--accent);
 }
 
-/* =========================================================
-   ИСТОРИЯ ПРОВЕРОК ГОСТА
-   ========================================================= */
 .docx-history-row {
     display: grid;
     grid-template-columns: 60px 1fr 32px;
@@ -154,6 +171,7 @@
     cursor: pointer;
     transition: all var(--t-fast);
 }
+
 .docx-history-row:hover {
     background: var(--bg-soft);
     border-color: var(--line-strong);
@@ -183,9 +201,6 @@
     color: var(--txt-muted);
 }
 
-/* =========================================================
-   БЛОК «ЧТО ИСПРАВИТЬ»
-   ========================================================= */
 .docx-fixes {
     display: grid;
     gap: 10px;
@@ -209,7 +224,7 @@
     height: 26px;
     border-radius: 50%;
     background: var(--warn);
-    color: #fff;
+    color: #ffffff;
     flex-shrink: 0;
 }
 
@@ -224,14 +239,4 @@
     font-size: 12px;
     color: var(--txt-muted);
     line-height: 1.5;
-}
-
-/* =========================================================
-   КОЛЬЦО С РЕЗУЛЬТАТОМ — доработка
-   ========================================================= */
-.docx-score-ring {
-    background: conic-gradient(
-        var(--ring-color, var(--accent)) var(--pct, 0%),
-        var(--bg-soft) 0%
-    );
 }

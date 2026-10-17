@@ -1,18 +1,49 @@
 const PdfReport = (() => {
-    const escapeHtml = Utils.escapeHtml;
-    const calcProgress = Utils.calcProgress;
-    const workTypeLabel = Utils.workTypeLabel;
+    const escapeHtml =
+        typeof Utils !== "undefined" && Utils.escapeHtml
+            ? Utils.escapeHtml
+            : (str) => {
+                  if (str === null || str === undefined) return "";
+                  return String(str)
+                      .replace(/&/g, "&amp;")
+                      .replace(/</g, "&lt;")
+                      .replace(/>/g, "&gt;")
+                      .replace(/"/g, "&quot;");
+              };
 
     function getUser() {
-        return typeof Auth !== "undefined" ? Auth.getUser() : null;
+        if (typeof Auth === "undefined") return null;
+        try {
+            return Auth.getUser();
+        } catch (e) {
+            return null;
+        }
     }
 
     function getInputs(work) {
+        if (typeof Utils === "undefined" || !Utils.buildFuzzyInputs)
+            return null;
         return Utils.buildFuzzyInputs(work);
     }
 
     function getFuzzyResult(work) {
-        return Utils.safeFuzzyInfer(Utils.buildFuzzyInputs(work));
+        if (typeof Utils === "undefined" || !Utils.safeFuzzyInfer) return null;
+        try {
+            return Utils.safeFuzzyInfer(Utils.buildFuzzyInputs(work));
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function calcProgress(workId) {
+        if (typeof Utils === "undefined" || !Utils.calcProgress) return 0;
+        return Utils.calcProgress(workId);
+    }
+
+    function workTypeLabel(type) {
+        if (typeof Utils === "undefined" || !Utils.workTypeLabel)
+            return type || "—";
+        return Utils.workTypeLabel(type);
     }
 
     function exportDepartment() {
@@ -61,7 +92,13 @@ const PdfReport = (() => {
             })
             .filter(Boolean);
 
+        if (enriched.length === 0) {
+            App.toast("Нет работ с корректными расчётами");
+            return;
+        }
+
         const html = buildReportHTML(enriched);
+        if (!html) return;
         openPrintWindow(html, "Отчёт по работам кафедры");
     }
 
@@ -78,7 +115,13 @@ const PdfReport = (() => {
             return;
         }
 
-        const allowed = Utils.ensureOwnerWork(w, user);
+        const allowed =
+            typeof Utils !== "undefined" && Utils.ensureOwnerWork
+                ? Utils.ensureOwnerWork(w, user)
+                : user.role === "admin" ||
+                  Storage.sameId(w.teacherId, user.id) ||
+                  Storage.sameId(w.studentId, user.id);
+
         if (!allowed) {
             App.toast("Нет доступа к этой работе");
             return;
@@ -87,7 +130,16 @@ const PdfReport = (() => {
         const student = Storage.getUserById(w.studentId);
         const teacher = Storage.getUserById(w.teacherId);
         const inputs = getInputs(w);
-        const res = Utils.safeFuzzyInfer(inputs);
+        if (!inputs) {
+            App.toast("Не удалось собрать данные для отчёта");
+            return;
+        }
+        const res = getFuzzyResult(w);
+        if (!res) {
+            App.toast("Не удалось рассчитать оценку");
+            return;
+        }
+
         const progress = calcProgress(w.id);
         const stages = Storage.getStagesByWork(w.id);
 
@@ -100,28 +152,30 @@ const PdfReport = (() => {
             progress,
             stages,
         );
+
+        if (!html) return;
+
         openPrintWindow(html, `Отчёт по работе — ${student?.fio || ""}`);
     }
 
     function buildReportHTML(enriched) {
+        if (!Array.isArray(enriched) || enriched.length === 0) return "";
+
         const high = enriched.filter((e) => e.res.risk.term === "high").length;
         const med = enriched.filter((e) => e.res.risk.term === "med").length;
         const low = enriched.filter((e) => e.res.risk.term === "low").length;
 
-        const avgRating = enriched.length
-            ? (
-                  enriched.reduce((a, e) => a + e.res.rating.value, 0) /
-                  enriched.length
-              ).toFixed(1)
-            : "0";
+        const avgRating = (
+            enriched.reduce((a, e) => a + e.res.rating.value, 0) /
+            enriched.length
+        ).toFixed(1);
 
-        const total = enriched.length || 1;
+        const total = Math.max(enriched.length, 1);
         const pctLow = (low / total) * 100;
         const pctMed = (med / total) * 100;
         const pctHigh = (high / total) * 100;
 
-        return `
-      <!DOCTYPE html>
+        return `<!DOCTYPE html>
       <html lang="ru"><head>
       <meta charset="UTF-8">
       <title>Отчёт по работам — Meridian</title>
@@ -236,6 +290,8 @@ const PdfReport = (() => {
         progress,
         stages,
     ) {
+        if (!w || !res || !res.risk || !res.ready || !res.rating) return "";
+
         const riskTerm =
             res.risk.term === "high"
                 ? "высокий"
@@ -269,8 +325,7 @@ const PdfReport = (() => {
         `
             : "";
 
-        return `
-      <!DOCTYPE html>
+        return `<!DOCTYPE html>
       <html lang="ru"><head>
       <meta charset="UTF-8">
       <title>Отчёт по работе — ${escapeHtml(student?.fio || "")}</title>
@@ -327,13 +382,13 @@ const PdfReport = (() => {
       <h2>Прогресс по этапам</h2>
       <p style="font-size:13px;">Общий прогресс: <b>${progress}%</b></p>
       ${
-          stages.length === 0
+          !Array.isArray(stages) || stages.length === 0
               ? '<p style="font-size:13px;color:#6b7280;">Этапы не добавлены</p>'
               : stages
                     .map(
                         (s) => `
             <div class="stage-row">
-              <span>${s.done ? "✓" : "○"} ${escapeHtml(s.name)}</span>
+              <span>${s.done ? "✓" : "○"} ${escapeHtml(s.name || "")}</span>
               <span style="color:#6b7280;">вес ${s.weight || 1}</span>
             </div>
           `,
@@ -344,7 +399,11 @@ const PdfReport = (() => {
       ${gradeBlock}
 
       <h2>Рекомендация</h2>
-      <p style="font-size:13px;">${escapeHtml(Fuzzy.recommendation(inputs, res))}</p>
+      <p style="font-size:13px;">${escapeHtml(
+          typeof Fuzzy !== "undefined" && Fuzzy.recommendation
+              ? Fuzzy.recommendation(inputs, res)
+              : "",
+      )}</p>
 
       <footer>
         Отчёт сгенерирован автоматически системой Meridian
@@ -382,33 +441,14 @@ const PdfReport = (() => {
                 }, 300);
             };
 
-            if (typeof Audit !== "undefined") {
-                Audit.log("Экспорт PDF", title || "", "", "info");
-            }
+            try {
+                if (typeof Audit !== "undefined") {
+                    Audit.log("Экспорт PDF", title || "", "", "info");
+                }
+            } catch (e) {}
         } catch (err) {
             console.error("[PdfReport] Ошибка:", err);
-            fallbackPrint(html, title);
-        }
-    }
-
-    function fallbackPrint(html, title) {
-        const w = window.open("", "_blank");
-        if (!w) {
-            App.toast("Разрешите всплывающие окна для экспорта");
-            return;
-        }
-        w.document.open();
-        w.document.write(html);
-        w.document.close();
-
-        setTimeout(() => {
-            try {
-                w.print();
-            } catch (e) {}
-        }, 500);
-
-        if (typeof Audit !== "undefined") {
-            Audit.log("Экспорт PDF", title || "", "", "info");
+            App.toast("Не удалось открыть отчёт");
         }
     }
 

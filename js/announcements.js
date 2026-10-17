@@ -2,19 +2,19 @@ const Announcements = (() => {
     const KEY = "fp_announcements";
     const READ_KEY = "fp_announcements_read";
 
-    const AUDIENCE_LABELS = {
+    const AUDIENCE_LABELS = Object.freeze({
         all: "Все пользователи",
         students: "Только студенты",
         teachers: "Только преподаватели",
         user: "Конкретный пользователь",
         group: "Конкретная группа",
-    };
+    });
 
-    const PRIORITY_LABELS = {
+    const PRIORITY_LABELS = Object.freeze({
         normal: "Обычное",
         important: "Важное",
         urgent: "Срочное",
-    };
+    });
 
     const escapeHtml =
         typeof Utils !== "undefined" && Utils.escapeHtml
@@ -28,13 +28,23 @@ const Announcements = (() => {
                       .replace(/"/g, "&quot;");
               };
 
-    /* ---------- Локальный emptyState с fallback ---------- */
+    function refresh() {
+        try {
+            if (typeof App !== "undefined" && App.refreshNotifications) {
+                App.refreshNotifications();
+            }
+        } catch (e) {
+            console.warn("[Announcements] refresh error:", e);
+        }
+    }
+
     function localEmptyState(title, text, iconFn) {
-        const icon = iconFn
-            ? iconFn({ cls: "icon icon-2xl" })
-            : typeof SVG !== "undefined" && SVG.bell
-              ? SVG.bell({ cls: "icon icon-2xl" })
-              : "";
+        const icon =
+            iconFn && typeof SVG !== "undefined"
+                ? iconFn({ cls: "icon icon-2xl" })
+                : typeof SVG !== "undefined" && SVG.bell
+                  ? SVG.bell({ cls: "icon icon-2xl" })
+                  : "";
         return `
       <div class="empty-state" style="padding:48px 24px;text-align:center;">
         ${icon}
@@ -46,9 +56,6 @@ const Announcements = (() => {
     `;
     }
 
-    /* =========================================================
-       БАЗОВЫЕ ОПЕРАЦИИ
-       ========================================================= */
     function getAll() {
         const list = Storage.get(KEY, []);
         return Array.isArray(list) ? list : [];
@@ -72,9 +79,6 @@ const Announcements = (() => {
             });
     }
 
-    /* =========================================================
-       ПРОЧИТАНО / НЕПРОЧИТАНО
-       ========================================================= */
     function getReadMap() {
         const map = Storage.get(READ_KEY, {});
         return map && typeof map === "object" ? map : {};
@@ -95,18 +99,6 @@ const Announcements = (() => {
         return getReadIds(userId).some((id) => Storage.sameId(id, annId));
     }
 
-    function markRead(userId, annId) {
-        if (!userId || !annId) return;
-        const map = getReadMap();
-        const key = String(userId);
-        const list = Array.isArray(map[key]) ? map[key] : [];
-        if (!list.some((id) => Storage.sameId(id, annId))) {
-            list.push(annId);
-            map[key] = list;
-            setReadMap(map);
-        }
-    }
-
     function markAllRead(userId) {
         if (!userId) return;
         const map = getReadMap();
@@ -114,6 +106,7 @@ const Announcements = (() => {
         const allIds = getAll().map((a) => a.id);
         map[key] = allIds;
         setReadMap(map);
+        refresh();
     }
 
     function unreadCount(userId) {
@@ -125,9 +118,6 @@ const Announcements = (() => {
         ).length;
     }
 
-    /* =========================================================
-       ФИЛЬТРАЦИЯ ПО ПОЛЬЗОВАТЕЛЮ
-       ========================================================= */
     function matchesAudience(a, user) {
         if (!a || !user) return false;
         if (a.audience === "all") return true;
@@ -135,7 +125,10 @@ const Announcements = (() => {
         if (a.audience === "teachers") return user.role === "teacher";
         if (a.audience === "user") return Storage.sameId(a.audienceId, user.id);
         if (a.audience === "group")
-            return user.role === "student" && user.group === a.audienceId;
+            return (
+                user.role === "student" &&
+                String(user.group || "") === String(a.audienceId || "")
+            );
         return false;
     }
 
@@ -150,9 +143,6 @@ const Announcements = (() => {
         return getActive().filter((a) => matchesAudience(a, user));
     }
 
-    /* =========================================================
-       СОЗДАНИЕ / УДАЛЕНИЕ
-       ========================================================= */
     function add(data) {
         const list = getAll();
         const item = {
@@ -170,12 +160,14 @@ const Announcements = (() => {
         };
         list.push(item);
         setAll(list);
+        refresh();
         return item;
     }
 
     function remove(id) {
         const list = getAll().filter((a) => !Storage.sameId(a.id, id));
         setAll(list);
+        refresh();
     }
 
     function toggleActive(id) {
@@ -184,12 +176,10 @@ const Announcements = (() => {
         if (a) {
             a.active = !a.active;
             setAll(list);
+            refresh();
         }
     }
 
-    /* =========================================================
-       РЕНДЕР
-       ========================================================= */
     function iconFor(priority) {
         if (typeof SVG === "undefined") return () => "";
         if (priority === "urgent") return SVG.alertTriangle;
@@ -225,35 +215,6 @@ const Announcements = (() => {
     `;
     }
 
-    function renderBlock(user) {
-        const list = getForUser(user);
-        if (list.length === 0) return "";
-        return `
-      <div class="announcements-block">
-        ${list
-            .slice(0, 3)
-            .map((a) =>
-                renderCard(a, {
-                    isUnread: !isRead(user.id, a.id),
-                }),
-            )
-            .join("")}
-        ${
-            list.length > 3
-                ? `<div class="ann-more">
-                     <button class="btn-ghost btn-sm" onclick="App.navigate('announcements')">
-                       Показать все (${list.length})
-                     </button>
-                   </div>`
-                : ""
-        }
-      </div>
-    `;
-    }
-
-    /**
-     * Полная страница объявлений для пользователя.
-     */
     function renderPage(user) {
         if (!user) {
             return '<div class="card"><div class="empty">Пользователь не найден</div></div>';
@@ -261,7 +222,6 @@ const Announcements = (() => {
 
         const list = getForUser(user);
 
-        // Помечаем всё как прочитанное при открытии вкладки
         markAllRead(user.id);
 
         if (list.length === 0) {
@@ -283,7 +243,7 @@ const Announcements = (() => {
         }
 
         return `
-      <div class="card">
+      <div class="card" aria-label="Объявления">
         <div class="card-head">
           <div class="card-title" style="margin-bottom:0;">
             ${typeof SVG !== "undefined" && SVG.bell ? SVG.bell({ cls: "icon icon-sm" }) : ""}
@@ -319,10 +279,8 @@ const Announcements = (() => {
         remove,
         toggleActive,
         isRead,
-        markRead,
         markAllRead,
         unreadCount,
-        renderBlock,
         renderCard,
         renderPage,
         describeAudience,

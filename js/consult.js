@@ -2,11 +2,11 @@ const Consult = (() => {
     const KEY = "fp_consults";
 
     const STATUS = {
-        pending: "pending", // ждём преподавателя
-        rescheduled: "rescheduled", // преподаватель предложил новое время, ждём студента
-        approved: "approved", // согласовано
-        rejected: "rejected", // отклонено
-        done: "done", // проведена
+        pending: "pending",
+        rescheduled: "rescheduled",
+        approved: "approved",
+        rejected: "rejected",
+        done: "done",
     };
 
     const STATUS_LABELS = {
@@ -38,14 +38,21 @@ const Consult = (() => {
               };
 
     function getUser() {
-        return typeof Auth !== "undefined" ? Auth.getUser() : null;
+        if (typeof Auth === "undefined") return null;
+        try {
+            return Auth.getUser();
+        } catch (e) {
+            return null;
+        }
     }
 
-    /* =========================================================
-       ХРАНИЛИЩЕ
-       ========================================================= */
     function getAll() {
-        const list = Storage.get(KEY, []);
+        let list;
+        try {
+            list = Storage.get(KEY, []);
+        } catch (e) {
+            return [];
+        }
         return Array.isArray(list) ? list : [];
     }
 
@@ -53,10 +60,6 @@ const Consult = (() => {
         Storage.set(KEY, Array.isArray(list) ? list : []);
     }
 
-    /* =========================================================
-       ПАРСИНГ ДАТ
-       Формат: "DD.MM.YYYY, HH:MM"
-       ========================================================= */
     function parseRuDatetime(str) {
         if (!str) return null;
         const m = String(str).match(
@@ -97,9 +100,6 @@ const Consult = (() => {
         return "far";
     }
 
-    /* =========================================================
-       ФИЛЬТРЫ
-       ========================================================= */
     function forStudent(studentId) {
         return getAll()
             .filter((c) => Storage.sameId(c.studentId, studentId))
@@ -130,15 +130,18 @@ const Consult = (() => {
     }
 
     function proposedByLabel(c) {
-        // Для старых данных без proposedBy — считаем, что предложил студент
         const by = c.proposedBy || "student";
         return by === "teacher" ? "Преподаватель" : "Студент";
     }
 
-    /* =========================================================
-       СОЗДАНИЕ
-       ========================================================= */
-    function create({ studentId, teacherId, datetime, topic, comment }) {
+    function create({
+        studentId,
+        teacherId,
+        workId,
+        datetime,
+        topic,
+        comment,
+    }) {
         if (!studentId || !teacherId || !datetime || !topic) {
             App.toast("Не все поля заполнены");
             return null;
@@ -158,6 +161,7 @@ const Consult = (() => {
             id: uid(),
             studentId,
             teacherId,
+            workId: workId || null,
             datetime,
             topic,
             comment: comment || "",
@@ -178,31 +182,36 @@ const Consult = (() => {
         list.push(consult);
         setAll(list);
 
-        if (typeof Notifications !== "undefined") {
-            Notifications.add({
-                userId: teacherId,
-                type: "info",
-                title: "Новая заявка на консультацию",
-                text: `Студент предлагает ${datetime}. Тема: ${topic}`,
-                link: { view: "consultations" },
-            });
+        try {
+            if (typeof Notifications !== "undefined") {
+                Notifications.add({
+                    userId: teacherId,
+                    type: "info",
+                    title: "Новая заявка на консультацию",
+                    text: `Студент предлагает ${datetime}. Тема: ${topic}`,
+                    link: { view: "consultations" },
+                });
+            }
+        } catch (e) {
+            console.warn("[Consult] notify error:", e);
         }
 
-        if (typeof Audit !== "undefined") {
-            Audit.log(
-                "Создана заявка на консультацию",
-                datetime,
-                topic,
-                "info",
-            );
+        try {
+            if (typeof Audit !== "undefined") {
+                Audit.log(
+                    "Создана заявка на консультацию",
+                    datetime,
+                    topic,
+                    "info",
+                );
+            }
+        } catch (e) {
+            console.warn("[Consult] audit error:", e);
         }
 
         return consult;
     }
 
-    /* =========================================================
-       ДЕЙСТВИЯ
-       ========================================================= */
     function doApprove(id, response) {
         const user = getUser();
         const list = getAll();
@@ -222,18 +231,31 @@ const Consult = (() => {
         c.updatedAt = Date.now();
         setAll(list);
 
-        if (typeof Notifications !== "undefined") {
-            Notifications.add({
-                userId: c.studentId,
-                type: "approve",
-                title: "Консультация подтверждена",
-                text: `${c.datetime} · ${c.topic}`,
-                link: { view: "consultations" },
-            });
+        try {
+            if (typeof Notifications !== "undefined") {
+                Notifications.add({
+                    userId: c.studentId,
+                    type: "approve",
+                    title: "Консультация подтверждена",
+                    text: `${c.datetime} · ${c.topic}`,
+                    link: { view: "consultations" },
+                });
+            }
+        } catch (e) {
+            console.warn("[Consult] notify error:", e);
         }
 
-        if (typeof Audit !== "undefined") {
-            Audit.log("Подтверждена консультация", c.datetime, "", "positive");
+        try {
+            if (typeof Audit !== "undefined") {
+                Audit.log(
+                    "Подтверждена консультация",
+                    c.datetime,
+                    "",
+                    "positive",
+                );
+            }
+        } catch (e) {
+            console.warn("[Consult] audit error:", e);
         }
     }
 
@@ -259,23 +281,31 @@ const Consult = (() => {
         const notifyUserId =
             user.role === "teacher" ? c.studentId : c.teacherId;
 
-        if (typeof Notifications !== "undefined") {
-            Notifications.add({
-                userId: notifyUserId,
-                type: "reject",
-                title: "Консультация отклонена",
-                text: reason || "",
-                link: { view: "consultations" },
-            });
+        try {
+            if (typeof Notifications !== "undefined") {
+                Notifications.add({
+                    userId: notifyUserId,
+                    type: "reject",
+                    title: "Консультация отклонена",
+                    text: reason || "",
+                    link: { view: "consultations" },
+                });
+            }
+        } catch (e) {
+            console.warn("[Consult] notify error:", e);
         }
 
-        if (typeof Audit !== "undefined") {
-            Audit.log(
-                "Отклонена консультация",
-                c.datetime,
-                reason || "",
-                "negative",
-            );
+        try {
+            if (typeof Audit !== "undefined") {
+                Audit.log(
+                    "Отклонена консультация",
+                    c.datetime,
+                    reason || "",
+                    "negative",
+                );
+            }
+        } catch (e) {
+            console.warn("[Consult] audit error:", e);
         }
     }
 
@@ -297,8 +327,12 @@ const Consult = (() => {
         c.updatedAt = Date.now();
         setAll(list);
 
-        if (typeof Audit !== "undefined") {
-            Audit.log("Консультация проведена", c.datetime, "", "info");
+        try {
+            if (typeof Audit !== "undefined") {
+                Audit.log("Консультация проведена", c.datetime, "", "info");
+            }
+        } catch (e) {
+            console.warn("[Consult] audit error:", e);
         }
     }
 
@@ -322,26 +356,29 @@ const Consult = (() => {
         c.updatedAt = Date.now();
         setAll(list);
 
-        if (typeof Notifications !== "undefined") {
-            Notifications.add({
-                userId: c.teacherId,
-                type: "info",
-                title: "Заявка отменена студентом",
-                text: `${c.datetime} · ${c.topic}`,
-                link: { view: "consultations" },
-            });
+        try {
+            if (typeof Notifications !== "undefined") {
+                Notifications.add({
+                    userId: c.teacherId,
+                    type: "info",
+                    title: "Заявка отменена студентом",
+                    text: `${c.datetime} · ${c.topic}`,
+                    link: { view: "consultations" },
+                });
+            }
+        } catch (e) {
+            console.warn("[Consult] notify error:", e);
         }
 
-        if (typeof Audit !== "undefined") {
-            Audit.log("Заявка отменена", c.datetime, "", "warning");
+        try {
+            if (typeof Audit !== "undefined") {
+                Audit.log("Заявка отменена", c.datetime, "", "warning");
+            }
+        } catch (e) {
+            console.warn("[Consult] audit error:", e);
         }
     }
 
-    /**
-     * Предложить новое время.
-     * - если был pending (препод) → rescheduled
-     * - если был rescheduled (студент) → pending
-     */
     function proposeTime(id, datetime, comment) {
         const user = getUser();
         if (!user) return;
@@ -388,33 +425,38 @@ const Consult = (() => {
 
         const notifyUserId = isTeacher ? c.studentId : c.teacherId;
 
-        if (typeof Notifications !== "undefined") {
-            Notifications.add({
-                userId: notifyUserId,
-                type: "info",
-                title: isTeacher
-                    ? "Преподаватель предложил другое время"
-                    : "Студент предложил другое время",
-                text: `${datetime} · ${c.topic}`,
-                link: { view: "consultations" },
-            });
+        try {
+            if (typeof Notifications !== "undefined") {
+                Notifications.add({
+                    userId: notifyUserId,
+                    type: "info",
+                    title: isTeacher
+                        ? "Преподаватель предложил другое время"
+                        : "Студент предложил другое время",
+                    text: `${datetime} · ${c.topic}`,
+                    link: { view: "consultations" },
+                });
+            }
+        } catch (e) {
+            console.warn("[Consult] notify error:", e);
         }
 
-        if (typeof Audit !== "undefined") {
-            Audit.log(
-                isTeacher
-                    ? "Преподаватель предложил время"
-                    : "Студент предложил время",
-                datetime,
-                c.topic,
-                "info",
-            );
+        try {
+            if (typeof Audit !== "undefined") {
+                Audit.log(
+                    isTeacher
+                        ? "Преподаватель предложил время"
+                        : "Студент предложил время",
+                    datetime,
+                    c.topic,
+                    "info",
+                );
+            }
+        } catch (e) {
+            console.warn("[Consult] audit error:", e);
         }
     }
 
-    /**
-     * Студент принимает предложенное преподавателем время.
-     */
     function acceptTime(id) {
         const user = getUser();
         if (!user) return;
@@ -435,29 +477,34 @@ const Consult = (() => {
         c.updatedAt = Date.now();
         setAll(list);
 
-        if (typeof Notifications !== "undefined") {
-            Notifications.add({
-                userId: c.teacherId,
-                type: "approve",
-                title: "Студент подтвердил время",
-                text: `${c.datetime} · ${c.topic}`,
-                link: { view: "consultations" },
-            });
+        try {
+            if (typeof Notifications !== "undefined") {
+                Notifications.add({
+                    userId: c.teacherId,
+                    type: "approve",
+                    title: "Студент подтвердил время",
+                    text: `${c.datetime} · ${c.topic}`,
+                    link: { view: "consultations" },
+                });
+            }
+        } catch (e) {
+            console.warn("[Consult] notify error:", e);
         }
 
-        if (typeof Audit !== "undefined") {
-            Audit.log(
-                "Студент подтвердил время консультации",
-                c.datetime,
-                "",
-                "positive",
-            );
+        try {
+            if (typeof Audit !== "undefined") {
+                Audit.log(
+                    "Студент подтвердил время консультации",
+                    c.datetime,
+                    "",
+                    "positive",
+                );
+            }
+        } catch (e) {
+            console.warn("[Consult] audit error:", e);
         }
     }
 
-    /* =========================================================
-       ФИЛЬТРЫ / KPI
-       ========================================================= */
     let consultFilter = "all";
     let consultSearch = "";
 
@@ -469,14 +516,19 @@ const Consult = (() => {
     function setConsultSearch(q) {
         consultSearch = q;
         App.navigate("consultations");
-        setTimeout(() => {
-            const input = document.querySelector(".consult-search");
-            if (input) {
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                const input = document.querySelector(".consult-search");
+                if (!input) return;
                 input.focus();
-                const len = input.value.length;
-                input.setSelectionRange(len, len);
-            }
-        }, 0);
+                if (typeof input.value === "string") {
+                    const len = input.value.length;
+                    try {
+                        input.setSelectionRange(len, len);
+                    } catch (e) {}
+                }
+            }, 0);
+        });
     }
 
     function applyFilter(list) {
@@ -510,7 +562,6 @@ const Consult = (() => {
             });
         }
 
-        // Сортировка: сначала активные, потом по дате консультации
         const priority = {
             pending: 0,
             rescheduled: 1,
@@ -518,6 +569,7 @@ const Consult = (() => {
             done: 3,
             rejected: 4,
         };
+
         return [...result].sort((a, b) => {
             const pa = priority[a.status] ?? 9;
             const pb = priority[b.status] ?? 9;
@@ -525,14 +577,13 @@ const Consult = (() => {
 
             const da = parseRuDatetime(a.datetime);
             const db = parseRuDatetime(b.datetime);
-            if (da && db) return da - db;
+            if (da && db) {
+                return da.getTime() - db.getTime();
+            }
             return (b.updatedAt || 0) - (a.updatedAt || 0);
         });
     }
 
-    /* =========================================================
-       РЕНДЕР
-       ========================================================= */
     function renderPage(user) {
         if (!user)
             return '<div class="card"><div class="empty">Пользователь не найден</div></div>';
@@ -548,7 +599,6 @@ const Consult = (() => {
         const filtered = applyFilter(list);
 
         return `
-      <!-- KPI -->
       <div class="grid grid-4">
         <div class="card kpi">
           <div class="kpi-num">${list.length}</div>
@@ -570,7 +620,6 @@ const Consult = (() => {
         </div>
       </div>
 
-      <!-- Основная карточка -->
       <div class="card mt-16">
         <div class="card-head">
           <div class="card-title" style="margin-bottom:0;">
@@ -589,7 +638,6 @@ const Consult = (() => {
           }
         </div>
 
-        <!-- Табы -->
         <div class="filter-tabs" style="margin-bottom:14px;">
           ${renderTab("all", "Все", list.length)}
           ${renderTab("active", "Ожидают", pending.length + rescheduled.length)}
@@ -598,7 +646,6 @@ const Consult = (() => {
           ${renderTab("rejected", "Отклонены", rejected.length)}
         </div>
 
-        <!-- Поиск -->
         <div class="review-toolbar">
           <input type="text"
             class="consult-search review-search"
@@ -654,7 +701,6 @@ const Consult = (() => {
         const countdown = countdownLabel(c.datetime);
         const countdownCls = countdownClass(c.datetime);
 
-        // Действия
         const actions = [];
 
         if ((isTeacher || isAdmin) && c.status === STATUS.pending) {
@@ -717,7 +763,6 @@ const Consult = (() => {
       `);
         }
 
-        // Блок истории предложений
         const historyBlock = renderHistory(c);
 
         return `
@@ -834,9 +879,6 @@ const Consult = (() => {
     `;
     }
 
-    /* =========================================================
-       МОДАЛКИ
-       ========================================================= */
     function openCreateModal() {
         const user = getUser();
         if (!user || user.role !== "student") return;
@@ -911,6 +953,10 @@ const Consult = (() => {
             App.toast("У вас нет работы");
             return;
         }
+        if (!work.teacherId) {
+            App.toast("У работы не назначен руководитель");
+            return;
+        }
 
         const datetime = document.getElementById("c_datetime")?.value || "";
         const topic = document.getElementById("c_topic")?.value.trim() || "";
@@ -943,6 +989,7 @@ const Consult = (() => {
         create({
             studentId: user.id,
             teacherId: work.teacherId,
+            workId: work.id,
             datetime: dtStr,
             topic,
             comment,
@@ -991,10 +1038,6 @@ const Consult = (() => {
         App.navigate("consultations");
     }
 
-    /**
-     * Открыть модалку предложения времени.
-     * Работает и для преподавателя (pending), и для студента (rescheduled).
-     */
     function openProposeModal(id) {
         const user = getUser();
         if (!user) return;
@@ -1078,9 +1121,6 @@ const Consult = (() => {
         App.navigate("consultations");
     }
 
-    /* =========================================================
-       ПУБЛИЧНЫЙ API
-       ========================================================= */
     return {
         create,
         approve: doApprove,

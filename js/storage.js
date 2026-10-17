@@ -16,9 +16,6 @@ const Storage = (() => {
         mfOverrides: "fp_mf_overrides",
     };
 
-    /* =========================================================
-       БАЗОВЫЕ ОПЕРАЦИИ
-       ========================================================= */
     function get(key, def = null) {
         try {
             const raw = localStorage.getItem(key);
@@ -48,19 +45,12 @@ const Storage = (() => {
         }
     }
 
-    /**
-     * Сравнение id (числа или строки приводятся к строке).
-     * Работает для любого типа id.
-     */
     function sameId(a, b) {
         if (a === null || a === undefined) return false;
         if (b === null || b === undefined) return false;
         return String(a) === String(b);
     }
 
-    /* =========================================================
-       ПОЛЬЗОВАТЕЛИ
-       ========================================================= */
     function getUsers() {
         const u = get(KEYS.users, []);
         return Array.isArray(u) ? u : [];
@@ -86,9 +76,6 @@ const Storage = (() => {
         setUsers(users);
     }
 
-    /* =========================================================
-       СЕССИЯ
-       ========================================================= */
     function getSession() {
         return get(KEYS.session, null);
     }
@@ -99,9 +86,6 @@ const Storage = (() => {
         remove(KEYS.session);
     }
 
-    /* =========================================================
-       РАБОТЫ
-       ========================================================= */
     function getWorks() {
         const w = get(KEYS.works, []);
         return Array.isArray(w) ? w : [];
@@ -131,34 +115,22 @@ const Storage = (() => {
         if (id === null || id === undefined) return;
 
         setWorks(getWorks().filter((w) => !sameId(w.id, id)));
-
         setStages(getStages().filter((s) => !sameId(s.workId, id)));
-
         setTasks(getTasks().filter((t) => !sameId(t.workId, id)));
-
         setVersions(getVersions().filter((v) => !sameId(v.workId, id)));
-
         setComments(getComments().filter((c) => !sameId(c.workId, id)));
-
-        const consults = get(KEYS.consults, []);
-        if (Array.isArray(consults)) {
-            const filtered = consults.filter((c) => !sameId(c.workId, id));
-            set(KEYS.consults, filtered);
-        }
 
         const notifs = get(KEYS.notif, []);
         if (Array.isArray(notifs)) {
             const filtered = notifs.filter((n) => {
-                if (!n.link || !n.link.params) return true;
-                return !sameId(n.link.params.id, id);
+                const link = n && n.link;
+                if (!link || !link.params) return true;
+                return !sameId(link.params.id, id);
             });
             set(KEYS.notif, filtered);
         }
     }
 
-    /* =========================================================
-       ЭТАПЫ
-       ========================================================= */
     function getStages() {
         const s = get(KEYS.stages, []);
         return Array.isArray(s) ? s : [];
@@ -183,9 +155,6 @@ const Storage = (() => {
         setStages(getStages().filter((s) => !sameId(s.id, id)));
     }
 
-    /* =========================================================
-       ЗАДАЧИ
-       ========================================================= */
     function getTasks() {
         const t = get(KEYS.tasks, []);
         return Array.isArray(t) ? t : [];
@@ -208,9 +177,6 @@ const Storage = (() => {
         setTasks(getTasks().filter((t) => !sameId(t.id, id)));
     }
 
-    /* =========================================================
-       ВЕРСИИ
-       ========================================================= */
     function getVersions() {
         const v = get(KEYS.versions, []);
         return Array.isArray(v) ? v : [];
@@ -226,16 +192,15 @@ const Storage = (() => {
     function saveVersion(v) {
         if (!v || !v.id) return;
         const versions = getVersions();
-        versions.push(v);
+        const i = versions.findIndex((x) => sameId(x.id, v.id));
+        if (i >= 0) versions[i] = v;
+        else versions.push(v);
         setVersions(versions);
     }
     function deleteVersion(id) {
         setVersions(getVersions().filter((v) => !sameId(v.id, id)));
     }
 
-    /* =========================================================
-       КОММЕНТАРИИ
-       ========================================================= */
     function getComments() {
         const c = get(KEYS.comments, []);
         return Array.isArray(c) ? c : [];
@@ -256,16 +221,15 @@ const Storage = (() => {
     function saveComment(c) {
         if (!c || !c.id) return;
         const comments = getComments();
-        comments.push(c);
+        const i = comments.findIndex((x) => sameId(x.id, c.id));
+        if (i >= 0) comments[i] = c;
+        else comments.push(c);
         setComments(comments);
     }
     function deleteComment(id) {
         setComments(getComments().filter((c) => !sameId(c.id, id)));
     }
 
-    /* =========================================================
-       ПРАВИЛА
-       ========================================================= */
     function getRules() {
         const r = get(KEYS.rules, null);
         return Array.isArray(r) ? r : null;
@@ -274,35 +238,33 @@ const Storage = (() => {
         set(KEYS.rules, r);
     }
 
-    /* =========================================================
-       ОБЩИЕ
-       ========================================================= */
     function clearAll() {
-        Object.keys(localStorage).forEach((key) => {
-            if (key.startsWith("fp_")) localStorage.removeItem(key);
-        });
-    }
-
-    function getSizeKB() {
-        let bytes = 0;
-        Object.keys(localStorage).forEach((key) => {
-            if (key.startsWith("fp_")) {
-                const value = localStorage[key] || "";
-                bytes += value.length * 2;
-            }
-        });
-        return Math.round(bytes / 1024);
+        try {
+            Object.keys(localStorage).forEach((key) => {
+                if (key.startsWith("fp_")) localStorage.removeItem(key);
+            });
+        } catch (e) {
+            console.warn("[Storage] clearAll error:", e);
+        }
     }
 
     function getSizeBytes() {
         let bytes = 0;
-        Object.keys(localStorage).forEach((key) => {
-            if (key.startsWith("fp_")) {
-                const value = localStorage[key] || "";
-                bytes += value.length * 2;
-            }
-        });
+        try {
+            Object.keys(localStorage).forEach((key) => {
+                if (key.startsWith("fp_")) {
+                    const value = localStorage[key] || "";
+                    bytes += new Blob([key + value]).size;
+                }
+            });
+        } catch (e) {
+            console.warn("[Storage] getSizeBytes error:", e);
+        }
         return bytes;
+    }
+
+    function getSizeKB() {
+        return Math.round(getSizeBytes() / 1024);
     }
 
     return {
@@ -364,95 +326,66 @@ const Storage = (() => {
     };
 })();
 
-/* =========================================================
-   ХЕШ ПАРОЛЯ
-
-   УЧЕБНАЯ РЕАЛИЗАЦИЯ — НЕ для production!
-   Используется простой FNV-1a-подобный хеш с 3 раундами
-   и «солью». В реальном приложении используйте:
-   - bcrypt / argon2 на сервере,
-   - или Web Crypto API (crypto.subtle.deriveBits с PBKDF2).
-   ========================================================= */
 function hashPass(p) {
     if (!p) return "h0";
 
-    const SALT = "meridian-fuzzy-2024"; // статичная соль (для демо)
+    const SALT = "meridian-fuzzy-2024";
     let str = SALT + String(p) + SALT;
 
-    // 3 раунда для усиления
-    let hash = 2166136261; // FNV offset basis
+    let hash = 2166136261;
     for (let round = 0; round < 3; round++) {
         for (let i = 0; i < str.length; i++) {
             hash ^= str.charCodeAt(i);
-            // Умножение на FNV prime (16777619) с ограничением 32 бита
             hash = (hash * 16777619) >>> 0;
-            // Битовое перемешивание
             hash ^= hash >>> 13;
         }
-        // Меняем вход для следующего раунда
         str = hash.toString(36) + str + hash;
     }
 
     return "h" + hash.toString(36);
 }
-
-/* =========================================================
-   ГЕНЕРАТОР УНИКАЛЬНЫХ ID
-
-   Возвращает СТРОКУ — не теряет точность (в отличие от чисел
-   больше Number.MAX_SAFE_INTEGER).
-   Формат: <timestamp в мс> + <6-значный счётчик>
-   Пример: "1792080743934000001"
-   ========================================================= */
 let _uidCounter = 0;
 function uid() {
     _uidCounter = (_uidCounter + 1) % 1000000;
     return String(Date.now()) + String(_uidCounter).padStart(6, "0");
 }
 
-/* =========================================================
-   ФОРМАТИРОВАНИЕ ДАТ
-   ========================================================= */
 function fmtDate(ts) {
     if (ts === null || ts === undefined) return "—";
-    const d = new Date(ts);
-    if (isNaN(d.getTime())) return "—";
-    return d.toLocaleDateString("ru-RU", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-    });
+    try {
+        const d = new Date(ts);
+        if (isNaN(d.getTime())) return "—";
+        return d.toLocaleDateString("ru-RU", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+        });
+    } catch (e) {
+        return "—";
+    }
 }
 
 function fmtDateTime(ts) {
     if (ts === null || ts === undefined) return "—";
-    const d = new Date(ts);
-    if (isNaN(d.getTime())) return "—";
-    return d.toLocaleString("ru-RU", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-    });
+    try {
+        const d = new Date(ts);
+        if (isNaN(d.getTime())) return "—";
+        return d.toLocaleString("ru-RU", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+        });
+    } catch (e) {
+        return "—";
+    }
 }
 
-/* =========================================================
-   ДНЕЙ ДО ДАТЫ
-
-   Поддерживает форматы:
-   - "YYYY-MM-DD"
-   - "YYYY-MM-DDTHH:MM"     (ISO datetime-local)
-   - "YYYY-MM-DDTHH:MM:SS"  (ISO full)
-
-   Возвращает целое число дней (может быть отрицательным,
-   если дата в прошлом).
-   ========================================================= */
 function daysUntil(dateStr) {
     if (!dateStr) return 0;
 
     const str = String(dateStr).trim();
-    // Извлекаем только YYYY-MM-DD через regex
     const match = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
     if (!match) return 0;
 
@@ -462,8 +395,11 @@ function daysUntil(dateStr) {
     if (!y || !m || !d) return 0;
 
     const target = new Date(y, m - 1, d, 0, 0, 0, 0);
+    if (isNaN(target.getTime())) return 0;
+
     const now = new Date();
     now.setHours(0, 0, 0, 0);
 
-    return Math.round((target.getTime() - now.getTime()) / 86400000);
+    const diff = Math.round((target.getTime() - now.getTime()) / 86400000);
+    return isNaN(diff) ? 0 : diff;
 }

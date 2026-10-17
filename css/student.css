@@ -1,10 +1,3 @@
-/* =========================================================
-   STUDENT — карточки работ, этапы, канбан, задачи
-   ========================================================= */
-
-/* =========================================================
-   WORK HERO — карточка работы
-   ========================================================= */
 .work-hero {
     background: var(--bg-elev);
     border: 1px solid var(--line);
@@ -13,6 +6,7 @@
     margin-bottom: 16px;
     transition: all var(--t-base);
 }
+
 .work-hero:hover {
     border-color: var(--line-strong);
     transform: translateY(-2px);
@@ -27,6 +21,7 @@
     letter-spacing: -0.02em;
     color: var(--txt);
 }
+
 .work-hero-meta {
     display: flex;
     gap: 16px;
@@ -35,20 +30,19 @@
     color: var(--txt-muted);
     margin-bottom: 16px;
 }
+
 .work-hero-meta b {
     color: var(--txt);
     font-weight: 500;
 }
 
-/* =========================================================
-   WORK TYPE PICKER
-   ========================================================= */
 .work-type-picker {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 12px;
     margin-bottom: 16px;
 }
+
 .work-type-picker button {
     padding: 18px;
     border: 1.5px solid var(--line);
@@ -59,30 +53,31 @@
     color: var(--txt);
     cursor: pointer;
 }
+
 .work-type-picker button:hover {
     border-color: var(--txt-muted);
     background: var(--bg-soft);
     transform: translateY(-2px);
 }
+
 .work-type-picker button.selected {
     border-color: var(--accent);
     background: var(--accent-soft);
     box-shadow: 0 0 0 4px var(--accent-glow);
 }
+
 .work-type-picker .wt-title {
     font-weight: 600;
     font-size: 14px;
     margin-bottom: 4px;
     letter-spacing: -0.01em;
 }
+
 .work-type-picker .wt-desc {
     font-size: 11px;
     color: var(--txt-muted);
 }
 
-/* =========================================================
-   TEACHER PICKER
-   ========================================================= */
 .teacher-pick {
     display: grid;
     gap: 10px;
@@ -90,6 +85,7 @@
     overflow-y: auto;
     padding-right: 4px;
 }
+
 .teacher-item {
     padding: 16px 18px;
     border: 1.5px solid var(--line);
@@ -98,27 +94,32 @@
     transition: all var(--t-fast);
     background: var(--bg-elev);
 }
+
 .teacher-item:hover {
     border-color: var(--txt-muted);
     background: var(--bg-soft);
     transform: translateY(-1px);
 }
+
 .teacher-item.selected {
     border-color: var(--accent);
     background: var(--accent-soft);
     box-shadow: 0 0 0 4px var(--accent-glow);
 }
+
 .teacher-name {
     font-weight: 600;
     font-size: 14px;
     color: var(--txt);
     letter-spacing: -0.01em;
 }
+
 .teacher-meta {
     font-size: 12px;
     color: var(--txt-muted);
     margin-top: 4px;
 }
+
 .teacher-load {
     display: inline-block;
     font-size: 11px;
@@ -129,25 +130,25 @@
     margin-left: 8px;
     font-weight: 600;
 }
+
 .teacher-load.full {
     background: var(--bad-soft);
     color: var(--bad);
 }
 
-/* =========================================================
-   FUZZY PANEL — карточки метрик
-   ========================================================= */
 .fuzzy-panel {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
     gap: 12px;
     margin-bottom: 16px;
 }
+
 @media (max-width: 800px) {
     .fuzzy-panel {
         grid-template-columns: 1fr;
     }
 }
+
 .fuzzy-out {
     padding: 22px 18px;
     border: 1px solid var(--line);
@@ -156,10 +157,12 @@
     background: var(--bg-elev);
     transition: all var(--t-fast);
 }
+
 .fuzzy-out:hover {
     border-color: var(--line-strong);
     transform: translateY(-2px);
 }
+
 .fuzzy-out-lbl {
     font-size: 12px;
     color: var(--txt-muted);
@@ -168,6 +171,7 @@
     letter-spacing: 0.06em;
     font-weight: 600;
 }
+
 .fuzzy-out-val {
     font-size: 32px;
     font-weight: 600;
@@ -175,15 +179,13 @@
     letter-spacing: -0.03em;
     font-variant-numeric: tabular-nums;
 }
+
 .fuzzy-out-term {
     font-size: 12px;
     margin-top: 8px;
     color: var(--txt-muted);
 }
 
-/* =========================================================
-   RECOMMENDATION
-   ========================================================= */
 .recommendation {
     background: var(--accent-soft);
     border-left: 3px solid var(--accent);
@@ -193,22 +195,22 @@
     line-height: 1.6;
     color: var(--txt);
 }
+
 .recommendation.warn {
     background: var(--warn-soft);
     border-color: var(--warn);
 }
+
 .recommendation.bad {
     background: var(--bad-soft);
     border-color: var(--bad);
 }
+
 .recommendation.ok {
     background: var(--ok-soft);
     border-color: var(--ok);
 }
 
-/* =========================================================
-   STAGE ITEM
-   ========================================================= */
 .stage-item {
     display: flex;
     align-items: center;
@@ -220,15 +222,18 @@
     background: var(--bg-elev);
     transition: all var(--t-fast);
 }
+
 .stage-item:hover {
     border-color: var(--line-strong);
     transform: translateY(-1px);
     box-shadow: var(--shadow-sm);
 }
+
 .stage-item.done {
     opacity: 0.7;
     background: var(--bg-soft);
 }
+
 .stage-item.done .stage-name {
     text-decoration: line-through;
 }
@@ -246,53 +251,59 @@
     transition: all var(--t-fast);
     background: var(--bg-elev);
 }
+
 .stage-check:hover {
     border-color: var(--accent);
     transform: scale(1.1);
 }
+
 .stage-check.on {
     background: var(--accent);
     border-color: var(--accent);
-    color: #fff;
+    color: #ffffff;
 }
+
 .stage-check.on::before {
     content: "✓";
     font-size: 13px;
     font-weight: 700;
 }
+
 .stage-body {
     flex: 1;
     min-width: 0;
 }
+
 .stage-name {
     font-weight: 600;
     font-size: 14px;
     color: var(--txt);
     letter-spacing: -0.005em;
 }
+
 .stage-meta {
     font-size: 12px;
     color: var(--txt-muted);
     margin-top: 3px;
 }
+
 .stage-actions {
     display: flex;
     gap: 4px;
 }
 
-/* =========================================================
-   KANBAN
-   ========================================================= */
 .kanban {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 14px;
 }
+
 @media (max-width: 900px) {
     .kanban {
         grid-template-columns: 1fr;
     }
 }
+
 .kanban-col {
     background: var(--bg-soft);
     border-radius: var(--r-lg);
@@ -300,10 +311,12 @@
     min-height: 260px;
     transition: background var(--t-fast);
 }
+
 .kanban-col.drag-over {
     background: var(--accent-soft);
     box-shadow: 0 0 0 2px var(--accent);
 }
+
 .kanban-col h5 {
     font-size: 12px;
     color: var(--txt-muted);
@@ -314,6 +327,7 @@
     text-transform: uppercase;
     letter-spacing: 0.06em;
 }
+
 .task-card {
     background: var(--bg-elev);
     border: 1px solid var(--line);
@@ -324,15 +338,18 @@
     cursor: grab;
     transition: all var(--t-fast);
 }
+
 .task-card:hover {
     border-color: var(--line-strong);
     box-shadow: var(--shadow-sm);
     transform: translateY(-1px);
 }
+
 .task-card:active {
     cursor: grabbing;
     transform: rotate(1deg);
 }
+
 .task-card .task-title {
     font-weight: 600;
     margin-bottom: 8px;
@@ -340,6 +357,7 @@
     color: var(--txt);
     letter-spacing: -0.005em;
 }
+
 .task-card .task-meta {
     font-size: 11px;
     color: var(--txt-muted);
@@ -349,9 +367,6 @@
     gap: 6px;
 }
 
-/* =========================================================
-   VERSION ROW
-   ========================================================= */
 .version-row {
     display: flex;
     align-items: center;
@@ -363,11 +378,13 @@
     background: var(--bg-elev);
     transition: all var(--t-fast);
 }
+
 .version-row:hover {
     border-color: var(--line-strong);
     transform: translateY(-1px);
     box-shadow: var(--shadow-sm);
 }
+
 .version-tag {
     background: var(--accent-soft);
     color: var(--accent);
@@ -378,24 +395,24 @@
     flex-shrink: 0;
     font-family: var(--font-mono);
 }
+
 .version-info {
     flex: 1;
     min-width: 0;
 }
+
 .version-comment {
     font-size: 13px;
     color: var(--txt);
     font-weight: 500;
 }
+
 .version-date {
     font-size: 12px;
     color: var(--txt-muted);
     margin-top: 3px;
 }
 
-/* =========================================================
-   COMMENT
-   ========================================================= */
 .comment {
     padding: 16px 18px;
     border-left: 3px solid var(--accent);
@@ -403,6 +420,7 @@
     border-radius: 0 var(--r-md) var(--r-md) 0;
     margin-bottom: 10px;
 }
+
 .comment-head {
     display: flex;
     justify-content: space-between;
@@ -410,21 +428,20 @@
     color: var(--txt-muted);
     margin-bottom: 6px;
 }
+
 .comment-author {
     font-weight: 600;
     color: var(--txt);
 }
+
 .comment-text {
     font-size: 13px;
     line-height: 1.55;
     color: var(--txt);
 }
 
-/* =========================================================
-   Сводка «Моя работа»
-   ========================================================= */
 .work-summary {
-    padding: 22px 24px !important;
+    padding: 22px 24px;
     border-radius: var(--r-xl);
 }
 
@@ -459,6 +476,7 @@
     border-top: 1px solid var(--line);
     border-bottom: 1px solid var(--line);
 }
+
 @media (max-width: 700px) {
     .work-summary-stats {
         grid-template-columns: repeat(2, 1fr);
@@ -469,6 +487,7 @@
     text-align: center;
     padding: 8px 4px;
 }
+
 .ws-stat-lbl {
     font-size: 10px;
     color: var(--txt-muted);
@@ -477,6 +496,7 @@
     margin-bottom: 6px;
     font-weight: 600;
 }
+
 .ws-stat-val {
     font-size: 20px;
     font-weight: 600;
@@ -485,6 +505,7 @@
     line-height: 1;
     letter-spacing: -0.02em;
 }
+
 .ws-stat-sub {
     font-size: 12px;
     font-weight: 400;
@@ -504,23 +525,27 @@
     align-items: center;
     font-size: 11px;
 }
+
 .ws-bar-lbl {
     color: var(--txt-muted);
     text-transform: uppercase;
     letter-spacing: 0.06em;
     font-weight: 600;
 }
+
 .ws-bar-track {
     height: 6px;
     background: var(--bg-soft);
     border-radius: var(--r-pill);
     overflow: hidden;
 }
+
 .ws-bar-fill {
     height: 100%;
     border-radius: var(--r-pill);
     transition: width var(--t-slow);
 }
+
 .ws-bar-val {
     text-align: right;
     color: var(--txt);
@@ -528,9 +553,6 @@
     font-variant-numeric: tabular-nums;
 }
 
-/* =========================================================
-   Дедлайны работы
-   ========================================================= */
 .deadline-row {
     padding: 12px 14px;
     border-left: 3px solid var(--line);
@@ -539,14 +561,17 @@
     margin-bottom: 8px;
     transition: all var(--t-fast);
 }
+
 .deadline-row:hover {
     background: var(--bg-hover);
     transform: translateX(2px);
 }
+
 .deadline-row.warn {
     border-left-color: var(--warn);
     background: var(--warn-soft);
 }
+
 .deadline-row.bad {
     border-left-color: var(--bad);
     background: var(--bad-soft);
@@ -558,17 +583,21 @@
     gap: 8px;
     margin-bottom: 4px;
 }
+
 .deadline-row-icon {
     display: inline-flex;
     color: var(--txt-muted);
     flex-shrink: 0;
 }
+
 .deadline-row.warn .deadline-row-icon {
     color: var(--warn);
 }
+
 .deadline-row.bad .deadline-row-icon {
     color: var(--bad);
 }
+
 .deadline-row-title {
     font-size: 13px;
     font-weight: 600;
@@ -589,22 +618,23 @@
     color: var(--txt-muted);
     padding-left: 20px;
 }
+
 .deadline-row-days {
     font-weight: 700;
 }
+
 .deadline-row.warn .deadline-row-days {
     color: var(--warn);
 }
+
 .deadline-row.bad .deadline-row-days {
     color: var(--bad);
 }
 
-/* =========================================================
-   АКТИВНОСТЬ — группировка по дате
-   ========================================================= */
 .activity-group {
     margin-bottom: 24px;
 }
+
 .activity-group:last-child {
     margin-bottom: 0;
 }
@@ -634,6 +664,7 @@
     background: var(--bg-soft);
     transition: all var(--t-fast);
 }
+
 .activity-row:hover {
     background: var(--bg-hover);
     transform: translateX(2px);
@@ -642,18 +673,23 @@
 .activity-row-work {
     border-left-color: var(--accent);
 }
+
 .activity-row-stage {
-    border-left-color: var(--accent-viz);
+    border-left-color: var(--txt-muted);
 }
+
 .activity-row-task {
     border-left-color: var(--info);
 }
+
 .activity-row-version {
     border-left-color: var(--info);
 }
+
 .activity-row-comment {
     border-left-color: var(--warn);
 }
+
 .activity-row-defense {
     border-left-color: var(--ok);
 }
@@ -669,18 +705,23 @@
     color: var(--txt-muted);
     flex-shrink: 0;
 }
+
 .activity-row-stage .activity-icon {
-    color: var(--accent-viz);
+    color: var(--txt-muted);
 }
+
 .activity-row-task .activity-icon {
     color: var(--info);
 }
+
 .activity-row-version .activity-icon {
     color: var(--info);
 }
+
 .activity-row-comment .activity-icon {
     color: var(--warn);
 }
+
 .activity-row-defense .activity-icon {
     color: var(--ok);
 }
@@ -689,6 +730,7 @@
     flex: 1;
     min-width: 0;
 }
+
 .activity-title {
     font-size: 13px;
     font-weight: 600;
@@ -696,6 +738,7 @@
     line-height: 1.35;
     margin-bottom: 3px;
 }
+
 .activity-text {
     font-size: 11px;
     color: var(--txt-muted);
@@ -711,9 +754,6 @@
     font-weight: 600;
 }
 
-/* =========================================================
-   АРХИВ РАБОТ
-   ========================================================= */
 .archived-card {
     padding: 20px 22px;
     border: 1px solid var(--line);
@@ -723,6 +763,7 @@
     background: var(--bg-elev);
     transition: all var(--t-fast);
 }
+
 .archived-card:hover {
     background: var(--bg-soft);
     transform: translateY(-1px);
@@ -809,6 +850,7 @@
     color: var(--txt);
     margin: 10px 0;
 }
+
 .archived-reject b {
     color: var(--bad);
 }
@@ -833,9 +875,6 @@
     border-top: 1px solid var(--line);
 }
 
-/* =========================================================
-   ПРОФИЛЬ СТУДЕНТА — достижения
-   ========================================================= */
 .achievements-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -852,6 +891,7 @@
     border-radius: var(--r-lg);
     transition: all var(--t-fast);
 }
+
 .achievement:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-sm);
@@ -866,10 +906,11 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    background: var(--accent-viz);
-    color: #fff;
-    box-shadow: 0 4px 12px var(--accent-viz-glow);
+    background: var(--txt);
+    color: #ffffff;
+    box-shadow: var(--shadow-sm);
 }
+
 .achievement-icon .icon {
     stroke: currentColor;
     stroke-width: 1.75;
@@ -894,9 +935,6 @@
     line-height: 1.4;
 }
 
-/* =========================================================
-   СВОДКА ПРОФИЛЯ
-   ========================================================= */
 .profile-summary {
     display: grid;
     gap: 16px;
@@ -970,9 +1008,6 @@
     font-weight: 600;
 }
 
-/* =========================================================
-   РАБОТА В ПРОФИЛЕ
-   ========================================================= */
 .profile-work-row {
     display: flex;
     gap: 12px;
@@ -986,6 +1021,7 @@
     cursor: pointer;
     transition: all var(--t-fast);
 }
+
 .profile-work-row:hover {
     background: var(--bg-soft);
     transform: translateX(2px);
@@ -1028,15 +1064,13 @@
     line-height: 1;
 }
 
-/* =========================================================
-   КАЛЕНДАРЬ — раскладка
-   ========================================================= */
 .cal-layout {
     display: grid;
     grid-template-columns: 1.4fr 1fr;
     gap: 12px;
     align-items: start;
 }
+
 @media (max-width: 900px) {
     .cal-layout {
         grid-template-columns: 1fr;
@@ -1049,6 +1083,7 @@
     gap: 8px;
     margin-bottom: 14px;
 }
+
 .cal-nav-title {
     font-size: 17px;
     font-weight: 600;
@@ -1078,6 +1113,7 @@
     user-select: none;
     font-weight: 500;
 }
+
 .cal-filter input {
     margin: 0;
     cursor: pointer;
@@ -1088,17 +1124,19 @@
     height: 8px;
     border-radius: 50%;
 }
+
 .cal-filter-dot.stage {
-    background: var(--accent-viz);
+    background: var(--txt-muted);
 }
+
 .cal-filter-dot.task {
     background: var(--info);
 }
+
 .cal-filter-dot.defense {
     background: var(--ok);
 }
 
-/* События дня */
 .day-event {
     display: flex;
     gap: 12px;
@@ -1112,6 +1150,7 @@
     cursor: pointer;
     transition: all var(--t-fast);
 }
+
 .day-event:hover {
     background: var(--bg-soft);
     transform: translateX(3px);
@@ -1119,11 +1158,13 @@
 }
 
 .day-event-stage {
-    border-left-color: var(--accent-viz);
+    border-left-color: var(--txt-muted);
 }
+
 .day-event-task {
     border-left-color: var(--info);
 }
+
 .day-event-defense {
     border-left-color: var(--ok);
 }
@@ -1138,14 +1179,17 @@
     flex-shrink: 0;
     background: var(--bg-soft);
 }
+
 .day-event-stage .day-event-icon {
-    background: var(--accent-viz-soft);
-    color: var(--accent-viz);
+    background: var(--bg-soft);
+    color: var(--txt-muted);
 }
+
 .day-event-task .day-event-icon {
     background: var(--info-soft);
     color: var(--info);
 }
+
 .day-event-defense .day-event-icon {
     background: var(--ok-soft);
     color: var(--ok);
@@ -1189,14 +1233,12 @@
     font-size: 12px;
     color: var(--txt-muted);
 }
+
 .cal-month-stats b {
     color: var(--txt);
     font-weight: 600;
 }
 
-/* =========================================================
-   СРАВНЕНИЕ СО СРЕДНИМ (статистика)
-   ========================================================= */
 .compare-block {
     padding: 6px 0;
 }
@@ -1205,6 +1247,7 @@
     padding: 14px 0;
     border-bottom: 1px solid var(--line);
 }
+
 .compare-row:last-child {
     border-bottom: none;
 }
@@ -1229,14 +1272,17 @@
     padding: 3px 10px;
     border-radius: var(--r-pill);
 }
+
 .compare-diff.better {
     background: var(--ok-soft);
     color: var(--ok);
 }
+
 .compare-diff.worse {
     background: var(--bad-soft);
     color: var(--bad);
 }
+
 .compare-diff.same {
     background: var(--bg-soft);
     color: var(--txt-muted);
@@ -1274,9 +1320,11 @@
     border-radius: var(--r-pill);
     transition: width var(--t-slow);
 }
+
 .compare-bar-fill.mine {
-    background: var(--accent-viz);
+    background: var(--accent);
 }
+
 .compare-bar-fill.avg {
     background: var(--txt-soft);
 }
@@ -1300,14 +1348,12 @@
     color: var(--txt-muted);
     line-height: 1.4;
 }
+
 .compare-note .icon {
     flex-shrink: 0;
     opacity: 0.7;
 }
 
-/* =========================================================
-   СЕГМЕНТНЫЙ ПРОГРЕСС ПО ЭТАПАМ
-   ========================================================= */
 .stages-bar {
     margin-top: 14px;
 }
@@ -1351,25 +1397,18 @@
 .stage-seg-done {
     background: var(--ok);
 }
+
 .stage-seg-todo {
     background: var(--bg-soft);
     border: 1px solid var(--line);
 }
+
 .stage-seg-overdue {
     background: var(--bad);
     opacity: 0.6;
 }
 
-@media (max-width: 700px) {
-    .stages-bar-track {
-        height: 6px;
-    }
-}
-
-/* =========================================================
-   АДАПТИВ
-   ========================================================= */
-@media (max-width: 700px) {
+@media (max-width: 640px) {
     .work-hero {
         padding: 22px;
         border-radius: var(--r-lg);
@@ -1378,7 +1417,7 @@
         font-size: 17px;
     }
     .work-summary {
-        padding: 18px 20px !important;
+        padding: 18px 20px;
     }
     .work-summary-title {
         font-size: 15px;
@@ -1396,17 +1435,18 @@
     .psf-val {
         font-size: 20px;
     }
+    .stages-bar-track {
+        height: 6px;
+    }
 }
 
-/* =========================================================
-   WORK GRID — сетка для «Этапы + Дедлайны» в моей работе
-   ========================================================= */
 .work-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 20px;
     align-items: start;
 }
+
 @media (max-width: 900px) {
     .work-grid {
         grid-template-columns: 1fr;
@@ -1414,23 +1454,6 @@
     }
 }
 
-/* Дополнительно: даём всем карточкам на странице my-work
-   нормальный вертикальный ритм */
-#viewRoot > .view.active > .card,
-#viewRoot > .view.active > .work-grid,
-#viewRoot > .view.active > .work-summary,
-#viewRoot > .view.active > .work-hero {
-    margin-bottom: 20px;
-}
-
-/* Убираем дублирующий отступ у последнего элемента */
-#viewRoot > .view.active > *:last-child {
-    margin-bottom: 0;
-}
-
-/* =========================================================
-   ВЕРСИИ + ЗАМЕЧАНИЯ — в один ряд, одинаковые, со скроллом
-   ========================================================= */
 .work-bottom-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1438,6 +1461,7 @@
     margin-top: 20px;
     align-items: stretch;
 }
+
 @media (max-width: 900px) {
     .work-bottom-row {
         grid-template-columns: 1fr;
@@ -1445,22 +1469,21 @@
     }
 }
 
-/* Фиксированная высота карточки, чтобы не зависеть от данных */
 .work-scroll-card {
     display: flex;
     flex-direction: column;
     height: 420px;
     overflow: hidden;
-    padding: 0 !important;
+    padding: 0;
 }
+
 .work-scroll-card .card-head {
     padding: 20px 22px 16px;
-    margin-bottom: 0 !important;
-    border-bottom: 1px solid rgba(15, 15, 25, 0.06);
+    margin-bottom: 0;
+    border-bottom: 1px solid var(--line);
     flex-shrink: 0;
 }
 
-/* Скроллящееся тело */
 .work-scroll-body {
     flex: 1;
     min-height: 0;
@@ -1468,26 +1491,27 @@
     padding: 14px 22px 20px;
 }
 
-/* Кастомный скроллбар */
 .work-scroll-body::-webkit-scrollbar {
     width: 8px;
 }
+
 .work-scroll-body::-webkit-scrollbar-track {
     background: transparent;
 }
+
 .work-scroll-body::-webkit-scrollbar-thumb {
-    background: rgba(15, 15, 25, 0.15);
+    background: var(--line-strong);
     border-radius: 100px;
     border: 2px solid transparent;
     background-clip: padding-box;
 }
+
 .work-scroll-body::-webkit-scrollbar-thumb:hover {
-    background: rgba(15, 15, 25, 0.28);
+    background: var(--txt-soft);
     background-clip: padding-box;
     border: 2px solid transparent;
 }
 
-/* Пустое состояние по центру */
 .work-scroll-body > .empty {
     display: flex;
     align-items: center;
@@ -1496,7 +1520,6 @@
     text-align: center;
 }
 
-/* Мобильные — авто-высота (скролл не нужен) */
 @media (max-width: 900px) {
     .work-scroll-card {
         height: auto;

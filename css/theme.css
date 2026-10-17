@@ -1,8 +1,8 @@
 :root {
     --bg: #ffffff;
-    --bg-soft: #f7f7f5;
+    --bg-soft: #f5f5f5;
     --bg-elev: #ffffff;
-    --bg-hover: #f0f0ee;
+    --bg-hover: #ebebeb;
 
     --line: #ebebeb;
     --line-strong: #d4d4d4;
@@ -14,11 +14,10 @@
 
     --accent: #111111;
     --accent-2: #000000;
-    --accent-soft: #f2f2f0;
+    --accent-soft: #f0f0f0;
     --accent-hover: #2a2a2a;
     --accent-glow: rgba(17, 17, 17, 0.15);
 
-    /* Акцент для визуализации (Мамдани, симулятор, ФП) */
     --accent-viz: #6366f1;
     --accent-viz-hover: #4f46e5;
     --accent-viz-soft: rgba(99, 102, 241, 0.1);
@@ -41,7 +40,6 @@
     --info: #2a5cb8;
     --info-soft: #eef3fc;
 
-    /* ---------- РАДИУСЫ (увеличены) ---------- */
     --r-xs: 6px;
     --r-sm: 10px;
     --r: 14px;
@@ -50,12 +48,11 @@
     --r-xl: 28px;
     --r-pill: 100px;
 
-    /* ---------- ТЕНИ (мягче) ---------- */
     --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.03);
     --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
     --shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
     --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.06);
-    --shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.08);
 
     --t-fast: 0.15s ease;
     --t-base: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -109,6 +106,7 @@ textarea {
     color: inherit;
     letter-spacing: inherit;
 }
+
 button {
     cursor: pointer;
     border: none;
@@ -128,6 +126,7 @@ a {
         border-color var(--t-fast),
         color var(--t-fast);
 }
+
 a:hover {
     border-bottom-color: var(--txt);
 }
@@ -148,13 +147,16 @@ pre,
     width: 8px;
     height: 8px;
 }
+
 ::-webkit-scrollbar-track {
     background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
     background: var(--line-strong);
     border-radius: 4px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
     background: var(--txt-soft);
 }
@@ -212,7 +214,6 @@ h4,
     letter-spacing: -0.01em;
 }
 
-/* ---------- Кнопки — pill-форма ---------- */
 .btn-primary {
     display: inline-flex;
     align-items: center;
@@ -233,15 +234,18 @@ h4,
     letter-spacing: -0.005em;
     box-shadow: var(--shadow-xs);
 }
+
 .btn-primary:hover {
     background: var(--accent-hover);
     box-shadow: var(--shadow-sm);
     transform: translateY(-1px);
 }
+
 .btn-primary:active {
     transform: translateY(0);
     box-shadow: var(--shadow-xs);
 }
+
 .btn-primary:disabled {
     opacity: 0.5;
     cursor: not-allowed;
@@ -262,11 +266,13 @@ h4,
     transition: all var(--t-fast);
     white-space: nowrap;
 }
+
 .btn-ghost:hover {
     border-color: var(--txt);
     background: var(--bg-soft);
     transform: translateY(-1px);
 }
+
 .btn-ghost:active {
     transform: translateY(0);
 }
@@ -275,9 +281,72 @@ h4,
     color: var(--bad);
     border-color: rgba(194, 58, 47, 0.25);
 }
+
 .btn-ghost.btn-danger:hover {
     background: var(--bad-soft);
     border-color: var(--bad);
+}
+
+.btn-ghost.btn-success {
+    color: var(--ok);
+    border-color: rgba(31, 138, 76, 0.25);
+}
+
+.btn-ghost.btn-success:hover {
+    background: var(--ok-soft);
+    border-color: var(--ok);
+}
+
+.btn-success {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: var(--ok);
+    color: #ffffff;
+    padding: 11px 22px;
+    border-radius: var(--r-pill);
+    font-weight: 500;
+    font-size: var(--fs-base);
+    transition:
+        background var(--t-fast),
+        transform var(--t-fast),
+        box-shadow var(--t-fast);
+    white-space: nowrap;
+    border: none;
+    box-shadow: var(--shadow-xs);
+}
+
+.btn-success:hover {
+    background: #176e3d;
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-1px);
+}
+
+.btn-accent {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: var(--accent-viz);
+    color: #ffffff;
+    padding: 11px 22px;
+    border-radius: var(--r-pill);
+    font-weight: 500;
+    font-size: var(--fs-base);
+    transition:
+        background var(--t-fast),
+        transform var(--t-fast),
+        box-shadow var(--t-fast);
+    white-space: nowrap;
+    border: none;
+    box-shadow: var(--shadow-xs);
+}
+
+.btn-accent:hover {
+    background: var(--accent-viz-hover);
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-1px);
 }
 
 .btn-sm {
@@ -297,20 +366,22 @@ h4,
     border: none;
     background: transparent;
 }
+
 .btn-icon:hover {
     background: var(--bg-soft);
     color: var(--txt);
     transform: scale(1.05);
 }
+
 .btn-icon.danger:hover {
     background: var(--bad-soft);
     color: var(--bad);
 }
 
-/* ---------- Поля ввода ---------- */
 .field {
     margin-bottom: 16px;
 }
+
 .field label {
     display: block;
     font-size: var(--fs-sm);
@@ -319,6 +390,7 @@ h4,
     margin-bottom: 8px;
     letter-spacing: 0.01em;
 }
+
 .field .req {
     color: var(--pop);
     margin-left: 2px;
@@ -341,15 +413,18 @@ h4,
         background var(--t-fast);
     font-weight: 400;
 }
+
 .field input::placeholder,
 .field textarea::placeholder {
     color: var(--txt-dim);
 }
+
 .field input:focus,
 .field select:focus,
 .field textarea:focus {
     border-bottom-color: var(--txt);
 }
+
 .field input:read-only,
 .field textarea:read-only,
 .field input:disabled,
@@ -357,6 +432,7 @@ h4,
     color: var(--txt-muted);
     cursor: not-allowed;
 }
+
 .field textarea {
     resize: vertical;
     min-height: 60px;
@@ -374,11 +450,13 @@ h4,
     background: var(--bg);
     transition: all var(--t-fast);
 }
+
 .field-boxed input:hover,
 .field-boxed select:hover,
 .field-boxed textarea:hover {
     border-color: var(--line-strong);
 }
+
 .field-boxed input:focus,
 .field-boxed select:focus,
 .field-boxed textarea:focus {
@@ -392,11 +470,13 @@ h4,
     font-size: var(--fs-sm);
     margin-top: 6px;
 }
+
 .field.invalid input,
 .field.invalid select,
 .field.invalid textarea {
     border-color: var(--bad);
 }
+
 .field.invalid .field-err {
     display: block;
 }
@@ -406,13 +486,13 @@ h4,
     grid-template-columns: 1fr 1fr;
     gap: 20px;
 }
+
 @media (max-width: 520px) {
     .row-2 {
         grid-template-columns: 1fr;
     }
 }
 
-/* ---------- Иконки ---------- */
 .icon {
     display: inline-block;
     width: 16px;
@@ -425,28 +505,32 @@ h4,
     vertical-align: middle;
     flex-shrink: 0;
 }
+
 .icon-xs {
     width: 12px;
     height: 12px;
 }
+
 .icon-sm {
     width: 14px;
     height: 14px;
 }
+
 .icon-lg {
     width: 18px;
     height: 18px;
 }
+
 .icon-xl {
     width: 22px;
     height: 22px;
 }
+
 .icon-2xl {
     width: 28px;
     height: 28px;
 }
 
-/* ---------- Бейджи — pill-форма ---------- */
 .badge {
     display: inline-flex;
     align-items: center;
@@ -461,30 +545,33 @@ h4,
     border: none;
     white-space: nowrap;
 }
+
 .badge.draft {
     background: var(--bg-soft);
     color: var(--txt-muted);
 }
+
 .badge.pending {
     background: var(--warn-soft);
     color: var(--warn);
 }
+
 .badge.active {
     background: var(--info-soft);
     color: var(--info);
 }
+
 .badge.review {
     background: var(--purple-soft);
     color: var(--purple);
 }
-.badge.approved {
-    background: var(--ok-soft);
-    color: var(--ok);
-}
+
+.badge.approved,
 .badge.done {
     background: var(--ok-soft);
     color: var(--ok);
 }
+
 .badge.rejected {
     background: var(--bad-soft);
     color: var(--bad);
@@ -494,10 +581,12 @@ h4,
     background: var(--ok-soft);
     color: var(--ok);
 }
+
 .badge.risk-med {
     background: var(--warn-soft);
     color: var(--warn);
 }
+
 .badge.risk-high {
     background: var(--bad-soft);
     color: var(--bad);
@@ -523,11 +612,11 @@ h4,
     letter-spacing: 0.08em;
     text-transform: uppercase;
 }
+
 .section-label:first-child {
     margin-top: 0;
 }
 
-/* ---------- Toast — pill-форма ---------- */
 .toast {
     position: fixed;
     bottom: 24px;
@@ -552,6 +641,7 @@ h4,
     letter-spacing: -0.005em;
     box-shadow: var(--shadow-lg);
 }
+
 .toast.show {
     opacity: 1;
     transform: none;
@@ -560,24 +650,31 @@ h4,
 .hidden {
     display: none !important;
 }
+
 .text-muted {
     color: var(--txt-muted);
 }
+
 .mt-8 {
     margin-top: 8px;
 }
+
 .mt-12 {
-    margin-top: 20px;
+    margin-top: 12px;
 }
+
 .mt-16 {
-    margin-top: 20px;
+    margin-top: 16px;
 }
+
 .mt-24 {
     margin-top: 24px;
 }
+
 .mt-32 {
     margin-top: 32px;
 }
+
 .mt-48 {
     margin-top: 48px;
 }
@@ -590,6 +687,7 @@ h4,
         opacity: 1;
     }
 }
+
 @keyframes fadeUp {
     from {
         opacity: 0;
@@ -600,6 +698,7 @@ h4,
         transform: translateY(0);
     }
 }
+
 @keyframes scaleIn {
     from {
         opacity: 0;

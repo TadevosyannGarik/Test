@@ -2,7 +2,8 @@ const Simulate = (() => {
     let workId = null;
     let currentWork = null;
     let baseCache = null;
-    let baseRealInputs = null; // реальные данные работы (с null для orig/supScore/gost)
+    let baseRealInputs = null;
+    let _scheduled = false;
 
     const escapeHtml = Utils.escapeHtml;
     const emptyState = Utils.emptyState;
@@ -29,6 +30,24 @@ const Simulate = (() => {
         s_gost: "Соответствие ГОСТу",
     };
 
+    const SLIDER_IDS = [
+        "s_progress",
+        "s_days",
+        "s_activity",
+        "s_edits",
+        "s_volume",
+        "s_orig",
+        "s_supScore",
+        "s_gost",
+    ];
+
+    const SLIDER_UNITS = {
+        s_progress: "%",
+        s_volume: "%",
+        s_orig: "%",
+        s_gost: "%",
+    };
+
     const DEFAULTS = {
         orig: 65,
         supScore: 5,
@@ -50,7 +69,7 @@ const Simulate = (() => {
         if (!work) return null;
         const inputs = Utils.buildFuzzyInputs(work);
         if (!inputs) return null;
-        return inputs; // с null для orig/supScore/gost
+        return inputs;
     }
 
     function getBaseInputs(work) {
@@ -147,9 +166,6 @@ const Simulate = (() => {
     `;
     }
 
-    /* =========================================================
-       БЛОК «ДАННЫЕ ИЗ РАБОТЫ»
-       ========================================================= */
     function renderWorkDataBlock() {
         if (!baseRealInputs) return "";
 
@@ -180,11 +196,11 @@ const Simulate = (() => {
           <span>Данные из вашей работы</span>
         </div>
         <div class="sim-work-data-grid">
-          ${item("Прогресс", real.progress, "%")}
+          ${item("Прогресс", real.progress ?? 0, "%")}
           ${item("Дней до дедлайна", real.days)}
-          ${item("Активность", real.activity)}
-          ${item("Правок", real.edits)}
-          ${item("Объём", real.volume, "%")}
+          ${item("Активность", real.activity ?? 0)}
+          ${item("Правок", real.edits ?? 0)}
+          ${item("Объём", real.volume ?? 0, "%")}
           ${item("Оригинальность", real.orig, "%")}
           ${item("Оценка рук.", real.supScore)}
           ${item("ГОСТ", real.gost, "%")}
@@ -345,9 +361,6 @@ const Simulate = (() => {
     `;
     }
 
-    /* =========================================================
-       СЛАЙДЕР
-       ========================================================= */
     function slider(id, min, max, val, unit) {
         const IconFn = SLIDER_ICONS[id];
         const label = SLIDER_LABELS[id];
@@ -355,9 +368,10 @@ const Simulate = (() => {
         const realVal = baseRealInputs ? baseRealInputs[key] : null;
         const isEmptyReal = realVal === null || realVal === undefined;
         const isChanged = !isEmptyReal && val !== realVal;
+        const fallback = baseCache ? baseCache[key] : val;
 
         const realHint = isEmptyReal
-            ? `<span class="sim-slider-real empty">нет данных</span>`
+            ? `<span class="sim-slider-real empty">нет данных · в симуляции ${fallback}${unit}</span>`
             : isChanged
               ? `<span class="sim-slider-real">из работы: ${realVal}${unit}</span>`
               : "";
@@ -378,17 +392,21 @@ const Simulate = (() => {
     `;
     }
 
-    /* =========================================================
-       РЕЗУЛЬТАТ
-       ========================================================= */
     function renderResult(inputs, baseResult, result) {
         if (!baseResult || !result) return "";
 
-        const riskDiff = result.risk.value - baseResult.risk.value;
-        const readyDiff = result.ready.value - baseResult.ready.value;
-        const ratingDiff = result.rating.value - baseResult.rating.value;
+        const baseRiskVal = Number(baseResult.risk?.value ?? 0);
+        const baseReadyVal = Number(baseResult.ready?.value ?? 0);
+        const baseRatingVal = Number(baseResult.rating?.value ?? 0);
 
-        /* ---- Список изменённых параметров ---- */
+        const curRiskVal = Number(result.risk?.value ?? 0);
+        const curReadyVal = Number(result.ready?.value ?? 0);
+        const curRatingVal = Number(result.rating?.value ?? 0);
+
+        const riskDiff = curRiskVal - baseRiskVal;
+        const readyDiff = curReadyVal - baseReadyVal;
+        const ratingDiff = curRatingVal - baseRatingVal;
+
         const labels = {
             progress: "Прогресс",
             days: "Дни до дедлайна",
@@ -441,9 +459,9 @@ const Simulate = (() => {
           ${SVG.barChart({ cls: "icon icon-sm" })}
           Сравнение: сейчас / в симуляции
         </div>
-        ${diffRow("Риск", baseResult.risk.value, result.risk.value, riskDiff, false)}
-        ${diffRow("Готовность", baseResult.ready.value, result.ready.value, readyDiff, true)}
-        ${diffRow("Рейтинг", baseResult.rating.value, result.rating.value, ratingDiff, true)}
+        ${diffRow("Риск", baseRiskVal, curRiskVal, riskDiff, false)}
+        ${diffRow("Готовность", baseReadyVal, curReadyVal, readyDiff, true)}
+        ${diffRow("Рейтинг", baseRatingVal, curRatingVal, ratingDiff, true)}
       </div>
 
       ${
@@ -491,7 +509,9 @@ const Simulate = (() => {
     }
 
     function renderMetricCard(label, data, diff, higherIsBetter) {
-        const term = data.term;
+        if (!data) return "";
+        const term = data.term || "med";
+        const value = Number(data.value ?? 0);
         const valueColor =
             label === "Риск" ? Utils.riskClass(term) : Utils.readyClass(term);
 
@@ -511,7 +531,7 @@ const Simulate = (() => {
       <div class="sim-metric">
         <div class="sim-metric-label">${escapeHtml(label)}</div>
         <div class="sim-metric-value" style="color:var(--${valueColor})">
-          ${data.value.toFixed(0)}
+          ${value.toFixed(0)}
         </div>
         <div class="sim-metric-term">${escapeHtml(Fuzzy.termLabel(term, label === "Риск" ? "risk" : label === "Готовность" ? "ready" : "rating"))}</div>
         ${
@@ -542,9 +562,9 @@ const Simulate = (() => {
         return `
       <div class="sim-diff">
         <div class="sim-diff-label">${escapeHtml(label)}</div>
-        <div class="sim-diff-before">${before.toFixed(0)}</div>
+        <div class="sim-diff-before">${Number(before).toFixed(0)}</div>
         <div class="sim-diff-arrow">${SVG.arrowRight({ cls: "icon icon-xs" })}</div>
-        <div class="sim-diff-after ${cls}">${after.toFixed(0)}</div>
+        <div class="sim-diff-after ${cls}">${Number(after).toFixed(0)}</div>
         <div class="sim-diff-delta" style="color:var(--${diffColor})">
           <span class="sim-diff-delta-arrow" style="color:var(--${arrowColor})">${arrow}</span>
           <span>${diff > 0 ? "+" : ""}${diff.toFixed(0)}</span>
@@ -600,41 +620,25 @@ const Simulate = (() => {
         return `${verdict} Изменения: ${changes.join(", ")}.`;
     }
 
-    /* =========================================================
-       ОБРАБОТЧИКИ
-       ========================================================= */
     function onChange() {
-        const sliderIds = [
-            "s_progress",
-            "s_days",
-            "s_activity",
-            "s_edits",
-            "s_volume",
-            "s_orig",
-            "s_supScore",
-            "s_gost",
-        ];
-        const units = {
-            s_progress: "%",
-            s_days: "",
-            s_activity: "",
-            s_edits: "",
-            s_volume: "%",
-            s_orig: "%",
-            s_supScore: "",
-            s_gost: "%",
-        };
+        if (_scheduled) return;
+        _scheduled = true;
+        requestAnimationFrame(() => {
+            _scheduled = false;
+            applyChange();
+        });
+    }
 
+    function applyChange() {
         const inputs = {};
-        sliderIds.forEach((id) => {
+        SLIDER_IDS.forEach((id) => {
             const el = document.getElementById(id);
             if (!el) return;
             const key = id.replace("s_", "");
             inputs[key] = +el.value;
             const lbl = document.getElementById("v_" + id);
-            if (lbl) lbl.textContent = el.value + (units[id] || "");
+            if (lbl) lbl.textContent = el.value + (SLIDER_UNITS[id] || "");
 
-            // Обновляем индикатор изменения
             const sliderEl = el.closest(".sim-slider");
             if (sliderEl && baseRealInputs) {
                 const realVal = baseRealInputs[key];
@@ -642,13 +646,13 @@ const Simulate = (() => {
                 const changed = !isEmpty && +el.value !== realVal;
                 sliderEl.classList.toggle("changed", changed);
 
-                // Обновляем «из работы: X»
                 const foot = sliderEl.querySelector(".sim-slider-foot");
                 if (foot) {
                     if (isEmpty) {
-                        foot.innerHTML = `<span class="sim-slider-real empty">нет данных</span>`;
+                        const fallback = baseCache ? baseCache[key] : el.value;
+                        foot.innerHTML = `<span class="sim-slider-real empty">нет данных · в симуляции ${fallback}${SLIDER_UNITS[id] || ""}</span>`;
                     } else if (changed) {
-                        foot.innerHTML = `<span class="sim-slider-real">из работы: ${realVal}${units[id] || ""}</span>`;
+                        foot.innerHTML = `<span class="sim-slider-real">из работы: ${realVal}${SLIDER_UNITS[id] || ""}</span>`;
                     } else {
                         foot.innerHTML = "";
                     }
@@ -664,9 +668,11 @@ const Simulate = (() => {
         const baseResult = Utils.safeFuzzyInfer(baseCache);
         const currentResult = Utils.safeFuzzyInfer(inputs);
 
+        if (!baseResult || !currentResult) return;
+
         const box = document.getElementById("simResult");
         if (box) {
-            box.innerHTML = renderResult(baseCache, baseResult, currentResult);
+            box.innerHTML = renderResult(inputs, baseResult, currentResult);
         }
     }
 
@@ -688,30 +694,13 @@ const Simulate = (() => {
             s.orig = clamp(s.orig + 10, 0, 100);
         }
 
-        const sliderIds = [
-            "s_progress",
-            "s_days",
-            "s_activity",
-            "s_edits",
-            "s_volume",
-            "s_orig",
-            "s_supScore",
-            "s_gost",
-        ];
-        const units = {
-            s_progress: "%",
-            s_volume: "%",
-            s_orig: "%",
-            s_gost: "%",
-        };
-
-        sliderIds.forEach((id) => {
+        SLIDER_IDS.forEach((id) => {
             const el = document.getElementById(id);
             if (!el) return;
             const key = id.replace("s_", "");
             el.value = s[key];
             const lbl = document.getElementById("v_" + id);
-            if (lbl) lbl.textContent = s[key] + (units[id] || "");
+            if (lbl) lbl.textContent = s[key] + (SLIDER_UNITS[id] || "");
         });
 
         onChange();
@@ -731,30 +720,14 @@ const Simulate = (() => {
         baseCache = getBaseInputs(currentWork);
         if (!baseCache) return;
 
-        const sliderIds = [
-            "s_progress",
-            "s_days",
-            "s_activity",
-            "s_edits",
-            "s_volume",
-            "s_orig",
-            "s_supScore",
-            "s_gost",
-        ];
-        const units = {
-            s_progress: "%",
-            s_volume: "%",
-            s_orig: "%",
-            s_gost: "%",
-        };
-
-        sliderIds.forEach((id) => {
+        SLIDER_IDS.forEach((id) => {
             const el = document.getElementById(id);
             if (!el) return;
             const key = id.replace("s_", "");
             el.value = baseCache[key];
             const lbl = document.getElementById("v_" + id);
-            if (lbl) lbl.textContent = baseCache[key] + (units[id] || "");
+            if (lbl)
+                lbl.textContent = baseCache[key] + (SLIDER_UNITS[id] || "");
 
             const sliderEl = el.closest(".sim-slider");
             if (sliderEl) sliderEl.classList.remove("changed");
@@ -763,6 +736,7 @@ const Simulate = (() => {
         });
 
         onChange();
+
         if (typeof App !== "undefined" && App.toast) {
             App.toast("Значения сброшены к данным работы");
         }
@@ -773,22 +747,29 @@ const Simulate = (() => {
         workId = id;
         baseCache = null;
         baseRealInputs = null;
+        currentWork = null;
         renderView();
     }
 
     function renderView() {
+        if (typeof Charts !== "undefined" && Charts.destroyAll) {
+            Charts.destroyAll();
+        }
+
         const root = document.getElementById("viewRoot");
         if (!root) return;
         root.innerHTML = `<div class="view active">${render()}</div>`;
     }
 
     function renderSimForecast(inputs, result) {
+        if (!result || !result.risk) return "";
+
         const futureInputs = {
             ...inputs,
             days: Math.max(0, (inputs.days || 0) - 7),
         };
         const future = Utils.safeFuzzyInfer(futureInputs);
-        if (!future) return "";
+        if (!future || !future.risk) return "";
 
         const diff = future.risk.value - result.risk.value;
         const isWorse = diff > 3;

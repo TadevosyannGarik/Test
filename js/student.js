@@ -1,6 +1,5 @@
 const Student = (() => {
     const WORK_TYPES = Utils.WORK_TYPES_LIST;
-    const WORK_STATUSES = Utils.WORK_STATUSES;
     const TASK_COLS = Utils.TASK_COLS;
 
     const escapeHtml = Utils.escapeHtml;
@@ -22,6 +21,16 @@ const Student = (() => {
     function teacherName(id) {
         const u = Storage.getUserById(id);
         return u ? u.fio : "—";
+    }
+
+    function getFuzzyResult(work, progressOverride) {
+        try {
+            return Utils.safeFuzzyInfer(
+                Utils.buildFuzzyInputs(work, progressOverride),
+            );
+        } catch (e) {
+            return null;
+        }
     }
 
     let selectedWorkId = null;
@@ -47,21 +56,8 @@ const Student = (() => {
         selectedWorkId = null;
     }
 
-    function getFuzzyInputs(work, progressOverride) {
-        return Utils.buildFuzzyInputs(work, progressOverride);
-    }
-
-    function getFuzzyResult(work, progressOverride) {
-        return Utils.safeFuzzyInfer(
-            Utils.buildFuzzyInputs(work, progressOverride),
-        );
-    }
-
     const VIEWS = {};
 
-    /* =========================================================
-       ДАШБОРД — KPI, дедлайны, задачи, комментарии, работы
-       ========================================================= */
     VIEWS.dashboard = function () {
         const u = getUser();
         if (!u) return "";
@@ -202,6 +198,7 @@ const Student = (() => {
       </div>
     `;
     }
+
     function renderStagesProgressBar(workId) {
         const stages = Storage.getStagesByWork(workId);
         if (stages.length === 0) return "";
@@ -210,7 +207,6 @@ const Student = (() => {
         const total = stages.length;
         const pct = Math.round((doneCount / total) * 100);
 
-        // Сегменты
         const segments = stages
             .map((s) => {
                 const cls = s.done
@@ -247,7 +243,7 @@ const Student = (() => {
                 .filter((s) => s.deadline && !s.done)
                 .forEach((s) => {
                     const days = daysUntil(s.deadline);
-                    if (days >= -30 && days <= 90) {
+                    if (days >= 0 && days <= 90) {
                         events.push({
                             date: s.deadline,
                             days,
@@ -264,7 +260,7 @@ const Student = (() => {
                 .filter((t) => t.deadline && t.col !== "done")
                 .forEach((t) => {
                     const days = daysUntil(t.deadline);
-                    if (days >= -30 && days <= 90) {
+                    if (days >= 0 && days <= 90) {
                         events.push({
                             date: t.deadline,
                             days,
@@ -278,7 +274,7 @@ const Student = (() => {
 
             if (w.deadline) {
                 const days = daysUntil(w.deadline);
-                if (days >= -30 && days <= 365) {
+                if (days >= 0 && days <= 365) {
                     events.push({
                         date: w.deadline,
                         days,
@@ -291,10 +287,7 @@ const Student = (() => {
             }
         });
 
-        return events
-            .filter((e) => e.days >= 0)
-            .sort((a, b) => a.days - b.days)
-            .slice(0, limit);
+        return events.sort((a, b) => a.days - b.days).slice(0, limit);
     }
 
     function renderStudentUpcoming(events) {
@@ -356,11 +349,7 @@ const Student = (() => {
             list.filter(
                 (t) => t.col === "progress" || t.col === "review",
             ).forEach((t) => {
-                tasks.push({
-                    ...t,
-                    work: w,
-                    workTopic: w.topic,
-                });
+                tasks.push({ ...t, work: w, workTopic: w.topic });
             });
         });
         return tasks.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
@@ -530,6 +519,22 @@ const Student = (() => {
         const res = getFuzzyResult(work, progress);
         const daysLeft = work.deadline ? daysUntil(work.deadline) : null;
         const isSelected = Storage.sameId(work.id, selectedWorkId);
+
+        if (!res) {
+            return `
+          <div class="work-hero" onclick="Student.selectWork('${work.id}')">
+            <div class="work-hero-title">${escapeHtml(work.topic)}</div>
+            <div class="work-hero-meta">
+              <span>Руководитель: <b>${escapeHtml(teacherName(work.teacherId))}</b></span>
+              <span>${statusBadge(work.status)}</span>
+            </div>
+            <div class="notice" style="margin-top:12px;background:var(--warn-soft);border-left:2px solid var(--warn);font-size:12px;">
+              ${SVG.alertTriangle({ cls: "icon icon-xs" })}
+              Не удалось рассчитать оценку. Проверьте правила нечёткого вывода.
+            </div>
+          </div>
+        `;
+        }
 
         const riskCls = Utils.riskClass(res.risk.term);
         const readyCls = Utils.readyClass(res.ready.term);
@@ -859,7 +864,6 @@ const Student = (() => {
         return `
       ${workSelector}
 
-      <!-- Сводка -->
       ${renderWorkSummary(work, {
           progress,
           stages,
@@ -870,7 +874,6 @@ const Student = (() => {
           comments,
       })}
 
-      <!-- Информация о работе (компактно) -->
       <div class="card mt-12">
         <div class="card-head">
           <div class="card-title" style="margin-bottom:0;">Информация</div>
@@ -931,9 +934,7 @@ const Student = (() => {
         }
       </div>
 
-      <!-- Основная сетка: этапы + дедлайны -->
       <div class="work-grid mt-12">
-        <!-- Этапы -->
         <div class="card">
           <div class="card-head">
             <div class="card-title" style="margin-bottom:0;">
@@ -970,7 +971,6 @@ const Student = (() => {
           }
         </div>
 
-        <!-- Таймлайн дедлайнов -->
         <div class="card">
           <div class="card-head">
             <div class="card-title" style="margin-bottom:0;">
@@ -986,7 +986,6 @@ const Student = (() => {
         </div>
       </div>
 
-      <!-- Задачи -->
       <div class="card mt-12">
         <div class="card-head">
           <div class="card-title" style="margin-bottom:0;">
@@ -1000,7 +999,6 @@ const Student = (() => {
         ${renderKanban(work.id)}
       </div>
 
-      <!-- Версии -->
       <div class="card mt-12">
         <div class="card-head">
           <div class="card-title" style="margin-bottom:0;">
@@ -1024,7 +1022,6 @@ const Student = (() => {
         }
       </div>
 
-      <!-- Замечания -->
       <div class="card mt-12">
         <div class="card-head">
           <div class="card-title" style="margin-bottom:0;">
@@ -1041,9 +1038,6 @@ const Student = (() => {
     `;
     };
 
-    /* =========================================================
-       СВОДКА «МОЯ РАБОТА»
-       ========================================================= */
     function renderWorkSummary(work, data) {
         const { progress, stages, stagesDone, tasks, tasksDone, versions } =
             data;
@@ -1151,9 +1145,6 @@ const Student = (() => {
     `;
     }
 
-    /* =========================================================
-       ДЕДЛАЙНЫ РАБОТЫ (для правой колонки)
-       ========================================================= */
     function getWorkUpcomingDeadlines(work, limit = 6) {
         const events = [];
 
@@ -1161,7 +1152,7 @@ const Student = (() => {
             .filter((s) => s.deadline && !s.done)
             .forEach((s) => {
                 const days = daysUntil(s.deadline);
-                if (days >= -30 && days <= 180) {
+                if (days >= 0 && days <= 180) {
                     events.push({
                         date: s.deadline,
                         days,
@@ -1175,7 +1166,7 @@ const Student = (() => {
             .filter((t) => t.deadline && t.col !== "done")
             .forEach((t) => {
                 const days = daysUntil(t.deadline);
-                if (days >= -30 && days <= 180) {
+                if (days >= 0 && days <= 180) {
                     events.push({
                         date: t.deadline,
                         days,
@@ -1187,7 +1178,7 @@ const Student = (() => {
 
         if (work.deadline) {
             const days = daysUntil(work.deadline);
-            if (days >= -30 && days <= 365) {
+            if (days >= 0 && days <= 365) {
                 events.push({
                     date: work.deadline,
                     days,
@@ -1197,10 +1188,7 @@ const Student = (() => {
             }
         }
 
-        return events
-            .filter((e) => e.days >= 0)
-            .sort((a, b) => a.days - b.days)
-            .slice(0, limit);
+        return events.sort((a, b) => a.days - b.days).slice(0, limit);
     }
 
     function renderWorkDeadlineRow(e) {
@@ -1235,9 +1223,6 @@ const Student = (() => {
     `;
     }
 
-    /* =========================================================
-       МАССОВОЕ ДЕЙСТВИЕ — отметить все этапы
-       ========================================================= */
     function markAllStagesDone() {
         const work = getActiveWork();
         if (!work) return;
@@ -1281,9 +1266,6 @@ const Student = (() => {
         App.navigate("my-work");
     }
 
-    /* =========================================================
-       РЕДАКТИРОВАНИЕ ИНФОРМАЦИИ — toggle
-       ========================================================= */
     function toggleEditForm() {
         const form = document.getElementById("workInfoForm");
         const preview = document.getElementById("workInfoPreview");
@@ -1321,7 +1303,7 @@ const Student = (() => {
         App.navigate("my-work");
     }
 
-    let archivedFilter = "all"; // all | done | rejected
+    let archivedFilter = "all";
     let archivedType = "";
     let archivedSearch = "";
     let archivedSort = "date";
@@ -1344,7 +1326,6 @@ const Student = (() => {
         const doneWorks = allWorks.filter((w) => w.status === "done");
         const rejectedWorks = allWorks.filter((w) => w.status === "rejected");
 
-        // Средняя оценка
         const graded = doneWorks.filter((w) => w.finalGrade);
         const avgGrade = graded.length
             ? (
@@ -1352,17 +1333,14 @@ const Student = (() => {
               ).toFixed(1)
             : "—";
 
-        // Фильтр
         let list = allWorks;
         if (archivedFilter === "done") list = doneWorks;
         else if (archivedFilter === "rejected") list = rejectedWorks;
 
-        // Тип
         if (archivedType) {
             list = list.filter((w) => w.type === archivedType);
         }
 
-        // Поиск
         if (archivedSearch) {
             const q = archivedSearch.toLowerCase();
             list = list.filter(
@@ -1372,7 +1350,6 @@ const Student = (() => {
             );
         }
 
-        // Сортировка
         list = [...list].sort((a, b) => {
             if (archivedSort === "grade") {
                 return (b.finalGrade || 0) - (a.finalGrade || 0);
@@ -1383,7 +1360,6 @@ const Student = (() => {
             if (archivedSort === "title") {
                 return a.topic.localeCompare(b.topic);
             }
-            // date — по дате защиты/отклонения
             return (
                 (b.defendedAt || b.updatedAt || b.createdAt || 0) -
                 (a.defendedAt || a.updatedAt || a.createdAt || 0)
@@ -1391,7 +1367,6 @@ const Student = (() => {
         });
 
         return `
-      <!-- KPI -->
       <div class="grid grid-4">
         <div class="card kpi">
           <div class="kpi-num">${allWorks.length}</div>
@@ -1417,7 +1392,6 @@ const Student = (() => {
         </div>
       </div>
 
-      <!-- Список -->
       <div class="card mt-16">
         <div class="card-head">
           <div class="card-title" style="margin-bottom:0;">
@@ -1430,14 +1404,12 @@ const Student = (() => {
           </button>
         </div>
 
-        <!-- Табы -->
         <div class="filter-tabs" style="margin-bottom:14px;">
           ${renderArchivedTab("all", "Все", allWorks.length)}
           ${renderArchivedTab("done", "Защищено", doneWorks.length)}
           ${renderArchivedTab("rejected", "Отклонено", rejectedWorks.length)}
         </div>
 
-        <!-- Поиск + фильтры -->
         <div class="review-toolbar">
           <input type="text"
             class="archived-search review-search"
@@ -1497,125 +1469,22 @@ const Student = (() => {
     function setArchivedSearch(q) {
         archivedSearch = q;
         App.navigate("archived");
-        setTimeout(() => {
-            const input = document.querySelector(".archived-search");
-            if (input) {
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                const input = document.querySelector(".archived-search");
+                if (!input) return;
                 input.focus();
-                const len = input.value.length;
-                input.setSelectionRange(len, len);
-            }
-        }, 0);
+                try {
+                    const len = input.value.length;
+                    input.setSelectionRange(len, len);
+                } catch (e) {}
+            }, 0);
+        });
     }
 
     function setArchivedSort(s) {
         archivedSort = s;
         App.navigate("archived");
-    }
-
-    function renderArchivedCard(work) {
-        const progress = calcProgress(work.id);
-        const stages = Storage.getStagesByWork(work.id);
-        const versions = Storage.getVersionsByWork(work.id);
-        const comments = Storage.getCommentsByWork(work.id);
-        const isDone = work.status === "done";
-
-        const gradeLabel = (g) => {
-            if (g === 5) return "отлично";
-            if (g === 4) return "хорошо";
-            if (g === 3) return "удовлетв.";
-            if (g === 2) return "неудовл.";
-            return "";
-        };
-
-        const accentColor = isDone ? "var(--ok)" : "var(--bad)";
-        const stagesDone = stages.filter((s) => s.done).length;
-
-        return `
-      <div class="archived-card" style="border-left-color:${accentColor};">
-
-        <!-- Заголовок -->
-        <div class="archived-head">
-          <div style="flex:1;min-width:0;">
-            <div class="archived-title">${escapeHtml(work.topic)}</div>
-            <div class="archived-meta">
-              ${escapeHtml(workTypeLabel(work.type))}
-              · рук. ${escapeHtml(teacherName(work.teacherId))}
-              · ${stagesDone}/${stages.length} этапов
-              · ${versions.length} версий
-            </div>
-          </div>
-          <div>${statusBadge(work.status)}</div>
-        </div>
-
-        <!-- Оценка (для защищённых) -->
-        ${
-            isDone && work.finalGrade
-                ? `
-          <div class="archived-grade">
-            <div class="archived-grade-num">${work.finalGrade}</div>
-            <div class="archived-grade-body">
-              <div class="archived-grade-label">${gradeLabel(work.finalGrade)}</div>
-              ${
-                  work.defendedAt
-                      ? `<div class="archived-grade-date">Защищена ${fmtDate(work.defendedAt)}</div>`
-                      : ""
-              }
-            </div>
-            ${
-                work.gradeComment
-                    ? `<div class="archived-grade-comment">«${escapeHtml(work.gradeComment)}»</div>`
-                    : ""
-            }
-          </div>
-        `
-                : ""
-        }
-
-        <!-- Причина отклонения -->
-        ${
-            !isDone && work.rejectReason
-                ? `
-          <div class="archived-reject">
-            <b>Причина:</b> ${escapeHtml(work.rejectReason)}
-          </div>
-        `
-                : ""
-        }
-
-        <!-- Аннотация -->
-        ${
-            work.annotation
-                ? `<div class="archived-annotation">${escapeHtml(work.annotation)}</div>`
-                : ""
-        }
-
-        <!-- Прогресс -->
-        <div class="pbar" style="margin-top:12px;">
-          <div class="pbar-track">
-            <div class="pbar-fill ${Utils.progressClass(progress)}" style="width:${progress}%"></div>
-          </div>
-          <div class="pbar-val">${progress}%</div>
-        </div>
-
-        <!-- Действия -->
-        <div class="archived-actions">
-          <button class="btn-ghost btn-sm" onclick="PdfReport.exportStudent('${work.id}')">
-            ${SVG.fileText({ cls: "icon icon-sm" })}
-            <span>PDF</span>
-          </button>
-          ${
-              !isDone
-                  ? `
-            <button class="btn-primary btn-sm" onclick="Student.recreateFromRejected('${work.id}')">
-              ${SVG.refresh({ cls: "icon icon-sm" })}
-              <span>Создать заново</span>
-            </button>
-          `
-                  : ""
-          }
-        </div>
-      </div>
-    `;
     }
 
     function renderArchivedCard(work) {
@@ -1634,60 +1503,33 @@ const Student = (() => {
         };
 
         const borderColor = isDone ? "var(--ok)" : "var(--bad)";
+        const stagesDone = stages.filter((s) => s.done).length;
 
         return `
-      <div style="border:1px solid var(--line);border-left:3px solid ${borderColor};border-radius:var(--r-md);padding:18px;margin-bottom:12px;background:var(--bg-elev);">
-
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;">
+      <div class="archived-card" style="border-left-color:${borderColor};">
+        <div class="archived-head">
           <div style="flex:1;min-width:240px;">
-            <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--txt-muted);margin-bottom:6px;">
+            <div class="archived-meta" style="text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">
               ${escapeHtml(workTypeLabel(work.type))}
             </div>
-            <div style="font-size:15px;font-weight:500;margin-bottom:8px;line-height:1.4;color:var(--txt);">
-              ${escapeHtml(work.topic)}
-            </div>
-            <div style="font-size:12px;color:var(--txt-muted);display:flex;gap:14px;flex-wrap:wrap;">
-              <span>Руководитель: <b>${escapeHtml(teacherName(work.teacherId))}</b></span>
-              <span>Прогресс: <b>${progress}%</b></span>
-              ${
-                  isDone && work.defendedAt
-                      ? `<span>Защищена: <b>${fmtDate(work.defendedAt)}</b></span>`
-                      : ""
-              }
-              ${
-                  !isDone
-                      ? `<span>Отклонена: <b>${fmtDate(work.updatedAt)}</b></span>`
-                      : ""
-              }
+            <div class="archived-title">${escapeHtml(work.topic)}</div>
+            <div class="archived-meta">
+              Руководитель: <b>${escapeHtml(teacherName(work.teacherId))}</b>
+              · Прогресс: <b>${progress}%</b>
+              ${isDone && work.defendedAt ? `· Защищена: <b>${fmtDate(work.defendedAt)}</b>` : ""}
+              ${!isDone ? `· Отклонена: <b>${fmtDate(work.updatedAt)}</b>` : ""}
             </div>
           </div>
           <div>${statusBadge(work.status)}</div>
         </div>
 
-        ${
-            work.rejectReason
-                ? `
-          <div class="notice" style="margin-top:12px;background:var(--bad-soft);border-left:3px solid var(--bad);font-size:12px;">
-            <b>Причина отклонения:</b> ${escapeHtml(work.rejectReason)}
-          </div>
-        `
-                : ""
-        }
+        ${work.rejectReason ? `<div class="archived-reject"><b>Причина отклонения:</b> ${escapeHtml(work.rejectReason)}</div>` : ""}
 
-        ${
-            work.annotation
-                ? `
-          <div style="margin-top:12px;font-size:13px;color:var(--txt-muted);line-height:1.6;">
-            ${escapeHtml(work.annotation)}
-          </div>
-        `
-                : ""
-        }
+        ${work.annotation ? `<div class="archived-annotation">${escapeHtml(work.annotation)}</div>` : ""}
 
         <div class="pbar" style="margin-top:14px;">
           <div class="pbar-track">
-            <div class="pbar-fill ${Utils.progressClass(progress)}"
-              style="width:${progress}%"></div>
+            <div class="pbar-fill ${Utils.progressClass(progress)}" style="width:${progress}%"></div>
           </div>
           <div class="pbar-val">${progress}%</div>
         </div>
@@ -1695,27 +1537,13 @@ const Student = (() => {
         ${
             isDone && work.finalGrade
                 ? `
-          <div style="margin-top:14px;padding:14px;background:var(--ok-soft);border:1px solid rgba(74,222,128,.3);border-radius:var(--r-md);">
-            <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
-              <div style="text-align:center;min-width:80px;">
-                <div style="font-size:32px;font-weight:700;color:var(--ok);line-height:1;">
-                  ${work.finalGrade}
-                </div>
-                <div style="font-size:11px;color:var(--txt-muted);margin-top:4px;">
-                  ${gradeLabel(work.finalGrade)}
-                </div>
-              </div>
-              <div style="flex:1;min-width:200px;">
-                <div style="font-size:11px;color:var(--txt-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">
-                  Оценка за защиту
-                </div>
-                ${
-                    work.gradeComment
-                        ? `<div style="font-size:13px;line-height:1.5;color:var(--txt);">«${escapeHtml(work.gradeComment)}»</div>`
-                        : `<div style="font-size:13px;color:var(--txt-muted);">Комментарий не указан</div>`
-                }
-              </div>
+          <div class="archived-grade">
+            <div class="archived-grade-num">${work.finalGrade}</div>
+            <div class="archived-grade-body">
+              <div class="archived-grade-label">${gradeLabel(work.finalGrade)}</div>
+              ${work.defendedAt ? `<div class="archived-grade-date">Защищена ${fmtDate(work.defendedAt)}</div>` : ""}
             </div>
+            ${work.gradeComment ? `<div class="archived-grade-comment">«${escapeHtml(work.gradeComment)}»</div>` : ""}
           </div>
         `
                 : ""
@@ -1736,9 +1564,7 @@ const Student = (() => {
             stages.length > 0
                 ? `
           <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line);">
-            <div style="font-size:11px;color:var(--txt-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">
-              Этапы (${stages.filter((s) => s.done).length}/${stages.length} выполнено)
-            </div>
+            <div class="section-label" style="margin-top:0;">Этапы (${stagesDone}/${stages.length})</div>
             ${stages
                 .map(
                     (s) => `
@@ -1746,14 +1572,8 @@ const Student = (() => {
                 <span style="color:var(--${s.done ? "ok" : "txt-muted"})">
                   ${s.done ? SVG.check({ cls: "icon icon-xs" }) : "○"}
                 </span>
-                <span style="${s.done ? "" : "color:var(--txt-muted);"}">
-                  ${escapeHtml(s.name)}
-                </span>
-                ${
-                    s.done && s.completedAt
-                        ? `<span style="margin-left:auto;font-size:11px;color:var(--txt-muted);">${fmtDate(s.completedAt)}</span>`
-                        : ""
-                }
+                <span style="${s.done ? "" : "color:var(--txt-muted);"}">${escapeHtml(s.name)}</span>
+                ${s.done && s.completedAt ? `<span style="margin-left:auto;font-size:11px;color:var(--txt-muted);">${fmtDate(s.completedAt)}</span>` : ""}
               </div>
             `,
                 )
@@ -1763,25 +1583,20 @@ const Student = (() => {
                 : ""
         }
 
-        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line);display:flex;gap:20px;flex-wrap:wrap;font-size:12px;color:var(--txt-muted);">
-          <span>Версий: <b>${versions.length}</b></span>
-          <span>Замечаний: <b>${comments.length}</b></span>
-          <span>Создана: <b>${fmtDate(work.createdAt)}</b></span>
-        </div>
-
-        <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;">
+        <div class="archived-actions">
+          <span style="font-size:12px;color:var(--txt-muted);margin-right:auto;">
+            Версий: <b>${versions.length}</b> · Замечаний: <b>${comments.length}</b> · Создана: <b>${fmtDate(work.createdAt)}</b>
+          </span>
           <button class="btn-ghost btn-sm" onclick="PdfReport.exportStudent('${work.id}')">
             ${SVG.fileText({ cls: "icon icon-sm" })}
             <span>Скачать PDF</span>
           </button>
           ${
               !isDone
-                  ? `
-            <button class="btn-primary btn-sm" onclick="Student.recreateFromRejected('${work.id}')">
-              ${SVG.refresh({ cls: "icon icon-sm" })}
-              <span>Создать заново</span>
-            </button>
-          `
+                  ? `<button class="btn-primary btn-sm" onclick="Student.recreateFromRejected('${work.id}')">
+                       ${SVG.refresh({ cls: "icon icon-sm" })}
+                       <span>Создать заново</span>
+                     </button>`
                   : ""
           }
         </div>
@@ -1800,16 +1615,15 @@ const Student = (() => {
         )
             return;
 
+        const baseTopic = (old.topic || "").replace(/\s*\(v\d+\)$/, "").trim();
+
         const newWork = {
             id: uid(),
             studentId: old.studentId,
             teacherId: old.teacherId,
             type: old.type,
-            topic: old.topic + " (v2)",
-            annotation: old.annotation || "",
-            keywords: old.keywords || "",
-            goal: old.goal || "",
-            tasksText: old.tasksText || "",
+            topic: baseTopic + " (v2)",
+            description: old.description || "",
             deadline: old.deadline || null,
             status: "draft",
             createdAt: Date.now(),
@@ -2062,6 +1876,7 @@ const Student = (() => {
     }
 
     let dragTaskId = null;
+
     function dragTask(e, id) {
         dragTaskId = id;
     }
@@ -2335,9 +2150,6 @@ const Student = (() => {
         App.openModal(html);
     }
 
-    /* =========================================================
-       ПРОФИЛЬ — hero с KPI, достижения, работы
-       ========================================================= */
     VIEWS.profile = function () {
         const u = getUser();
         if (!u) return "";
@@ -2348,7 +2160,6 @@ const Student = (() => {
         const doneWorks = works.filter((w) => w.status === "done");
         const rejectedWorks = works.filter((w) => w.status === "rejected");
 
-        // Метрики
         let totalProgress = 0;
         let totalRating = 0;
         let cnt = 0;
@@ -2366,7 +2177,6 @@ const Student = (() => {
             : 0;
         const avgRating = cnt ? Math.round(totalRating / cnt) : 0;
 
-        // Этапы / задачи / версии
         let totalStages = 0;
         let doneStages = 0;
         let totalTasks = 0;
@@ -2384,7 +2194,6 @@ const Student = (() => {
             totalVersions += versions.length;
         });
 
-        // Достижения
         const achievements = buildAchievements(
             u,
             works,
@@ -2396,7 +2205,6 @@ const Student = (() => {
         const init = Utils.initials(u.fio);
 
         return `
-      <!-- HERO -->
       <div class="profile-hero">
         <div class="profile-hero-avatar">${init}</div>
         <div class="profile-hero-body">
@@ -2412,7 +2220,6 @@ const Student = (() => {
         </div>
       </div>
 
-      <!-- KPI-панель -->
       <div class="grid grid-4 mt-16">
         <div class="card kpi">
           <div class="kpi-num">${activeWorks.length}</div>
@@ -2434,7 +2241,6 @@ const Student = (() => {
         </div>
       </div>
 
-      <!-- Достижения -->
       ${
           achievements.length > 0
               ? `
@@ -2454,7 +2260,6 @@ const Student = (() => {
               : ""
       }
 
-      <!-- Личные данные + Сводка -->
       <div class="grid grid-2 mt-16">
         <div class="card">
           <div class="card-title">Личные данные</div>
@@ -2495,7 +2300,6 @@ const Student = (() => {
         </div>
       </div>
 
-      <!-- Нечёткий профиль -->
       <div class="card mt-16">
         <div class="card-head">
           <div class="card-title" style="margin-bottom:0;">
@@ -2511,7 +2315,6 @@ const Student = (() => {
         </div>
       </div>
 
-      <!-- Мои работы -->
       <div class="card mt-16">
         <div class="card-head">
           <div class="card-title" style="margin-bottom:0;">
@@ -2552,7 +2355,6 @@ const Student = (() => {
         }
       </div>
 
-      <!-- Быстрые ссылки -->
       <div class="card mt-16">
         <div class="card-title">Быстрые ссылки</div>
         <div class="quick-actions">
@@ -2581,13 +2383,9 @@ const Student = (() => {
     `;
     };
 
-    /* =========================================================
-       ДОСТИЖЕНИЯ
-       ========================================================= */
     function buildAchievements(u, works, doneWorks, activeWorks, stats) {
         const list = [];
 
-        // Первая созданная работа
         if (works.length >= 1) {
             list.push({
                 icon: SVG.rocket,
@@ -2596,7 +2394,6 @@ const Student = (() => {
             });
         }
 
-        // Первая защита
         if (doneWorks.length >= 1) {
             list.push({
                 icon: SVG.graduation,
@@ -2605,7 +2402,6 @@ const Student = (() => {
             });
         }
 
-        // Много работ
         if (works.length >= 3) {
             list.push({
                 icon: SVG.book,
@@ -2614,7 +2410,6 @@ const Student = (() => {
             });
         }
 
-        // Отличная оценка
         const excellentWorks = doneWorks.filter((w) => w.finalGrade === 5);
         if (excellentWorks.length >= 1) {
             list.push({
@@ -2624,7 +2419,6 @@ const Student = (() => {
             });
         }
 
-        // Полностью закрытая работа
         const completedWorks = works.filter((w) => {
             const stages = Storage.getStagesByWork(w.id);
             return stages.length > 0 && stages.every((s) => s.done);
@@ -2637,7 +2431,6 @@ const Student = (() => {
             });
         }
 
-        // Много версий
         if (stats.totalVersions >= 10) {
             list.push({
                 icon: SVG.fileText,
@@ -2646,7 +2439,6 @@ const Student = (() => {
             });
         }
 
-        // Много задач закрыто
         if (stats.doneTasks >= 20) {
             list.push({
                 icon: SVG.target,
@@ -2673,9 +2465,6 @@ const Student = (() => {
     `;
     }
 
-    /* =========================================================
-       СВОДКА ПРОФИЛЯ
-       ========================================================= */
     function renderProfileSummaryBar(label, current, total, color) {
         const pct = total > 0 ? Math.round((current / total) * 100) : 0;
         return `
@@ -2691,12 +2480,8 @@ const Student = (() => {
     `;
     }
 
-    /* =========================================================
-       РАБОТА В ПРОФИЛЕ
-       ========================================================= */
     function renderProfileWorkRow(w) {
         const progress = calcProgress(w.id);
-        const res = getFuzzyResult(w, progress);
         const isDone = w.status === "done";
         const isRejected = w.status === "rejected";
 
@@ -2765,7 +2550,7 @@ const Student = (() => {
 
     let calYear = null;
     let calMonth = null;
-    let calSelectedDate = null; // "YYYY-MM-DD"
+    let calSelectedDate = null;
     let calFilter = { stage: true, task: true, defense: true };
 
     VIEWS.calendar = function () {
@@ -2783,28 +2568,23 @@ const Student = (() => {
       `;
         }
 
-        // Инициализация текущего месяца
         const now = new Date();
         if (calYear === null) calYear = now.getFullYear();
         if (calMonth === null) calMonth = now.getMonth();
 
-        // Построение событий
         const events = buildCalendarEvents(work);
         const filteredEvents = events.filter((e) => calFilter[e.kind]);
 
-        // Группировка по дате
         const eventsByDate = {};
         filteredEvents.forEach((e) => {
             if (!eventsByDate[e.date]) eventsByDate[e.date] = [];
             eventsByDate[e.date].push(e);
         });
 
-        // Данные выбранного дня
         const selectedEvents = calSelectedDate
             ? eventsByDate[calSelectedDate] || []
             : [];
 
-        // Сетка месяца
         const firstDay = new Date(calYear, calMonth, 1).getDay();
         const startOffset = (firstDay + 6) % 7;
         const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
@@ -2823,7 +2603,6 @@ const Student = (() => {
             "Декабрь",
         ];
 
-        // Статистика месяца
         let monthStats = { stage: 0, task: 0, defense: 0 };
         filteredEvents.forEach((e) => {
             const d = new Date(e.date);
@@ -2872,9 +2651,7 @@ const Student = (() => {
 
         return `
       <div class="cal-layout">
-        <!-- Левая колонка: календарь -->
         <div class="card">
-          <!-- Заголовок с навигацией -->
           <div class="cal-nav">
             <button class="btn-ghost btn-sm" onclick="Student.calPrevMonth()" title="Предыдущий месяц">
               ${SVG.arrowLeft({ cls: "icon icon-sm" })}
@@ -2890,7 +2667,6 @@ const Student = (() => {
             </button>
           </div>
 
-          <!-- Фильтры -->
           <div class="cal-filters">
             <label class="cal-filter">
               <input type="checkbox" ${calFilter.stage ? "checked" : ""}
@@ -2912,7 +2688,6 @@ const Student = (() => {
             </label>
           </div>
 
-          <!-- Сетка -->
           <div class="calendar-grid">
             ${["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
                 .map((d) => `<div class="calendar-head">${d}</div>`)
@@ -2920,7 +2695,6 @@ const Student = (() => {
             ${cells}
           </div>
 
-          <!-- Статистика месяца -->
           <div class="cal-month-stats">
             <span>В этом месяце:</span>
             ${monthStats.stage > 0 ? `<b>${monthStats.stage} этапов</b>` : ""}
@@ -2934,7 +2708,6 @@ const Student = (() => {
           </div>
         </div>
 
-        <!-- Правая колонка: события выбранного дня -->
         <div class="card">
           ${
               !calSelectedDate
@@ -2979,7 +2752,6 @@ const Student = (() => {
         </div>
       </div>
 
-      <!-- Ближайшие события -->
       <div class="card mt-16">
         <div class="card-head">
           <div class="card-title" style="margin-bottom:0;">
@@ -3000,13 +2772,9 @@ const Student = (() => {
     `;
     };
 
-    /* =========================================================
-       СОБЫТИЯ КАЛЕНДАРЯ
-       ========================================================= */
     function buildCalendarEvents(work) {
         const events = [];
 
-        // Этапы
         Storage.getStagesByWork(work.id)
             .filter((s) => s.deadline && !s.done)
             .forEach((s) => {
@@ -3020,7 +2788,6 @@ const Student = (() => {
                 });
             });
 
-        // Задачи
         Storage.getTasksByWork(work.id)
             .filter((t) => t.deadline && t.col !== "done")
             .forEach((t) => {
@@ -3039,7 +2806,6 @@ const Student = (() => {
                 });
             });
 
-        // Защита
         if (work.deadline) {
             events.push({
                 date: work.deadline,
@@ -3123,9 +2889,6 @@ const Student = (() => {
     `;
     }
 
-    /* =========================================================
-       УПРАВЛЕНИЕ КАЛЕНДАРЁМ
-       ========================================================= */
     function calPrevMonth() {
         if (calMonth === 0) {
             calMonth = 11;
@@ -3170,9 +2933,6 @@ const Student = (() => {
         App.navigate("calendar");
     }
 
-    /* =========================================================
-       БЫСТРОЕ ДОБАВЛЕНИЕ ЗАДАЧИ НА ДЕНЬ
-       ========================================================= */
     function openQuickTaskModal(dateStr) {
         const work = getActiveWork();
         if (!work) {
@@ -3260,11 +3020,17 @@ const Student = (() => {
         const inputs = Utils.buildFuzzyInputs(work, progress);
         const res = Utils.safeFuzzyInfer(inputs);
 
-        // Сравнение со средним
+        if (!res) {
+            return `
+        <div class="card">
+          ${emptyState("Не удалось рассчитать статистику", "Проверьте правила нечёткого вывода.", SVG.alertTriangle)}
+        </div>
+      `;
+        }
+
         const comparison = getStudentComparison(u, work);
 
         return `
-      <!-- KPI -->
       <div class="metric-grid">
         <div class="metric">
           <div class="metric-lbl">Прогресс</div>
@@ -3290,7 +3056,6 @@ const Student = (() => {
         </div>
       </div>
 
-      <!-- Итоговые показатели Мамдани -->
       <div class="card mt-16">
         <div class="card-head">
           <div class="card-title" style="margin-bottom:0;">
@@ -3338,7 +3103,6 @@ const Student = (() => {
         }
       </div>
 
-      <!-- Линия времени прогресса -->
       <div class="card mt-16">
         <div class="card-head">
           <div class="card-title" style="margin-bottom:0;">
@@ -3351,7 +3115,6 @@ const Student = (() => {
         </div>
       </div>
 
-      <!-- Активность и сравнение -->
       <div class="grid grid-2 mt-16">
         <div class="card">
           <div class="card-head">
@@ -3376,7 +3139,6 @@ const Student = (() => {
         </div>
       </div>
 
-      <!-- Радар и этапы -->
       <div class="grid grid-2 mt-16">
         <div class="card">
           <div class="card-title">Нечёткий профиль работы</div>
@@ -3402,7 +3164,6 @@ const Student = (() => {
         const myRes = Utils.safeFuzzyInfer(myInputs);
         if (!myRes) return null;
 
-        // Все работы других студентов той же группы (или всех, если группы нет)
         const allWorks = Storage.getWorks().filter((w) => {
             if (Storage.sameId(w.id, work.id)) return false;
             const student = Storage.getUserById(w.studentId);
@@ -3538,14 +3299,9 @@ const Student = (() => {
     `;
     }
 
-    /* =========================================================
-       ЛИНИЯ ВРЕМЕНИ — прогресс за 30 дней
-       ========================================================= */
     function buildTimelineData(work, days = 30) {
         const stages = Storage.getStagesByWork(work.id);
-        const start = Date.now() - days * 86400000;
 
-        // Текущий прогресс
         const totalWeight = stages.reduce((s, x) => s + (x.weight || 1), 0);
 
         const data = [];
@@ -3556,7 +3312,6 @@ const Student = (() => {
             const dayEnd = new Date(dayTs);
             dayEnd.setHours(23, 59, 59, 999);
 
-            // Прогресс на конец этого дня = все этапы, completed до дня
             const doneByDay = stages
                 .filter(
                     (s) =>
@@ -3582,37 +3337,30 @@ const Student = (() => {
         return { labels, data };
     }
 
-    /* =========================================================
-       АКТИВНОСТЬ ПО ДНЯМ НЕДЕЛИ
-       ========================================================= */
     function buildActivityData(work) {
         const dowLabels = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
         const counts = [0, 0, 0, 0, 0, 0, 0];
 
         function dowIndex(ts) {
-            const d = new Date(ts).getDay(); // 0=вс, 1=пн...
+            const d = new Date(ts).getDay();
             return d === 0 ? 6 : d - 1;
         }
 
-        // Этапы
         Storage.getStagesByWork(work.id).forEach((s) => {
             if (s.completedAt) counts[dowIndex(s.completedAt)]++;
             if (s.createdAt) counts[dowIndex(s.createdAt)]++;
         });
 
-        // Задачи
         Storage.getTasksByWork(work.id).forEach((t) => {
             if (t.createdAt) counts[dowIndex(t.createdAt)]++;
             if (t.updatedAt && t.col === "done")
                 counts[dowIndex(t.updatedAt)]++;
         });
 
-        // Версии
         Storage.getVersionsByWork(work.id).forEach((v) => {
             if (v.createdAt) counts[dowIndex(v.createdAt)]++;
         });
 
-        // Комментарии
         Storage.getCommentsByWork(work.id).forEach((c) => {
             if (c.createdAt) counts[dowIndex(c.createdAt)]++;
         });
@@ -3629,7 +3377,6 @@ const Student = (() => {
         const inputs = Utils.buildFuzzyInputs(work, calcProgress(work.id));
         if (!inputs) return;
 
-        /* 1. Радар */
         Charts.radar(
             "studentRadarChart",
             [
@@ -3656,7 +3403,6 @@ const Student = (() => {
             ],
         );
 
-        /* 2. Прогресс по этапам */
         if (stages.length > 0) {
             Charts.bar(
                 "studentStagesChart",
@@ -3669,7 +3415,11 @@ const Student = (() => {
             );
         }
 
-        /* 3. Линия времени */
+        const C = Charts.COLORS;
+        const cs = getComputedStyle(document.documentElement);
+        const get = (n, f) => cs.getPropertyValue(n).trim() || f;
+        const lineColor = get("--line", "#ebebeb");
+
         const timeline = buildTimelineData(work, 30);
         const canvasT = document.getElementById("studentTimelineChart");
         if (canvasT) {
@@ -3680,8 +3430,7 @@ const Student = (() => {
                 canvasT._chart = null;
             }
 
-            const C = Charts.COLORS;
-            canvasT._chart = new Chart(canvasT, {
+            const chart = new Chart(canvasT, {
                 type: "line",
                 data: {
                     labels: timeline.labels,
@@ -3708,7 +3457,7 @@ const Student = (() => {
                             backgroundColor: "#fff",
                             titleColor: C.txt,
                             bodyColor: C.txt,
-                            borderColor: C.line,
+                            borderColor: lineColor,
                             borderWidth: 1,
                         },
                     },
@@ -3721,7 +3470,7 @@ const Student = (() => {
                                 stepSize: 20,
                                 callback: (v) => v + "%",
                             },
-                            grid: { color: C.line, drawBorder: false },
+                            grid: { color: lineColor, drawBorder: false },
                         },
                         x: {
                             ticks: {
@@ -3733,9 +3482,12 @@ const Student = (() => {
                     },
                 },
             });
+            canvasT._chart = chart;
+            if (typeof Charts.register === "function") {
+                Charts.register("studentTimelineChart", chart);
+            }
         }
 
-        /* 4. Активность по дням недели */
         const activity = buildActivityData(work);
         const canvasA = document.getElementById("studentActivityChart");
         if (canvasA) {
@@ -3746,8 +3498,7 @@ const Student = (() => {
                 canvasA._chart = null;
             }
 
-            const C = Charts.COLORS;
-            canvasA._chart = new Chart(canvasA, {
+            const chart = new Chart(canvasA, {
                 type: "bar",
                 data: {
                     labels: activity.labels,
@@ -3757,7 +3508,7 @@ const Student = (() => {
                             data: activity.data,
                             backgroundColor: activity.data.map((v) =>
                                 v === 0
-                                    ? C.line
+                                    ? lineColor
                                     : v >= 8
                                       ? C.ok
                                       : v >= 4
@@ -3772,9 +3523,7 @@ const Student = (() => {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                    },
+                    plugins: { legend: { display: false } },
                     scales: {
                         y: {
                             beginAtZero: true,
@@ -3782,7 +3531,7 @@ const Student = (() => {
                                 color: C.txt,
                                 precision: 0,
                             },
-                            grid: { color: C.line, drawBorder: false },
+                            grid: { color: lineColor, drawBorder: false },
                         },
                         x: {
                             ticks: { color: C.txt },
@@ -3791,6 +3540,10 @@ const Student = (() => {
                     },
                 },
             });
+            canvasA._chart = chart;
+            if (typeof Charts.register === "function") {
+                Charts.register("studentActivityChart", chart);
+            }
         }
     };
 
@@ -3808,6 +3561,11 @@ const Student = (() => {
         const progress = calcProgress(work.id);
         const inputs = Utils.buildFuzzyInputs(work, progress);
         const res = Utils.safeFuzzyInfer(inputs);
+
+        if (!res) {
+            App.toast("Не удалось рассчитать показатели");
+            return;
+        }
 
         const student = Storage.getUserById(work.studentId);
         const teacher = Storage.getUserById(work.teacherId);
@@ -3922,9 +3680,6 @@ const Student = (() => {
         }
     }
 
-    /* =========================================================
-       АКТИВНОСТЬ — фильтры, группировка по дате, поиск, экспорт
-       ========================================================= */
     let actFilter = "all";
     let actSearch = "";
 
@@ -3934,13 +3689,11 @@ const Student = (() => {
 
         const allEvents = buildActivityEvents(u);
 
-        // Фильтр по типу
         let filtered = allEvents;
         if (actFilter !== "all") {
             filtered = filtered.filter((e) => e.kind === actFilter);
         }
 
-        // Поиск
         if (actSearch) {
             const q = actSearch.toLowerCase();
             filtered = filtered.filter(
@@ -3950,10 +3703,8 @@ const Student = (() => {
             );
         }
 
-        // Сортировка (новые сверху)
         filtered = [...filtered].sort((a, b) => (b.time || 0) - (a.time || 0));
 
-        // KPI по типам (все события, не фильтрованные)
         const counts = {
             work: allEvents.filter((e) => e.kind === "work").length,
             stage: allEvents.filter((e) => e.kind === "stage").length,
@@ -3964,7 +3715,6 @@ const Student = (() => {
         };
 
         return `
-      <!-- KPI по типам -->
       <div class="metric-grid">
         <div class="metric">
           <div class="metric-lbl">Всего событий</div>
@@ -3984,7 +3734,6 @@ const Student = (() => {
         </div>
       </div>
 
-      <!-- Список активности -->
       <div class="card mt-16">
         <div class="card-head">
           <div class="card-title" style="margin-bottom:0;">
@@ -4001,7 +3750,6 @@ const Student = (() => {
           }
         </div>
 
-        <!-- Табы -->
         <div class="filter-tabs" style="margin-bottom:14px;">
           ${renderActTab("all", "Все", allEvents.length)}
           ${renderActTab("work", "Работы", counts.work)}
@@ -4012,7 +3760,6 @@ const Student = (() => {
           ${renderActTab("defense", "Защита", counts.defense)}
         </div>
 
-        <!-- Поиск -->
         <div class="review-toolbar">
           <input type="text"
             class="activity-search review-search"
@@ -4038,15 +3785,11 @@ const Student = (() => {
     `;
     };
 
-    /* =========================================================
-       ПОСТРОЕНИЕ СОБЫТИЙ
-       ========================================================= */
     function buildActivityEvents(u) {
         const events = [];
         const works = getMyWorks();
 
         works.forEach((w) => {
-            // Создание работы
             if (w.createdAt) {
                 events.push({
                     time: w.createdAt,
@@ -4056,7 +3799,6 @@ const Student = (() => {
                 });
             }
 
-            // Утверждение
             if (w.approvedAt) {
                 events.push({
                     time: w.approvedAt,
@@ -4066,7 +3808,6 @@ const Student = (() => {
                 });
             }
 
-            // Отклонение
             if (w.status === "rejected" && w.rejectReason) {
                 events.push({
                     time: w.updatedAt || w.createdAt,
@@ -4076,7 +3817,6 @@ const Student = (() => {
                 });
             }
 
-            // Защита
             if (w.status === "done" && w.defendedAt) {
                 events.push({
                     time: w.defendedAt,
@@ -4086,7 +3826,6 @@ const Student = (() => {
                 });
             }
 
-            // Этапы
             Storage.getStagesByWork(w.id)
                 .filter((s) => s.completedAt)
                 .forEach((s) => {
@@ -4098,7 +3837,6 @@ const Student = (() => {
                     });
                 });
 
-            // Задачи (созданы + закрыты)
             Storage.getTasksByWork(w.id).forEach((t) => {
                 if (t.createdAt) {
                     events.push({
@@ -4119,7 +3857,6 @@ const Student = (() => {
                 }
             });
 
-            // Версии
             Storage.getVersionsByWork(w.id).forEach((v) => {
                 events.push({
                     time: v.createdAt,
@@ -4129,7 +3866,6 @@ const Student = (() => {
                 });
             });
 
-            // Комментарии
             Storage.getCommentsByWork(w.id).forEach((c) => {
                 const author = Storage.getUserById(c.authorId);
                 events.push({
@@ -4144,9 +3880,6 @@ const Student = (() => {
         return events;
     }
 
-    /* =========================================================
-       ГРУППИРОВКА ПО ДАТЕ
-       ========================================================= */
     function getDateGroupLabel(ts) {
         const now = new Date();
         const todayStart = new Date(
@@ -4166,7 +3899,6 @@ const Student = (() => {
     }
 
     function renderActivityGrouped(events) {
-        // Группировка
         const groups = {};
         const order = [
             "Сегодня",
@@ -4228,9 +3960,6 @@ const Student = (() => {
     `;
     }
 
-    /* =========================================================
-       УПРАВЛЕНИЕ
-       ========================================================= */
     function renderActTab(id, label, count) {
         const active = actFilter === id ? "active" : "";
         return `
@@ -4249,19 +3978,19 @@ const Student = (() => {
     function setActivitySearch(q) {
         actSearch = q;
         App.navigate("activity");
-        setTimeout(() => {
-            const input = document.querySelector(".activity-search");
-            if (input) {
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                const input = document.querySelector(".activity-search");
+                if (!input) return;
                 input.focus();
-                const len = input.value.length;
-                input.setSelectionRange(len, len);
-            }
-        }, 0);
+                try {
+                    const len = input.value.length;
+                    input.setSelectionRange(len, len);
+                } catch (e) {}
+            }, 0);
+        });
     }
 
-    /* =========================================================
-       ЭКСПОРТ CSV
-       ========================================================= */
     function exportActivity() {
         const u = getUser();
         if (!u) return;
@@ -4316,6 +4045,7 @@ const Student = (() => {
     VIEWS.simulate = function (params) {
         return Simulate.render(params);
     };
+
     VIEWS.mfEditor = function () {
         return MFEditor.render();
     };

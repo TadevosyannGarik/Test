@@ -112,19 +112,18 @@ const MFEditor = (() => {
 
     let selectedVar = "progress";
     let liveValue = 50;
-    let chartInstance = null;
+    let _mfChartInstance = null;
+    let _chartTimer = null;
 
-    /* =========================================================
-       УТИЛИТЫ
-       ========================================================= */
-    function clamp01(v) {
-        if (typeof v !== "number" || isNaN(v) || !isFinite(v)) return 0;
-        return Math.max(0, Math.min(100, v));
+    function clamp(v, min, max) {
+        const n = Number(v);
+        if (!isFinite(n)) return min;
+        return Math.max(min, Math.min(max, n));
     }
 
-    function sanitizeTriangle(tri) {
+    function sanitizeTriangle(tri, max = 100) {
         if (!Array.isArray(tri) || tri.length !== 3) return [0, 0, 0];
-        let [a, b, c] = tri.map(clamp01);
+        let [a, b, c] = tri.map((v) => clamp(v, 0, max));
         if (a > b) [a, b] = [b, a];
         if (b > c) [b, c] = [c, b];
         if (a > b) [a, b] = [b, a];
@@ -136,6 +135,7 @@ const MFEditor = (() => {
         const clean = {};
         for (const varName of Object.keys(obj)) {
             if (!DEFAULTS[varName]) continue;
+            const range = VAR_RANGE[varName] || { min: 0, max: 100 };
             const terms = obj[varName];
             if (!terms || typeof terms !== "object") continue;
             clean[varName] = {};
@@ -143,7 +143,7 @@ const MFEditor = (() => {
                 if (!DEFAULTS[varName][term]) continue;
                 const tri = terms[term];
                 if (!Array.isArray(tri) || tri.length !== 3) continue;
-                clean[varName][term] = sanitizeTriangle(tri);
+                clean[varName][term] = sanitizeTriangle(tri, range.max);
             }
             if (Object.keys(clean[varName]).length === 0) {
                 delete clean[varName];
@@ -163,26 +163,13 @@ const MFEditor = (() => {
         applyOverrides();
     }
 
-    /**
-     * Возвращает эффективный треугольник для переменной/терма:
-     * override, если есть, иначе дефолт.
-     */
     function getEffectiveTerm(varName, term) {
         const overrides = getOverrides();
-        if (
-            overrides[varName] &&
-            overrides[varName][term] &&
-            Array.isArray(overrides[varName][term])
-        ) {
-            return overrides[varName][term].slice();
-        }
-        const def = DEFAULTS[varName]?.[term];
-        return def ? def.slice() : [0, 0, 0];
+        const range = VAR_RANGE[varName] || { min: 0, max: 100 };
+        const raw = overrides[varName]?.[term] || DEFAULTS[varName]?.[term];
+        return raw ? sanitizeTriangle(raw, range.max) : [0, 0, 0];
     }
 
-    /**
-     * Проверяет, изменён ли терм (есть ли override).
-     */
     function isTermOverridden(varName, term) {
         const overrides = getOverrides();
         return !!(
@@ -192,7 +179,7 @@ const MFEditor = (() => {
         );
     }
 
-    function _trimf(x, a, b, c) {
+    function trimf(x, a, b, c) {
         if (typeof Fuzzy !== "undefined" && Fuzzy.trimf) {
             return Fuzzy.trimf(x, a, b, c);
         }
@@ -208,9 +195,10 @@ const MFEditor = (() => {
         if (typeof Fuzzy === "undefined" || !Fuzzy.MF) return;
         for (const v in DEFAULTS) {
             if (!Fuzzy.MF[v]) continue;
+            const range = VAR_RANGE[v] || { min: 0, max: 100 };
             for (const t in DEFAULTS[v]) {
-                const [a, b, c] = DEFAULTS[v][t];
-                Fuzzy.MF[v][t] = (x) => _trimf(x, a, b, c);
+                const [a, b, c] = sanitizeTriangle(DEFAULTS[v][t], range.max);
+                Fuzzy.MF[v][t] = (x) => trimf(x, a, b, c);
             }
         }
     }
@@ -223,42 +211,42 @@ const MFEditor = (() => {
         const overrides = getOverrides();
         for (const varName in overrides) {
             if (!Fuzzy.MF[varName]) continue;
+            const range = VAR_RANGE[varName] || { min: 0, max: 100 };
             for (const term in overrides[varName]) {
                 if (typeof Fuzzy.MF[varName][term] !== "function") continue;
                 const tri = overrides[varName][term];
                 if (!Array.isArray(tri) || tri.length !== 3) continue;
-                const [a, b, c] = sanitizeTriangle(tri);
-                Fuzzy.MF[varName][term] = (x) => _trimf(x, a, b, c);
+                const [a, b, c] = sanitizeTriangle(tri, range.max);
+                Fuzzy.MF[varName][term] = (x) => trimf(x, a, b, c);
             }
         }
+
+        requestAnimationFrame(() => drawChart());
     }
 
     function restoreVarDefaults(varName) {
         if (typeof Fuzzy === "undefined" || !Fuzzy.MF) return;
         if (!Fuzzy.MF[varName] || !DEFAULTS[varName]) return;
+        const range = VAR_RANGE[varName] || { min: 0, max: 100 };
         for (const t in DEFAULTS[varName]) {
-            const [a, b, c] = DEFAULTS[varName][t];
-            Fuzzy.MF[varName][t] = (x) => _trimf(x, a, b, c);
+            const [a, b, c] = sanitizeTriangle(DEFAULTS[varName][t], range.max);
+            Fuzzy.MF[varName][t] = (x) => trimf(x, a, b, c);
         }
     }
 
-    /**
-     * Возвращает объект с эффективными термами переменной
-     * (с учётом overrides).
-     */
     function getCurrentDef(varName) {
-        const def = {};
-        for (const t of ["low", "med", "high"]) {
-            def[t] = getEffectiveTerm(varName, t);
-        }
-        return def;
+        return {
+            low: getEffectiveTerm(varName, "low"),
+            med: getEffectiveTerm(varName, "med"),
+            high: getEffectiveTerm(varName, "high"),
+        };
     }
 
     function getMu(varName, term, x) {
         const def = getEffectiveTerm(varName, term);
         if (!def) return 0;
         const [a, b, c] = def;
-        return _trimf(x, a, b, c);
+        return trimf(x, a, b, c);
     }
 
     function scaleFrom100(varName, val100) {
@@ -266,17 +254,13 @@ const MFEditor = (() => {
         return Math.round((val100 / 100) * range.max);
     }
 
-    function scaleTo100(varName, val) {
-        const range = VAR_RANGE[varName] || { min: 0, max: 100 };
-        return (val / range.max) * 100;
-    }
-
-    /* =========================================================
-       РЕНДЕР
-       ========================================================= */
     function render() {
         const currentDef = getCurrentDef(selectedVar);
-        const range = VAR_RANGE[selectedVar] || { min: 0, max: 100, unit: "" };
+        const range = VAR_RANGE[selectedVar] || {
+            min: 0,
+            max: 100,
+            unit: "",
+        };
 
         return `
       ${renderHero()}
@@ -338,12 +322,12 @@ const MFEditor = (() => {
     }
 
     function renderLiveExample() {
-        const range = VAR_RANGE[selectedVar] || { min: 0, max: 100 };
+        const range = VAR_RANGE[selectedVar] || { min: 0, max: 100, unit: "" };
         const realValue = scaleFrom100(selectedVar, liveValue);
 
-        const muLow = getMu(selectedVar, "low", liveValue);
-        const muMed = getMu(selectedVar, "med", liveValue);
-        const muHigh = getMu(selectedVar, "high", liveValue);
+        const muLow = getMu(selectedVar, "low", realValue);
+        const muMed = getMu(selectedVar, "med", realValue);
+        const muHigh = getMu(selectedVar, "high", realValue);
 
         const maxMu = Math.max(muLow, muMed, muHigh);
         let dominant = "низкий";
@@ -549,21 +533,23 @@ const MFEditor = (() => {
 
     function renderMiniBars(varName) {
         const def = getCurrentDef(varName);
+        const range = VAR_RANGE[varName] || { min: 0, max: 100 };
+        const max = range.max || 100;
 
         return `
       <div class="mf-mini-bars">
         ${["low", "med", "high"]
             .map((t) => {
-                const [a, , c] = sanitizeTriangle(def[t]);
-                const width = Math.max(15, c - a);
-                const left = a;
+                const [a, , c] = sanitizeTriangle(def[t], max);
+                const leftPct = (a / max) * 100;
+                const widthPct = Math.max(2, ((c - a) / max) * 100);
                 const color =
                     t === "low"
                         ? "var(--ok)"
                         : t === "med"
                           ? "var(--warn)"
                           : "var(--bad)";
-                return `<span class="mf-mini-bar" style="left:${left}%;width:${width}%;background:${color}"></span>`;
+                return `<span class="mf-mini-bar" style="left:${leftPct}%;width:${widthPct}%;background:${color}"></span>`;
             })
             .join("")}
       </div>
@@ -590,9 +576,6 @@ const MFEditor = (() => {
     `;
     }
 
-    /* =========================================================
-       ДЕЙСТВИЯ
-       ========================================================= */
     function selectVar(v) {
         if (!DEFAULTS[v]) return;
         selectedVar = v;
@@ -602,55 +585,88 @@ const MFEditor = (() => {
 
     function onLiveChange(val) {
         liveValue = +val;
-        const liveBox = document.querySelector(".mf-live");
-        if (liveBox) {
-            liveBox.outerHTML = renderLiveExample();
-        }
+        updateLiveUI();
         drawChart();
     }
 
-    /**
-     * Обновляет ОДИН терм — точечно.
-     * Раньше копировались все три дефолтных, теперь только изменяемый.
-     */
+    function updateLiveUI() {
+        const range = VAR_RANGE[selectedVar] || { min: 0, max: 100, unit: "" };
+        const realValue = scaleFrom100(selectedVar, liveValue);
+
+        const valEl = document.querySelector(".mf-live-slider-val");
+        if (valEl) valEl.textContent = realValue + (range.unit || "");
+
+        const muLow = getMu(selectedVar, "low", realValue);
+        const muMed = getMu(selectedVar, "med", realValue);
+        const muHigh = getMu(selectedVar, "high", realValue);
+        const mus = [muLow, muMed, muHigh];
+
+        const cards = document.querySelectorAll(".mf-live-term");
+        cards.forEach((card, i) => {
+            const mu = mus[i];
+            card.classList.toggle("active", mu > 0.1);
+            const muEl = card.querySelector(".mf-live-term-mu");
+            if (muEl) muEl.textContent = mu.toFixed(2);
+            const barEl = card.querySelector(".mf-live-term-bar > div");
+            if (barEl) barEl.style.width = mu * 100 + "%";
+        });
+
+        const maxMu = Math.max(muLow, muMed, muHigh);
+        let dominant = "низкий";
+        if (maxMu === muMed) dominant = "средний";
+        if (maxMu === muHigh) dominant = "высокий";
+        if (maxMu === 0) dominant = "никакой";
+
+        const verdictEl = document.querySelector(".mf-live-verdict");
+        if (verdictEl) {
+            const icon =
+                typeof SVG !== "undefined"
+                    ? SVG.info({ cls: "icon icon-sm" })
+                    : "";
+            verdictEl.innerHTML = `
+                ${icon}
+                <span>
+                    Система считает это значение <b>${dominant}</b>
+                    (μ = ${maxMu.toFixed(2)}).
+                    ${maxMu === 0 ? "Ни один терм не сработал — значение вне диапазонов." : ""}
+                </span>
+            `;
+        }
+    }
+
     function updateTri(term, idx, val) {
         if (!["low", "med", "high"].includes(term)) return;
         if (![0, 1, 2].includes(idx)) return;
 
         const range = VAR_RANGE[selectedVar] || { min: 0, max: 100 };
-        const scale = 100 / range.max;
-        const safeVal = clamp01(+val * scale);
+        const safeVal = clamp(val, range.min, range.max);
 
         const overrides = getOverrides();
-
-        // Инициализируем ветку переменной БЕЗ копирования всех термов
         if (!overrides[selectedVar]) {
             overrides[selectedVar] = {};
         }
 
-        // Копируем текущий эффективный терм (с учётом дефолта)
         const current = getEffectiveTerm(selectedVar, term);
         const updated = current.slice();
         updated[idx] = safeVal;
 
-        overrides[selectedVar][term] = sanitizeTriangle(updated);
+        overrides[selectedVar][term] = sanitizeTriangle(updated, range.max);
 
         setOverrides(overrides);
 
-        if (typeof Audit !== "undefined") {
-            Audit.log(
-                "Изменена ФП",
-                `${VAR_LABELS[selectedVar] || selectedVar} · ${term}`,
-                `[${overrides[selectedVar][term].join(", ")}]`,
-                "info",
-            );
+        try {
+            if (typeof Audit !== "undefined") {
+                Audit.log(
+                    "Изменена ФП",
+                    `${VAR_LABELS[selectedVar] || selectedVar} · ${term}`,
+                    `[${overrides[selectedVar][term].join(", ")}]`,
+                    "info",
+                );
+            }
+        } catch (e) {
+            console.warn("[MFEditor] audit error:", e);
         }
 
-        const liveBox = document.querySelector(".mf-live");
-        if (liveBox) {
-            liveBox.outerHTML = renderLiveExample();
-        }
-        drawChart();
         renderView();
     }
 
@@ -665,9 +681,11 @@ const MFEditor = (() => {
             if (typeof App !== "undefined" && App.toast) {
                 App.toast("Применён пресет: Стандарт");
             }
-            if (typeof Audit !== "undefined") {
-                Audit.log("Применён пресет ФП", "Стандарт", "", "warning");
-            }
+            try {
+                if (typeof Audit !== "undefined") {
+                    Audit.log("Применён пресет ФП", "Стандарт", "", "warning");
+                }
+            } catch (e) {}
             return;
         }
 
@@ -683,9 +701,11 @@ const MFEditor = (() => {
             if (typeof App !== "undefined" && App.toast) {
                 App.toast(`Применён пресет: ${preset.label}`);
             }
-            if (typeof Audit !== "undefined") {
-                Audit.log("Применён пресет ФП", preset.label, "", "info");
-            }
+            try {
+                if (typeof Audit !== "undefined") {
+                    Audit.log("Применён пресет ФП", preset.label, "", "info");
+                }
+            } catch (e) {}
         }
     }
 
@@ -714,10 +734,11 @@ const MFEditor = (() => {
         if (typeof App !== "undefined" && App.toast) {
             App.toast("Все ФП сброшены к значениям по умолчанию");
         }
-
-        if (typeof Audit !== "undefined") {
-            Audit.log("Сброшены все ФП", "", "", "warning");
-        }
+        try {
+            if (typeof Audit !== "undefined") {
+                Audit.log("Сброшены все ФП", "", "", "warning");
+            }
+        } catch (e) {}
     }
 
     function exportSettings() {
@@ -772,9 +793,11 @@ const MFEditor = (() => {
                     if (typeof App !== "undefined" && App.toast) {
                         App.toast("Настройки ФП импортированы");
                     }
-                    if (typeof Audit !== "undefined") {
-                        Audit.log("Импорт ФП", file.name, "", "info");
-                    }
+                    try {
+                        if (typeof Audit !== "undefined") {
+                            Audit.log("Импорт ФП", file.name, "", "info");
+                        }
+                    } catch (e) {}
                 } catch (err) {
                     console.error(err);
                     if (typeof App !== "undefined" && App.toast) {
@@ -793,38 +816,39 @@ const MFEditor = (() => {
         const canvas = document.getElementById("mfChart");
         if (!canvas) return;
 
-        if (chartInstance) {
+        if (_mfChartInstance) {
             try {
-                chartInstance.destroy();
+                _mfChartInstance.destroy();
             } catch (e) {}
-            chartInstance = null;
+            _mfChartInstance = null;
+        }
+        if (typeof Charts !== "undefined" && Charts.destroy) {
+            Charts.destroy("mfChart");
         }
 
         const currentDef = getCurrentDef(selectedVar);
         const range = VAR_RANGE[selectedVar] || { min: 0, max: 100 };
+        const max = range.max || 100;
 
-        const x = Array.from({ length: 101 }, (_, i) => i);
+        const steps = 100;
+        const step = max / steps;
+        const x = Array.from(
+            { length: steps + 1 },
+            (_, i) => +(i * step).toFixed(4),
+        );
 
-        const dataLow = x.map((v) => {
-            const [a, b, c] = sanitizeTriangle(currentDef.low);
-            return _trimf(v, a, b, c);
-        });
-        const dataMed = x.map((v) => {
-            const [a, b, c] = sanitizeTriangle(currentDef.med);
-            return _trimf(v, a, b, c);
-        });
-        const dataHigh = x.map((v) => {
-            const [a, b, c] = sanitizeTriangle(currentDef.high);
-            return _trimf(v, a, b, c);
-        });
+        const [aLow, bLow, cLow] = sanitizeTriangle(currentDef.low, max);
+        const [aMed, bMed, cMed] = sanitizeTriangle(currentDef.med, max);
+        const [aHigh, bHigh, cHigh] = sanitizeTriangle(currentDef.high, max);
 
-        const liveMuLow = getMu(selectedVar, "low", liveValue);
-        const liveMuMed = getMu(selectedVar, "med", liveValue);
-        const liveMuHigh = getMu(selectedVar, "high", liveValue);
+        const dataLow = x.map((v) => trimf(v, aLow, bLow, cLow));
+        const dataMed = x.map((v) => trimf(v, aMed, bMed, cMed));
+        const dataHigh = x.map((v) => trimf(v, aHigh, bHigh, cHigh));
 
-        const pointLow = x.map((v) => (v === liveValue ? liveMuLow : null));
-        const pointMed = x.map((v) => (v === liveValue ? liveMuMed : null));
-        const pointHigh = x.map((v) => (v === liveValue ? liveMuHigh : null));
+        const realValue = scaleFrom100(selectedVar, liveValue);
+        const liveMuLow = getMu(selectedVar, "low", realValue);
+        const liveMuMed = getMu(selectedVar, "med", realValue);
+        const liveMuHigh = getMu(selectedVar, "high", realValue);
 
         const cs = getComputedStyle(document.documentElement);
         const get = (n, f) => cs.getPropertyValue(n).trim() || f;
@@ -833,19 +857,21 @@ const MFEditor = (() => {
             warn: get("--warn", "#c47f1a"),
             bad: get("--bad", "#c23a2f"),
             accent: get("--accent", "#111111"),
-            purple: "#7c5cf0",
             txt: get("--txt-muted", "#71717a"),
             line: get("--line", "#ebebeb"),
         };
 
-        chartInstance = new Chart(canvas, {
+        function toXY(arr) {
+            return arr.map((y, i) => ({ x: x[i], y }));
+        }
+
+        _mfChartInstance = new Chart(canvas, {
             type: "line",
             data: {
-                labels: x,
                 datasets: [
                     {
                         label: "Низкий",
-                        data: dataLow,
+                        data: toXY(dataLow),
                         borderColor: C.ok,
                         backgroundColor: C.ok + "20",
                         borderWidth: 2.5,
@@ -856,7 +882,7 @@ const MFEditor = (() => {
                     },
                     {
                         label: "Средний",
-                        data: dataMed,
+                        data: toXY(dataMed),
                         borderColor: C.warn,
                         backgroundColor: C.warn + "20",
                         borderWidth: 2.5,
@@ -867,7 +893,7 @@ const MFEditor = (() => {
                     },
                     {
                         label: "Высокий",
-                        data: dataHigh,
+                        data: toXY(dataHigh),
                         borderColor: C.bad,
                         backgroundColor: C.bad + "20",
                         borderWidth: 2.5,
@@ -877,8 +903,8 @@ const MFEditor = (() => {
                         tension: 0,
                     },
                     {
-                        label: "Текущее значение",
-                        data: pointLow,
+                        label: "_live_low",
+                        data: [{ x: realValue, y: liveMuLow }],
                         borderColor: C.ok,
                         backgroundColor: C.ok,
                         borderWidth: 0,
@@ -889,8 +915,8 @@ const MFEditor = (() => {
                         showLine: false,
                     },
                     {
-                        label: "_med_point",
-                        data: pointMed,
+                        label: "_live_med",
+                        data: [{ x: realValue, y: liveMuMed }],
                         borderColor: C.warn,
                         backgroundColor: C.warn,
                         borderWidth: 0,
@@ -901,8 +927,8 @@ const MFEditor = (() => {
                         showLine: false,
                     },
                     {
-                        label: "_high_point",
-                        data: pointHigh,
+                        label: "_live_high",
+                        data: [{ x: realValue, y: liveMuHigh }],
                         borderColor: C.bad,
                         backgroundColor: C.bad,
                         borderWidth: 0,
@@ -933,6 +959,7 @@ const MFEditor = (() => {
                         },
                     },
                     tooltip: {
+                        filter: (item) => !item.dataset.label.startsWith("_"),
                         backgroundColor: "#fff",
                         titleColor: C.txt,
                         bodyColor: C.txt,
@@ -942,13 +969,10 @@ const MFEditor = (() => {
                         callbacks: {
                             title: (items) => {
                                 const v = items[0].parsed.x;
-                                const real = scaleFrom100(selectedVar, v);
-                                const range = VAR_RANGE[selectedVar];
-                                return `${VAR_LABELS[selectedVar]} = ${real}${range?.unit || ""}`;
+                                const unit = range.unit || "";
+                                return `${VAR_LABELS[selectedVar]} = ${v}${unit}`;
                             },
                             label: (item) => {
-                                if (item.dataset.label.startsWith("_"))
-                                    return "";
                                 return `${item.dataset.label}: μ = ${item.parsed.y.toFixed(2)}`;
                             },
                         },
@@ -957,16 +981,13 @@ const MFEditor = (() => {
                 scales: {
                     x: {
                         type: "linear",
-                        min: 0,
-                        max: 100,
+                        min: range.min ?? 0,
+                        max: max,
                         ticks: {
                             color: C.txt,
                             font: { size: 10 },
-                            stepSize: 10,
-                            callback: (v) => {
-                                const real = scaleFrom100(selectedVar, v);
-                                return real;
-                            },
+                            stepSize: max / 10,
+                            callback: (v) => v,
                         },
                         grid: { color: C.line, drawBorder: false },
                         title: {
@@ -998,10 +1019,22 @@ const MFEditor = (() => {
     }
 
     function renderView() {
+        if (typeof Charts !== "undefined" && Charts.destroyAll) {
+            Charts.destroyAll();
+        }
+        if (_chartTimer) {
+            clearTimeout(_chartTimer);
+            _chartTimer = null;
+        }
+
         const root = document.getElementById("viewRoot");
         if (!root) return;
         root.innerHTML = `<div class="view active">${render()}</div>`;
-        setTimeout(drawChart, 50);
+
+        _chartTimer = setTimeout(() => {
+            _chartTimer = null;
+            drawChart();
+        }, 50);
     }
 
     function init() {
@@ -1020,6 +1053,7 @@ const MFEditor = (() => {
         importSettings,
         renderView,
         applyOverrides,
+        drawChart,
         init,
         DEFAULTS,
         VAR_LABELS,

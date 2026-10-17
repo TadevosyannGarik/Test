@@ -1,6 +1,7 @@
 const Audit = (() => {
     const KEY = "fp_audit";
     const MAX_ENTRIES = 500;
+    const FILTER_KEYS = ["type", "role", "dateFrom", "dateTo", "q"];
 
     let currentFilter = {
         type: "",
@@ -30,10 +31,20 @@ const Audit = (() => {
 
     function log(action, target, details, type) {
         if (typeof Auth === "undefined") return;
-        const user = Auth.getUser();
+        let user;
+        try {
+            user = Auth.getUser();
+        } catch (e) {
+            return;
+        }
         if (!user || !user.id) return;
 
-        const list = Storage.get(KEY, []);
+        let list;
+        try {
+            list = Storage.get(KEY, []);
+        } catch (e) {
+            return;
+        }
         const arr = Array.isArray(list) ? list : [];
 
         arr.push({
@@ -106,9 +117,10 @@ const Audit = (() => {
         }
 
         if (opts.dateTo) {
-            const to = new Date(opts.dateTo).getTime();
-            if (!isNaN(to)) {
-                const endOfDay = to + 86400000 - 1;
+            const toDate = new Date(opts.dateTo);
+            if (!isNaN(toDate.getTime())) {
+                toDate.setHours(23, 59, 59, 999);
+                const endOfDay = toDate.getTime();
                 res = res.filter((x) => x.createdAt <= endOfDay);
             }
         }
@@ -126,11 +138,11 @@ const Audit = (() => {
           <div class="card-title">Журнал действий (${all.length})</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <button class="btn-ghost btn-sm" onclick="Audit.exportCSV()">
-              ${SVG.download({ cls: "icon icon-sm" })}
+              ${typeof SVG !== "undefined" ? SVG.download({ cls: "icon icon-sm" }) : ""}
               <span>CSV</span>
             </button>
             <button class="btn-ghost btn-sm" onclick="Audit.confirmClear()">
-              ${SVG.trash({ cls: "icon icon-sm" })}
+              ${typeof SVG !== "undefined" ? SVG.trash({ cls: "icon icon-sm" }) : ""}
               <span>Очистить</span>
             </button>
           </div>
@@ -165,39 +177,48 @@ const Audit = (() => {
             oninput="Audit.filterBy(this.value, 'q')">
         </div>
 
-        <div style="font-size:12px;color:var(--txt-muted);margin-bottom:10px;">
-          Найдено: <b>${list.length}</b>
-          ${list.length !== all.length ? `из ${all.length}` : ""}
+        <div id="auditContent">
+          ${renderContent(list, all)}
         </div>
-
-        <div id="auditList">
-          ${
-              list.length === 0
-                  ? renderEmpty()
-                  : list
-                        .slice(0, 100)
-                        .map((e) => renderAuditRow(e))
-                        .join("")
-          }
-        </div>
-
-        ${
-            list.length > 100
-                ? `
-          <div style="text-align:center;padding:14px;color:var(--txt-muted);font-size:12px;">
-            Показаны последние 100 из ${list.length}
-          </div>
-        `
-                : ""
-        }
       </div>
     `;
+    }
+
+    function renderContent(list, all) {
+        return `
+      <div style="font-size:12px;color:var(--txt-muted);margin-bottom:10px;">
+        Найдено: <b>${list.length}</b>
+        ${list.length !== all.length ? `из ${all.length}` : ""}
+      </div>
+
+      <div id="auditList">
+        ${renderList(list)}
+      </div>
+
+      ${
+          list.length > 100
+              ? `
+        <div style="text-align:center;padding:14px;color:var(--txt-muted);font-size:12px;">
+          Показаны последние 100 из ${list.length}
+        </div>
+      `
+              : ""
+      }
+    `;
+    }
+
+    function renderList(list) {
+        if (list.length === 0) return renderEmpty();
+        return list
+            .slice(0, 100)
+            .map((e) => renderAuditRow(e))
+            .join("");
     }
 
     function renderEmpty() {
         return `
       <div class="empty-state">
-        ${SVG.log({ cls: "icon icon-2xl" })}
+        ${typeof SVG !== "undefined" ? SVG.log({ cls: "icon icon-2xl" }) : ""}
         <h3>Записей нет</h3>
         <p>Здесь будут отображаться все значимые действия пользователей.</p>
       </div>
@@ -223,18 +244,14 @@ const Audit = (() => {
     }
 
     function filterBy(val, key) {
+        if (!FILTER_KEYS.includes(key)) return;
         currentFilter[key] = val;
+
         const list = filter(getAll(), currentFilter);
-        const box = document.getElementById("auditList");
+        const box = document.getElementById("auditContent");
         if (!box) return;
 
-        box.innerHTML =
-            list.length === 0
-                ? renderEmpty()
-                : list
-                      .slice(0, 100)
-                      .map((e) => renderAuditRow(e))
-                      .join("");
+        box.innerHTML = renderContent(list, getAll());
     }
 
     function confirmClear() {

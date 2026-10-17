@@ -3,80 +3,92 @@ const DocxCheck = (() => {
     const HISTORY_KEY = "fp_docx_history";
     const MAX_HISTORY = 30;
 
-    const escapeHtml = Utils.escapeHtml;
+    const escapeHtml =
+        typeof Utils !== "undefined" && Utils.escapeHtml
+            ? Utils.escapeHtml
+            : (str) => {
+                  if (str === null || str === undefined) return "";
+                  return String(str)
+                      .replace(/&/g, "&amp;")
+                      .replace(/</g, "&lt;")
+                      .replace(/>/g, "&gt;")
+                      .replace(/"/g, "&quot;");
+              };
 
-    const CHECKS = [
-        {
+    const CHECKS = Object.freeze([
+        Object.freeze({
             id: "font",
             title: "Шрифт Times New Roman",
             weight: 1.5,
             type: "heuristic",
             hint: "Проверяется по тексту документа (mammoth не сохраняет информацию о шрифте)",
             fix: "Установите шрифт Times New Roman для всего текста (в Word: Ctrl+A → выбрать шрифт).",
-        },
-        {
+        }),
+        Object.freeze({
             id: "size",
             title: "Размер шрифта 14 пт",
             weight: 1.5,
             type: "info",
             hint: "Не проверяется автоматически — mammoth не сохраняет размеры",
             fix: "Основной текст — 14 пт, заголовки — крупнее, подписи к рисункам — 12 пт.",
-        },
-        {
+        }),
+        Object.freeze({
             id: "interval",
             title: "Межстрочный интервал 1.5",
             weight: 1.0,
             type: "heuristic",
             hint: "Косвенная оценка по длине параграфов",
             fix: "Установите межстрочный интервал 1.5 (в Word: Формат → Абзац → Интервал).",
-        },
-        {
+        }),
+        Object.freeze({
             id: "indent",
             title: "Абзацный отступ 1.25 см",
             weight: 1.0,
             type: "heuristic",
             hint: "Косвенная оценка по структуре документа",
             fix: "Первую строку абзаца — с отступом 1.25 см (Формат → Абзац → Первая строка).",
-        },
-        {
+        }),
+        Object.freeze({
             id: "margins",
             title: "Поля: Л 30, П 15, В/Н 20 мм",
             weight: 1.5,
             type: "info",
             hint: "Не проверяется — mammoth не сохраняет настройки страницы",
             fix: "Поля: левое 30 мм, правое 15 мм, верхнее и нижнее — 20 мм.",
-        },
-        {
+        }),
+        Object.freeze({
             id: "pages",
             title: "Нумерация страниц",
             weight: 0.5,
             type: "heuristic",
             hint: "Косвенная оценка по ключевым словам",
             fix: "Вставьте номера страниц внизу по центру (Вставка → Номер страницы).",
-        },
-        {
+        }),
+        Object.freeze({
             id: "headings",
             title: "Заголовки без точки в конце",
             weight: 1.0,
             type: "text",
             hint: "Проверяется по тегам заголовков",
             fix: "В конце заголовков точку не ставят. Заголовки должны быть с прописной буквы.",
-        },
-        {
+        }),
+        Object.freeze({
             id: "literature",
             title: "Список литературы по ГОСТ",
             weight: 1.0,
             type: "text",
             hint: "Проверяется по ключевым словам в тексте",
             fix: "Добавьте раздел «Список литературы» и оформите источники по ГОСТ Р 7.0.5–2008.",
-        },
-    ];
+        }),
+    ]);
 
-    /* =========================================================
-       ИСТОРИЯ ПРОВЕРОК
-       ========================================================= */
     function getAllHistory() {
-        const list = Storage.get(HISTORY_KEY, []);
+        let list;
+        try {
+            list = Storage.get(HISTORY_KEY, []);
+        } catch (e) {
+            return [];
+        }
         return Array.isArray(list) ? list : [];
     }
 
@@ -94,7 +106,8 @@ const DocxCheck = (() => {
     function addToHistory(workId, result) {
         if (!workId || !result) return;
         const list = getAllHistory();
-        list.push({
+
+        const entry = {
             id: uid(),
             workId,
             fileName: result.fileName,
@@ -103,10 +116,12 @@ const DocxCheck = (() => {
             paraCount: result.paraCount,
             pct: result.pct,
             checks: result.checks,
+            preview: result.preview,
             checkedAt: result.checkedAt,
-        });
+        };
 
-        // Ограничиваем историю
+        list.push(entry);
+
         const trimmed = list.slice(-MAX_HISTORY);
         setAllHistory(trimmed);
     }
@@ -117,9 +132,6 @@ const DocxCheck = (() => {
         setAllHistory(list);
     }
 
-    /* =========================================================
-       РЕНДЕР
-       ========================================================= */
     function render(workId) {
         const work = workId ? Storage.getWorkById(workId) : null;
         const saved = work?.docxCheck || null;
@@ -170,37 +182,37 @@ const DocxCheck = (() => {
         </div>
       </div>
 
-      ${
-          history.length > 0
-              ? `
-        <div class="card mt-16">
-          <div class="card-head">
-            <div class="card-title" style="margin-bottom:0;">
-              ${SVG.trending({ cls: "icon icon-sm" })}
-              Динамика проверок
-            </div>
-            <button class="btn-ghost btn-sm" onclick="DocxCheck.exportFullReport('${workId}')">
-              ${SVG.download({ cls: "icon icon-sm" })}
-              <span>Скачать отчёт</span>
-            </button>
-          </div>
-          <div class="chart-box h-260">
-            <canvas id="docxHistoryChart"></canvas>
-          </div>
-        </div>
+      ${history.length > 0 ? renderHistorySection(history, workId) : ""}
+    `;
+    }
 
-        <div class="card mt-16">
-          <div class="card-head">
-            <div class="card-title" style="margin-bottom:0;">
-              ${SVG.clock({ cls: "icon icon-sm" })}
-              История проверок
-            </div>
+    function renderHistorySection(history, workId) {
+        return `
+      <div class="card mt-16">
+        <div class="card-head">
+          <div class="card-title" style="margin-bottom:0;">
+            ${SVG.trending({ cls: "icon icon-sm" })}
+            Динамика проверок
           </div>
-          ${history.map((h) => renderHistoryRow(h)).join("")}
+          <button class="btn-ghost btn-sm" onclick="DocxCheck.exportFullReport('${workId}')">
+            ${SVG.download({ cls: "icon icon-sm" })}
+            <span>Скачать отчёт</span>
+          </button>
         </div>
-      `
-              : ""
-      }
+        <div class="chart-box h-260">
+          <canvas id="docxHistoryChart"></canvas>
+        </div>
+      </div>
+
+      <div class="card mt-16">
+        <div class="card-head">
+          <div class="card-title" style="margin-bottom:0;">
+            ${SVG.clock({ cls: "icon icon-sm" })}
+            История проверок
+          </div>
+        </div>
+        ${history.map((h) => renderHistoryRow(h)).join("")}
+      </div>
     `;
     }
 
@@ -251,9 +263,6 @@ const DocxCheck = (() => {
         App.navigate("docx");
     }
 
-    /* =========================================================
-       DRAG & DROP
-       ========================================================= */
     function initDrop(workId) {
         const drop = document.getElementById("docxDrop");
         if (!drop) return;
@@ -285,15 +294,26 @@ const DocxCheck = (() => {
     }
 
     function handleFile(event) {
-        const file = event.target.files?.[0];
+        const input = event.target;
+        const file = input.files?.[0];
         if (file) {
             const workId = getCurrentWorkId();
             processFile(file, workId);
         }
+        input.value = "";
     }
 
     function getCurrentWorkId() {
-        const user = typeof Auth !== "undefined" ? Auth.getUser() : null;
+        const user =
+            typeof Auth !== "undefined"
+                ? (() => {
+                      try {
+                          return Auth.getUser();
+                      } catch (e) {
+                          return null;
+                      }
+                  })()
+                : null;
         if (!user) return null;
 
         if (user.role === "student") {
@@ -306,9 +326,6 @@ const DocxCheck = (() => {
         return Storage.getWorks()[0]?.id || null;
     }
 
-    /* =========================================================
-       ОБРАБОТКА ФАЙЛА
-       ========================================================= */
     function processFile(file, workId) {
         if (!file.name.toLowerCase().endsWith(".docx")) {
             App.toast("Нужен файл .docx");
@@ -418,36 +435,28 @@ const DocxCheck = (() => {
                 work.updatedAt = Date.now();
                 Storage.saveWork(work);
 
-                if (typeof Audit !== "undefined") {
-                    Audit.log(
-                        "Проверка ГОСТа",
-                        file.name,
-                        `Соответствие: ${pct}%`,
-                        pct >= 70 ? "positive" : "warning",
-                    );
+                try {
+                    if (typeof Audit !== "undefined") {
+                        Audit.log(
+                            "Проверка ГОСТа",
+                            file.name,
+                            `Соответствие: ${pct}%`,
+                            pct >= 70 ? "positive" : "warning",
+                        );
+                    }
+                } catch (e) {
+                    console.warn("[DocxCheck] audit error:", e);
                 }
             }
 
-            // Добавляем в историю
             addToHistory(workId, result);
-        }
-
-        const box = document.getElementById("docxResult");
-        if (box) {
-            box.innerHTML = renderResult(result, workId);
         }
 
         App.toast(`Проверка завершена: ${pct}%`);
 
-        // Перерисовываем страницу чтобы обновить историю и график
-        setTimeout(() => {
-            App.navigate("docx");
-        }, 800);
+        App.navigate("docx");
     }
 
-    /* =========================================================
-       РЕЗУЛЬТАТ ПРОВЕРКИ
-       ========================================================= */
     function renderResult(r, workId) {
         const cssColor =
             r.pct >= 80
@@ -461,7 +470,6 @@ const DocxCheck = (() => {
             (c) => c.type === "heuristic",
         ).length;
 
-        // Список "что исправить"
         const problems = CHECKS.filter((c) => r.checks[c.id] === false);
 
         return `
@@ -583,11 +591,8 @@ const DocxCheck = (() => {
     `;
     }
 
-    /* =========================================================
-       ГРАФИК ДИНАМИКИ
-       ========================================================= */
     function drawHistoryChart(workId) {
-        if (typeof Charts === "undefined" || !Charts.hasChart()) return;
+        if (typeof Chart === "undefined") return;
 
         const history = getHistoryForWork(workId);
         if (history.length === 0) return;
@@ -595,15 +600,10 @@ const DocxCheck = (() => {
         const canvas = document.getElementById("docxHistoryChart");
         if (!canvas) return;
 
-        // Уничтожаем старый график
-        if (canvas._chart) {
-            try {
-                canvas._chart.destroy();
-            } catch (e) {}
-            canvas._chart = null;
+        if (typeof Charts !== "undefined" && Charts.destroy) {
+            Charts.destroy("docxHistoryChart");
         }
 
-        // Сортируем по возрастанию даты (старые слева)
         const sorted = [...history].sort(
             (a, b) => (a.checkedAt || 0) - (b.checkedAt || 0),
         );
@@ -618,9 +618,19 @@ const DocxCheck = (() => {
 
         const data = sorted.map((h) => h.pct);
 
-        const C = Charts.COLORS;
+        const cs = getComputedStyle(document.documentElement);
+        const get = (n, f) => cs.getPropertyValue(n).trim() || f;
 
-        canvas._chart = new Chart(canvas, {
+        const C = {
+            accent: get("--accent", "#6366f1"),
+            ok: get("--ok", "#1f8a4c"),
+            warn: get("--warn", "#c47f1a"),
+            bad: get("--bad", "#c23a2f"),
+            txt: get("--txt", "#18181b"),
+            line: get("--line", "#ebebeb"),
+        };
+
+        new Chart(canvas, {
             type: "line",
             data: {
                 labels,
@@ -686,9 +696,6 @@ const DocxCheck = (() => {
         });
     }
 
-    /* =========================================================
-       ЭКСПОРТ ОТЧЁТА (печать PDF)
-       ========================================================= */
     function exportReport(workId) {
         const work = Storage.getWorkById(workId);
         if (!work) return;
@@ -887,9 +894,11 @@ ${
                 }, 300);
             };
 
-            if (typeof Audit !== "undefined") {
-                Audit.log("Экспорт отчёта ГОСТ", title || "", "", "info");
-            }
+            try {
+                if (typeof Audit !== "undefined") {
+                    Audit.log("Экспорт отчёта ГОСТ", title || "", "", "info");
+                }
+            } catch (e) {}
         } catch (err) {
             console.error("[DocxCheck] Ошибка:", err);
             App.toast("Не удалось открыть отчёт");

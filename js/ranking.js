@@ -1,12 +1,34 @@
 const Ranking = (() => {
-    const escapeHtml = Utils.escapeHtml;
-    const calcProgress = Utils.calcProgress;
-    const getUser = () => Auth.getUser();
+    const escapeHtml =
+        typeof Utils !== "undefined" && Utils.escapeHtml
+            ? Utils.escapeHtml
+            : (str) => {
+                  if (str === null || str === undefined) return "";
+                  return String(str)
+                      .replace(/&/g, "&amp;")
+                      .replace(/</g, "&lt;")
+                      .replace(/>/g, "&gt;")
+                      .replace(/"/g, "&quot;");
+              };
+
+    function getUser() {
+        if (typeof Auth === "undefined") return null;
+        try {
+            return Auth.getUser();
+        } catch (e) {
+            return null;
+        }
+    }
 
     function getFuzzyResult(work, progressOverride) {
-        return Utils.safeFuzzyInfer(
-            Utils.buildFuzzyInputs(work, progressOverride),
-        );
+        if (!work) return null;
+        try {
+            return Utils.safeFuzzyInfer(
+                Utils.buildFuzzyInputs(work, progressOverride),
+            );
+        } catch (e) {
+            return null;
+        }
     }
 
     function enrichAll(works) {
@@ -22,7 +44,10 @@ const Ranking = (() => {
                     student,
                     teacher,
                     res,
-                    progress: calcProgress(w.id),
+                    progress:
+                        typeof Utils !== "undefined" && Utils.calcProgress
+                            ? Utils.calcProgress(w.id)
+                            : 0,
                 };
             })
             .filter(Boolean);
@@ -39,25 +64,33 @@ const Ranking = (() => {
 
     function topByRating(enriched, limit = 5) {
         return [...enriched]
-            .sort((a, b) => b.res.rating.value - a.res.rating.value)
+            .sort(
+                (a, b) =>
+                    (b.res?.rating?.value ?? 0) - (a.res?.rating?.value ?? 0),
+            )
             .slice(0, limit);
     }
 
     function bottomByRating(enriched, limit = 5) {
         return [...enriched]
-            .sort((a, b) => a.res.rating.value - b.res.rating.value)
+            .sort(
+                (a, b) =>
+                    (a.res?.rating?.value ?? 0) - (b.res?.rating?.value ?? 0),
+            )
             .slice(0, limit);
     }
 
     function topByProgress(enriched, limit = 5) {
         return [...enriched]
-            .sort((a, b) => b.progress - a.progress)
+            .sort((a, b) => (b.progress ?? 0) - (a.progress ?? 0))
             .slice(0, limit);
     }
 
     function topByRisk(enriched, limit = 5) {
         return [...enriched]
-            .sort((a, b) => b.res.risk.value - a.res.risk.value)
+            .sort(
+                (a, b) => (b.res?.risk?.value ?? 0) - (a.res?.risk?.value ?? 0),
+            )
             .slice(0, limit);
     }
 
@@ -79,26 +112,36 @@ const Ranking = (() => {
 
         const enriched = enrichAll(works);
 
-        const avgRating = enriched.length
-            ? Math.round(
-                  enriched.reduce((a, e) => a + e.res.rating.value, 0) /
-                      enriched.length,
-              )
-            : 0;
-        const avgProgress = enriched.length
-            ? Math.round(
-                  enriched.reduce((a, e) => a + e.progress, 0) /
-                      enriched.length,
-              )
-            : 0;
+        if (enriched.length === 0) {
+            return `
+        <div class="card">
+          <div class="empty-state">
+            ${SVG.award({ cls: "icon icon-2xl" })}
+            <h3>Нет корректных данных</h3>
+            <p>Не удалось рассчитать рейтинги по текущим работам.</p>
+          </div>
+        </div>
+      `;
+        }
+
+        const avgRating = Math.round(
+            enriched.reduce((a, e) => a + e.res.rating.value, 0) /
+                enriched.length,
+        );
+        const avgProgress = Math.round(
+            enriched.reduce((a, e) => a + e.progress, 0) / enriched.length,
+        );
 
         const top = topByRating(enriched, 5);
-        const topIds = new Set(top.map((e) => e.w.id));
+        const topIds = new Set(top.map((e) => String(e.w.id)));
 
-        const threshold = Fuzzy.THRESHOLDS?.high ?? 65;
+        const threshold =
+            typeof Fuzzy !== "undefined" && Fuzzy.THRESHOLDS?.high
+                ? Fuzzy.THRESHOLDS.high
+                : 65;
 
         const bottom = bottomByRating(enriched, enriched.length)
-            .filter((e) => !topIds.has(e.w.id))
+            .filter((e) => !topIds.has(String(e.w.id)))
             .filter((e) => e.res.rating.value < threshold)
             .slice(0, 5);
 
@@ -125,7 +168,7 @@ const Ranking = (() => {
           <div class="card-head">
             <div class="card-title">
               ${SVG.award({ cls: "icon icon-sm" })}
-              <span>${topTitle}</span>
+              <span>${escapeHtml(topTitle)}</span>
             </div>
           </div>
           ${
@@ -139,15 +182,13 @@ const Ranking = (() => {
           <div class="card-head">
             <div class="card-title">
               ${SVG.alertTriangle({ cls: "icon icon-sm" })}
-              <span>${bottomTitle}</span>
+              <span>${escapeHtml(bottomTitle)}</span>
             </div>
           </div>
           ${
               bottom.length === 0
                   ? renderEmpty("Все работы в норме")
-                  : bottom
-                        .map((e, i) => renderRankRow(e, i + 1, "low"))
-                        .join("")
+                  : bottom.map((e, i) => renderRankRow(e, i + 1)).join("")
           }
         </div>
       </div>
@@ -158,7 +199,7 @@ const Ranking = (() => {
         return `<div class="empty" style="padding:24px;">${escapeHtml(text)}</div>`;
     }
 
-    function renderRankRow(e, idx, kind = "top") {
+    function renderRankRow(e, idx) {
         const posCls =
             idx === 1
                 ? "gold"
@@ -175,7 +216,7 @@ const Ranking = (() => {
         const studentName = e.student?.fio || "—";
 
         return `
-      <div class="rank-row" onclick="Ranking.openWork(${e.w.id})">
+      <div class="rank-row" onclick="Ranking.openWork('${e.w.id}')">
         <div class="rank-pos ${posCls}">${idx}</div>
         <div>
           <div style="font-weight:500;">${escapeHtml(studentName)}</div>
@@ -195,6 +236,7 @@ const Ranking = (() => {
     function openWork(workId) {
         const user = getUser();
         if (!user) return;
+        if (!workId) return;
 
         if (user.role === "admin") {
             App.navigate("work-detail", { id: workId });
@@ -202,8 +244,12 @@ const Ranking = (() => {
         }
         if (user.role === "teacher") {
             const work = Storage.getWorkById(workId);
-            if (work)
-                App.navigate("student-detail", { id: work.studentId, workId });
+            if (work) {
+                App.navigate("student-detail", {
+                    id: work.studentId,
+                    workId,
+                });
+            }
             return;
         }
         if (user.role === "student") {

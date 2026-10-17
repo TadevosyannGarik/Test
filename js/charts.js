@@ -1,7 +1,3 @@
-/* =========================================================
-   CHARTS — Chart.js с ярким minimal-дизайном
-   ========================================================= */
-
 const Charts = (() => {
     function cssVar(name, fallback) {
         try {
@@ -14,7 +10,6 @@ const Charts = (() => {
         }
     }
 
-    /* ---------- Яркая палитра (как на референсе) ---------- */
     const PALETTE = {
         green: "#34d399",
         emerald: "#10b981",
@@ -34,24 +29,25 @@ const Charts = (() => {
         lime: "#a3e635",
     };
 
-    /* ---------- Пары [светлый, тёмный] для градиентов ---------- */
     const GRADIENTS = [
-        ["#34d399", "#059669"], // green
-        ["#60a5fa", "#2563eb"], // blue
-        ["#fb923c", "#ea580c"], // orange
-        ["#f472b6", "#db2777"], // pink
-        ["#a78bfa", "#7c3aed"], // purple
-        ["#22d3ee", "#0891b2"], // cyan
-        ["#fbbf24", "#d97706"], // amber
-        ["#f87171", "#dc2626"], // red
-        ["#14b8a6", "#0d9488"], // teal
-        ["#a3e635", "#65a30d"], // lime
+        ["#34d399", "#059669"],
+        ["#60a5fa", "#2563eb"],
+        ["#fb923c", "#ea580c"],
+        ["#f472b6", "#db2777"],
+        ["#a78bfa", "#7c3aed"],
+        ["#22d3ee", "#0891b2"],
+        ["#fbbf24", "#d97706"],
+        ["#f87171", "#dc2626"],
+        ["#14b8a6", "#0d9488"],
+        ["#a3e635", "#65a30d"],
     ];
 
-    /* ---------- Плоская палитра из пар ---------- */
     const FLAT_PALETTE = GRADIENTS.map((g) => g[0]);
 
+    const _charts = new Map();
+
     let _colors = null;
+
     function getColors() {
         if (_colors) return _colors;
         _colors = {
@@ -77,10 +73,11 @@ const Charts = (() => {
     );
 
     function hasChart() {
-        return typeof Chart !== "undefined";
+        return (
+            typeof Chart !== "undefined" && typeof Chart.getChart === "function"
+        );
     }
 
-    /* ---------- Глубокое слияние ---------- */
     function deepMerge(t, s) {
         if (!s) return t;
         const out = { ...t };
@@ -103,7 +100,6 @@ const Charts = (() => {
         return out;
     }
 
-    /* ---------- Базовые опции ---------- */
     function baseOpts(extra = {}) {
         const C = getColors();
         const base = {
@@ -160,7 +156,6 @@ const Charts = (() => {
                     caretSize: 5,
                 },
             },
-            // По умолчанию всё скрыто — графикам даём только данные
             scales: {
                 x: {
                     display: false,
@@ -177,24 +172,35 @@ const Charts = (() => {
         return deepMerge(base, extra);
     }
 
-    /* ---------- Уничтожение ---------- */
-    function destroyOld(ctx) {
-        if (!ctx) return;
-        if (ctx._chart) {
+    function destroy(canvasId) {
+        if (!canvasId) return;
+        const chart = _charts.get(canvasId);
+        if (chart) {
             try {
-                ctx._chart.destroy();
+                chart.destroy();
             } catch (e) {}
-            ctx._chart = null;
+            _charts.delete(canvasId);
         }
         if (hasChart()) {
             try {
-                const ex = Chart.getChart(ctx);
-                if (ex) ex.destroy();
+                const el = document.getElementById(canvasId);
+                if (el && el.tagName === "CANVAS") {
+                    const ex = Chart.getChart(el);
+                    if (ex) ex.destroy();
+                }
             } catch (e) {}
         }
     }
 
-    /* ---------- hex → rgba ---------- */
+    function destroyAll() {
+        for (const [id, chart] of _charts) {
+            try {
+                chart.destroy();
+            } catch (e) {}
+        }
+        _charts.clear();
+    }
+
     function hexToRgba(hex, a = 1) {
         if (!hex) return `rgba(0,0,0,${a})`;
         if (hex.startsWith("rgba") || hex.startsWith("rgb")) return hex;
@@ -211,7 +217,6 @@ const Charts = (() => {
         return `rgba(${r}, ${g}, ${b}, ${a})`;
     }
 
-    /* ---------- Защита от NaN ---------- */
     function sanitizeData(arr) {
         if (!Array.isArray(arr)) return [];
         return arr.map((v) => {
@@ -220,15 +225,14 @@ const Charts = (() => {
         });
     }
 
-    /* ---------- Получить пару цветов по индексу ---------- */
     function getPair(i) {
         return GRADIENTS[i % GRADIENTS.length];
     }
+
     function getFlat(i) {
         return FLAT_PALETTE[i % FLAT_PALETTE.length];
     }
 
-    /* ---------- Плагин: центральный текст в doughnut ---------- */
     const centerTextPlugin = {
         id: "mCenterText",
         afterDraw(chart) {
@@ -266,15 +270,12 @@ const Charts = (() => {
         } catch (e) {}
     }
 
-    /* =========================================================
-       DOUGHNUT — яркое кольцо со скруглениями и зазорами
-       ========================================================= */
     function doughnut(canvasId, labels, data, colors, opts = {}) {
         if (!hasChart()) return null;
         const ctx = document.getElementById(canvasId);
         if (!ctx || ctx.tagName !== "CANVAS") return null;
 
-        destroyOld(ctx);
+        destroy(canvasId);
         const C = getColors();
         const safeData = sanitizeData(data);
 
@@ -312,7 +313,7 @@ const Charts = (() => {
                   },
               };
 
-        ctx._chart = new Chart(ctx, {
+        const chart = new Chart(ctx, {
             type: "doughnut",
             data: {
                 labels,
@@ -354,23 +355,19 @@ const Charts = (() => {
                 scales: { x: { display: false }, y: { display: false } },
             }),
         });
-        return ctx._chart;
+        _charts.set(canvasId, chart);
+        return chart;
     }
 
-    /* =========================================================
-       BAR — яркие скруглённые столбики с gradient
-       ========================================================= */
     function bar(canvasId, labels, data, colors, opts = {}) {
         if (!hasChart()) return null;
         const ctx = document.getElementById(canvasId);
         if (!ctx || ctx.tagName !== "CANVAS") return null;
 
-        destroyOld(ctx);
+        destroy(canvasId);
         const C = getColors();
         const horizontal = !!opts.horizontal;
         const safeData = sanitizeData(data);
-
-        // Каждому столбику — свой цвет из палитры (или gradient-пара)
         const useGradient = opts.gradient !== false;
 
         function bgColor(c) {
@@ -382,7 +379,6 @@ const Charts = (() => {
             const light = pair[0];
             const dark = pair[1];
 
-            // Если пользователь передал явные цвета — используем их
             let baseColor;
             if (Array.isArray(colors)) {
                 baseColor = colors[i] || light;
@@ -415,7 +411,7 @@ const Charts = (() => {
             return g;
         }
 
-        ctx._chart = new Chart(ctx, {
+        const chart = new Chart(ctx, {
             type: "bar",
             data: {
                 labels,
@@ -468,8 +464,6 @@ const Charts = (() => {
                         border: { display: false },
                     },
                     y: {
-                        // Вертикальный bar → скрываем Y
-                        // Горизонтальный bar → показываем подписи категорий
                         display: horizontal ? true : false,
                         ticks: horizontal
                             ? {
@@ -485,28 +479,25 @@ const Charts = (() => {
                 },
             }),
         });
-        return ctx._chart;
+        _charts.set(canvasId, chart);
+        return chart;
     }
 
-    /* =========================================================
-       LINE (area с gradient) — толстые линии, точки, без осей
-       ========================================================= */
     function line(canvasId, labels, datasets, opts = {}) {
         if (!hasChart()) return null;
         const ctx = document.getElementById(canvasId);
         if (!ctx || ctx.tagName !== "CANVAS") return null;
 
-        destroyOld(ctx);
+        destroy(canvasId);
         const C = getColors();
 
-        ctx._chart = new Chart(ctx, {
+        const chart = new Chart(ctx, {
             type: "line",
             data: {
                 labels,
                 datasets: datasets.map((d, i) => {
                     const pair = getPair(i);
                     const color = d.color || pair[0];
-                    const dark = pair[1];
                     const safe = sanitizeData(d.data);
 
                     return {
@@ -572,7 +563,6 @@ const Charts = (() => {
                 },
                 scales: {
                     x: {
-                        // X-категории видны — но очень минимально
                         display: opts.showXAxis !== false,
                         ticks: {
                             color: C.txtMuted,
@@ -586,7 +576,6 @@ const Charts = (() => {
                         border: { display: false },
                     },
                     y: {
-                        // Y скрыт полностью — только tooltip
                         display: false,
                         beginAtZero: true,
                         min: opts.min ?? 0,
@@ -595,75 +584,19 @@ const Charts = (() => {
                 },
             }),
         });
-        return ctx._chart;
+        _charts.set(canvasId, chart);
+        return chart;
     }
 
-    /* =========================================================
-       POLAR
-       ========================================================= */
-    function polar(canvasId, labels, data, colors, opts = {}) {
-        if (!hasChart()) return null;
-        const ctx = document.getElementById(canvasId);
-        if (!ctx || ctx.tagName !== "CANVAS") return null;
-
-        destroyOld(ctx);
-        const C = getColors();
-        const safeData = sanitizeData(data);
-
-        const palette =
-            colors && colors.length
-                ? colors
-                : safeData.map((_, i) => hexToRgba(getFlat(i), 0.8));
-
-        ctx._chart = new Chart(ctx, {
-            type: "polarArea",
-            data: {
-                labels,
-                datasets: [
-                    {
-                        data: safeData,
-                        backgroundColor: palette,
-                        borderColor: "rgba(255, 255, 255, 0.9)",
-                        borderWidth: 2,
-                    },
-                ],
-            },
-            options: baseOpts({
-                plugins: {
-                    legend: {
-                        position: opts.legendPosition || "bottom",
-                        labels: { color: C.txtMuted },
-                    },
-                },
-                scales: {
-                    r: {
-                        ticks: {
-                            color: C.txtMuted,
-                            backdropColor: "transparent",
-                            font: { size: 10 },
-                            padding: 6,
-                        },
-                        grid: { color: "rgba(15,15,25,0.06)" },
-                        angleLines: { color: "rgba(15,15,25,0.06)" },
-                    },
-                },
-            }),
-        });
-        return ctx._chart;
-    }
-
-    /* =========================================================
-       RADAR
-       ========================================================= */
     function radar(canvasId, labels, datasets, opts = {}) {
         if (!hasChart()) return null;
         const ctx = document.getElementById(canvasId);
         if (!ctx || ctx.tagName !== "CANVAS") return null;
 
-        destroyOld(ctx);
+        destroy(canvasId);
         const C = getColors();
 
-        ctx._chart = new Chart(ctx, {
+        const chart = new Chart(ctx, {
             type: "radar",
             data: {
                 labels,
@@ -723,26 +656,30 @@ const Charts = (() => {
                 },
             }),
         });
-        return ctx._chart;
+        _charts.set(canvasId, chart);
+        return chart;
     }
 
     function refreshColors() {
         _colors = null;
     }
+
     function init() {
         refreshColors();
+        destroyAll();
     }
 
     return {
         doughnut,
         bar,
         line,
-        polar,
         radar,
         hasChart,
         COLORS,
         refreshColors,
         init,
+        destroy,
+        destroyAll,
         hexToRgba,
         PALETTE,
         GRADIENTS,

@@ -1,8 +1,3 @@
-/* =========================================================
-   ADMIN LAYOUT
-   ========================================================= */
-
-/* Сайдбар под шапкой, НЕ перекрывает её */
 .admin-sidebar {
     position: fixed;
     top: calc(var(--header-h, 60px) + var(--nav-h, 52px));
@@ -32,7 +27,6 @@
     border-radius: 100px;
 }
 
-/* Шапка — поверх сайдбара */
 body.admin-layout .app-header {
     z-index: 200 !important;
 }
@@ -40,7 +34,6 @@ body.admin-layout .app-nav {
     z-index: 190 !important;
 }
 
-/* Контент сдвинут */
 body.admin-layout .app {
     padding-left: 0;
 }
@@ -62,9 +55,6 @@ body.admin-layout .app-main {
     }
 }
 
-/* =========================================================
-   СТАТИСТИКА в сайдбаре
-   ========================================================= */
 .side-stats {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -245,9 +235,6 @@ body.admin-layout .app-main {
     flex-shrink: 0;
 }
 
-/* =========================================================
-   СТЕКЛЯННЫЕ КАРТОЧКИ
-   ========================================================= */
 body.admin-layout .app-main .card,
 body.admin-layout .app-main .kpi-tile,
 body.admin-layout .app-main .dash-table-card {
@@ -270,9 +257,6 @@ body.admin-layout .app-main .dash-table-card:hover {
     border-color: rgba(255, 255, 255, 0.9) !important;
 }
 
-/* =========================================================
-   СЕТКА
-   ========================================================= */
 .dash-grid {
     display: grid;
     grid-template-columns: repeat(12, 1fr);
@@ -315,9 +299,6 @@ body.admin-layout .app-main .dash-table-card:hover {
     }
 }
 
-/* =========================================================
-   KPI
-   ========================================================= */
 .kpi-row {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -418,9 +399,6 @@ body.admin-layout .app-main .dash-table-card:hover {
     color: var(--txt-muted, #71717a);
 }
 
-/* =========================================================
-   АКТИВНОСТЬ
-   ========================================================= */
 .activity-hero-card {
     padding: 24px 26px !important;
     margin-bottom: 20px;
@@ -483,9 +461,6 @@ body.admin-layout .app-main .dash-table-card:hover {
     line-height: 1;
 }
 
-/* =========================================================
-   HEATMAP — 52 недели (мельче ячейки)
-   ========================================================= */
 .heatmap-wrap {
     display: flex;
     flex-direction: column;
@@ -556,9 +531,6 @@ body.admin-layout .app-main .dash-table-card:hover {
     background: #4338ca;
 }
 
-/* =========================================================
-   ПРАВАЯ КОЛОНКА
-   ========================================================= */
 .dash-panel {
     padding: 18px 20px;
 }
@@ -578,7 +550,6 @@ body.admin-layout .app-main .dash-table-card:hover {
     letter-spacing: 0.08em;
 }
 
-/* КРУПНЕЕ ТЕКСТ В ТРЁХ КАРТОЧКАХ */
 .dash-activity-item {
     display: flex;
     gap: 12px;
@@ -671,9 +642,6 @@ body.admin-layout .app-main .dash-table-card:hover {
     text-align: right;
 }
 
-/* =========================================================
-   ПАГИНАЦИЯ
-   ========================================================= */
 .dash-panel-footer {
     display: flex;
     justify-content: space-between;
@@ -720,9 +688,6 @@ body.admin-layout .app-main .dash-table-card:hover {
     min-height: 340px;
 }
 
-/* =========================================================
-   ТАБЛИЦА
-   ========================================================= */
 .dash-table-card {
     padding: 22px 24px;
 }
@@ -816,9 +781,6 @@ body.admin-layout .app-main .dash-table-card:hover {
     min-width: 50px;
 }
 
-/* =========================================================
-   ФИКС: круглые графики не растягиваются по высоте
-   ========================================================= */
 body.admin-layout .app-main .chart-box.h-180,
 body.admin-layout .app-main .chart-box.h-220,
 body.admin-layout .app-main .chart-box.h-260,
@@ -826,9 +788,6 @@ body.admin-layout .app-main .chart-box.h-300 {
     flex: 0 0 auto !important;
 }
 
-/* =========================================================
-   СВОДКА ПО ГРУППАМ / ПРЕПОДАВАТЕЛЯМ — фикс. высота + скролл
-   ========================================================= */
 .analytics-summary-card {
     display: flex;
     flex-direction: column;
@@ -869,7 +828,6 @@ body.admin-layout .app-main .chart-box.h-300 {
     border: 2px solid transparent;
 }
 
-/* Sticky header внутри скролла */
 .analytics-summary-card .table thead th {
     position: sticky;
     top: 0;
@@ -888,9 +846,6 @@ body.admin-layout .app-main .chart-box.h-300 {
     border-bottom: none;
 }
 
-/* =========================================================
-   КРУГЛЫЕ ГРАФИКИ НА ДАШБОРДЕ — без фона, крупные
-   ========================================================= */
 body.admin-layout .app-main .chart-box {
     background: transparent !important;
     background-image: none !important;
@@ -917,11 +872,6 @@ body.admin-layout .app-main .chart-box--round canvas {
     margin: 0 auto;
 }
 
-/* =========================================================
-   ФИКС: шапка + навигация в одну строку
-   ========================================================= */
-
-/* --- Шапка: flex-контейнер с тремя зонами --- */
 .app-header {
     display: flex !important;
     align-items: center !important;
@@ -938,7 +888,6 @@ body.admin-layout .app-main .chart-box--round canvas {
     border-bottom: 1px solid rgba(15, 15, 25, 0.06) !important;
 }
 
-/* --- Бренд слева, не сжимается --- */
 .app-brand {
     display: flex !important;
     align-items: center !important;
@@ -946,7 +895,6 @@ body.admin-layout .app-main .chart-box--round canvas {
     flex-shrink: 0 !important;
 }
 
-/* --- Навигация в центре — растягивается --- */
 .app-nav {
     display: flex !important;
     align-items: center !important;
@@ -970,7 +918,6 @@ body.admin-layout .app-main .chart-box--round canvas {
     display: none;
 }
 
-/* Кнопки навигации — компактнее */
 .app-nav button {
     padding: 7px 12px !important;
     font-size: 12.5px !important;
@@ -983,7 +930,6 @@ body.admin-layout .app-main .chart-box--round canvas {
     height: 13px !important;
 }
 
-/* Кнопка «Демонстрация» у студента */
 .app-nav .demo-launch-btn {
     margin-left: auto !important;
     height: 32px !important;
@@ -992,7 +938,6 @@ body.admin-layout .app-main .chart-box--round canvas {
     flex-shrink: 0 !important;
 }
 
-/* --- Юзер справа — не сжимается --- */
 .app-user {
     display: flex !important;
     align-items: center !important;
@@ -1001,12 +946,10 @@ body.admin-layout .app-main .chart-box--round canvas {
     margin-left: 8px !important;
 }
 
-/* ФИО + роль — скрываем полностью */
 .app-user-info {
     display: none !important;
 }
 
-/* Аватар — кружок с инициалами */
 .app-avatar {
     width: 36px !important;
     height: 36px !important;
@@ -1016,25 +959,21 @@ body.admin-layout .app-main .chart-box--round canvas {
     flex-shrink: 0 !important;
 }
 
-/* --- Сайдбар админа — под новой шапкой --- */
 .admin-sidebar {
     top: 64px !important;
     padding: 20px 16px !important;
 }
 
-/* Контент: убираем лишний верхний отступ */
 body.admin-layout .app-main {
     padding-top: 24px !important;
 }
 
-/* Старый .app-nav как отдельная полоса — больше не существует */
 body.admin-layout .app-nav {
     left: auto !important;
     width: auto !important;
     margin: 0 !important;
 }
 
-/* --- Мобильная адаптация --- */
 @media (max-width: 900px) {
     .app-header {
         gap: 12px !important;
@@ -1051,12 +990,6 @@ body.admin-layout .app-nav {
     }
 }
 
-/* =========================================================
-   ЕДИНАЯ ШАПКА ДЛЯ ВСЕХ РОЛЕЙ (student / teacher / admin)
-   Без привязки к body.admin-layout
-   ========================================================= */
-
-/* --- Шапка: одна строка --- */
 html body .app-header {
     display: flex !important;
     align-items: center !important;
@@ -1073,7 +1006,6 @@ html body .app-header {
     border-bottom: 1px solid rgba(15, 15, 25, 0.06) !important;
 }
 
-/* --- Логотип --- */
 html body .app-brand {
     display: flex !important;
     align-items: center !important;
@@ -1081,7 +1013,6 @@ html body .app-brand {
     flex-shrink: 0 !important;
 }
 
-/* --- Навигация встроена в шапку --- */
 html body .app-nav {
     display: flex !important;
     align-items: center !important;
@@ -1109,7 +1040,6 @@ html body .app-nav::-webkit-scrollbar {
     display: none;
 }
 
-/* Кнопки навигации — компактные */
 html body .app-nav button {
     padding: 7px 12px !important;
     font-size: 12.5px !important;
@@ -1126,7 +1056,6 @@ html body .app-nav button > span:not(.nav-badge) {
     display: inline !important;
 }
 
-/* Кнопка «Демонстрация» у студента — прижата к правому краю nav */
 html body .app-nav .demo-launch-btn {
     margin-left: auto !important;
     height: 32px !important;
@@ -1135,7 +1064,6 @@ html body .app-nav .demo-launch-btn {
     flex-shrink: 0 !important;
 }
 
-/* --- Юзер справа --- */
 html body .app-user {
     display: flex !important;
     align-items: center !important;
@@ -1144,7 +1072,6 @@ html body .app-user {
     margin-left: 8px !important;
 }
 
-/* ФИО и роль — скрываем ВЕЗДЕ */
 html body .app-user-info {
     display: none !important;
     visibility: hidden !important;
@@ -1152,7 +1079,6 @@ html body .app-user-info {
     overflow: hidden !important;
 }
 
-/* Аватар — компактный кружок */
 html body .app-avatar {
     width: 36px !important;
     height: 36px !important;
@@ -1163,7 +1089,6 @@ html body .app-avatar {
     letter-spacing: 0.02em !important;
 }
 
-/* Кнопка «Выйти» — компактная */
 html body .app-user .btn-ghost {
     padding: 6px 12px !important;
     font-size: 12px !important;
@@ -1171,26 +1096,15 @@ html body .app-user .btn-ghost {
     border-radius: 100px !important;
 }
 
-/* Колокольчик */
 html body .app-user .notif-bell {
     width: 36px !important;
     height: 36px !important;
 }
 
-/* =========================================================
-   СТУДЕНТ — специфика
-   ========================================================= */
-/* У студента после кнопки «Демонстрация» в nav нет места под avatar */
-/* Убеждаемся, что демо-кнопка не вылезает за пределы header */
 html body .app-nav .demo-launch-btn .demo-btn-label {
     display: inline !important;
 }
 
-/* =========================================================
-   ПРЕПОДАВАТЕЛЬ — 13 пунктов меню, может не влезать
-   ========================================================= */
-/* Если nav переполняется — разрешаем скролл (уже включён выше) */
-/* На средних экранах уменьшаем ещё сильнее */
 @media (max-width: 1400px) {
     html body .app-nav button {
         padding: 6px 10px !important;
@@ -1214,9 +1128,6 @@ html body .app-nav .demo-launch-btn .demo-btn-label {
     }
 }
 
-/* =========================================================
-   МОБИЛЬНЫЕ
-   ========================================================= */
 @media (max-width: 900px) {
     html body .app-header {
         gap: 12px !important;
