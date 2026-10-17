@@ -106,38 +106,12 @@ const Simulate = (() => {
         const currentResult = baseResult;
 
         return `
-      <div class="sim-hero">
-        <div class="sim-hero-icon">${SVG.sliders({ cls: "icon icon-xl" })}</div>
-        <div class="sim-hero-body">
-          <div class="sim-hero-title">Симулятор «Что если»</div>
-          <div class="sim-hero-text">
-            Данные взяты из вашей работы. Двигайте ползунки —
-            результат <b>пересчитывается мгновенно</b>. Так можно
-            понять, что будет, если вы ускоритесь или пропустите неделю.
-          </div>
-        </div>
-      </div>
-
-      <div class="sim-work">
-        <div class="sim-work-info">
-          <div class="sim-work-label">Работа</div>
-          <div class="sim-work-topic">${escapeHtml(currentWork.topic)}</div>
-        </div>
-        <select onchange="Simulate.selectWork(this.value)" class="sim-select">
-          ${works
-              .map(
-                  (w) => `
-            <option value="${w.id}" ${Storage.sameId(w.id, workId) ? "selected" : ""}>
-              ${escapeHtml(w.topic.slice(0, 60))}${w.topic.length > 60 ? "…" : ""}
-            </option>
-          `,
-              )
-              .join("")}
-        </select>
+      <div class="sim-top-row">
+        ${renderWorkRow(works)}
+        ${renderScenarios()}
       </div>
 
       ${renderWorkDataBlock()}
-      ${renderScenarios()}
 
       <div class="sim-grid">
         <div class="sim-controls">
@@ -230,9 +204,113 @@ const Simulate = (() => {
     `;
     }
 
-    /* =========================================================
-       СЦЕНАРИИ
-       ========================================================= */
+    function renderWorkRow(works) {
+        const student = Storage.getUserById(currentWork.studentId);
+        const hasMultiple = works.length > 1;
+
+        const daysLeft = currentWork.deadline
+            ? daysUntil(currentWork.deadline)
+            : null;
+        const daysLabel =
+            daysLeft === null
+                ? "—"
+                : daysLeft < 0
+                  ? `просрочено на ${Math.abs(daysLeft)} дн.`
+                  : daysLeft === 0
+                    ? "сегодня"
+                    : `${daysLeft} дн.`;
+        const daysCls =
+            daysLeft === null
+                ? "txt-muted"
+                : daysLeft < 0
+                  ? "bad"
+                  : daysLeft <= 7
+                    ? "warn"
+                    : "ok";
+
+        const progress = Utils.calcProgress(currentWork.id);
+        const progressCls = Utils.progressClass(progress);
+
+        const typeLabel = Utils.workTypeLabel(currentWork.type);
+        const statusInfo = Utils.WORK_STATUSES[currentWork.status] || {
+            label: currentWork.status,
+            badge: "draft",
+        };
+
+        const metaParts = [];
+        if (student) {
+            if (student.faculty) metaParts.push(escapeHtml(student.faculty));
+            if (student.course) metaParts.push(`${student.course} курс`);
+            if (student.group) metaParts.push(escapeHtml(student.group));
+        }
+
+        return `
+      <div class="sim-work">
+        <div class="sim-work-head">
+          <div class="sim-work-label">Работа</div>
+          ${
+              hasMultiple
+                  ? `
+            <select onchange="Simulate.selectWork(this.value)" class="sim-select-compact">
+              ${works
+                  .map(
+                      (w) => `
+                <option value="${w.id}" ${Storage.sameId(w.id, workId) ? "selected" : ""}>
+                  ${escapeHtml(w.topic.slice(0, 45))}${w.topic.length > 45 ? "…" : ""}
+                </option>
+              `,
+                  )
+                  .join("")}
+            </select>
+          `
+                  : ""
+          }
+        </div>
+
+        <div class="sim-work-title">${escapeHtml(currentWork.topic)}</div>
+
+        <div class="sim-work-meta-row">
+          <span class="sim-meta-chip">${escapeHtml(typeLabel)}</span>
+          <span class="badge ${statusInfo.badge}">${escapeHtml(statusInfo.label)}</span>
+          <span class="sim-meta-days" style="color:var(--${daysCls})">
+            ${SVG.clock({ cls: "icon icon-xs" })}
+            ${escapeHtml(daysLabel)}
+          </span>
+        </div>
+
+        <div class="sim-work-progress">
+          <div class="sim-work-progress-head">
+            <span class="sim-work-progress-lbl">Прогресс</span>
+            <span class="sim-work-progress-val" style="color:var(--${progressCls})">
+              ${progress}%
+            </span>
+          </div>
+          <div class="sim-work-progress-track">
+            <div class="sim-work-progress-fill ${progressCls}" style="width:${progress}%"></div>
+          </div>
+        </div>
+
+        ${
+            student
+                ? `
+          <div class="sim-student-card">
+            <div class="sim-student-avatar">${Utils.initials(student.fio)}</div>
+            <div class="sim-student-info">
+              <div class="sim-student-name">${escapeHtml(student.fio)}</div>
+              ${
+                  metaParts.length > 0
+                      ? `<div class="sim-student-meta">${metaParts.join(" · ")}</div>`
+                      : ""
+              }
+            </div>
+          </div>
+        `
+                : ""
+        }
+      </div>
+    `;
+    }
+
     function renderScenarios() {
         return `
       <div class="sim-scenarios">
@@ -310,6 +388,47 @@ const Simulate = (() => {
         const readyDiff = result.ready.value - baseResult.ready.value;
         const ratingDiff = result.rating.value - baseResult.rating.value;
 
+        /* ---- Список изменённых параметров ---- */
+        const labels = {
+            progress: "Прогресс",
+            days: "Дни до дедлайна",
+            activity: "Активность",
+            edits: "Правки",
+            volume: "Объём",
+            orig: "Оригинальность",
+            supScore: "Оценка рук.",
+            gost: "ГОСТ",
+        };
+        const units = {
+            progress: "%",
+            days: "",
+            activity: "",
+            edits: "",
+            volume: "%",
+            orig: "%",
+            supScore: "",
+            gost: "%",
+        };
+
+        const changes = [];
+        if (baseCache) {
+            for (const k of Object.keys(inputs)) {
+                const baseVal = baseCache[k] ?? 0;
+                const curVal = inputs[k];
+                const diff = curVal - baseVal;
+                if (Math.abs(diff) >= 1) {
+                    changes.push({
+                        key: k,
+                        label: labels[k] || k,
+                        unit: units[k] || "",
+                        from: baseVal,
+                        to: curVal,
+                        diff,
+                    });
+                }
+            }
+        }
+
         return `
       <div class="sim-metrics">
         ${renderMetricCard("Риск", result.risk, riskDiff, false)}
@@ -327,6 +446,39 @@ const Simulate = (() => {
         ${diffRow("Рейтинг", baseResult.rating.value, result.rating.value, ratingDiff, true)}
       </div>
 
+      ${
+          changes.length > 0
+              ? `
+        <div class="sim-changes">
+          <div class="sim-changes-title">
+            ${SVG.edit({ cls: "icon icon-sm" })}
+            Что изменено (${changes.length})
+          </div>
+          ${changes
+              .map(
+                  (c) => `
+            <div class="sim-change-row">
+              <span class="sim-change-lbl">${escapeHtml(c.label)}</span>
+              <span class="sim-change-from">${c.from}${c.unit}</span>
+              <span class="sim-change-arrow">→</span>
+              <span class="sim-change-to ${c.diff > 0 ? "up" : "down"}">
+                ${c.to}${c.unit}
+                <span class="sim-change-delta">${c.diff > 0 ? "+" : ""}${c.diff}${c.unit}</span>
+              </span>
+            </div>
+          `,
+              )
+              .join("")}
+        </div>
+      `
+              : `
+        <div class="sim-changes-empty">
+          ${SVG.info({ cls: "icon icon-sm" })}
+          <span>Ползунки совпадают с данными работы. Двигайте их, чтобы увидеть изменения.</span>
+        </div>
+      `
+      }
+      ${renderSimForecast(inputs, result)}
       <div class="sim-comment ${getCommentClass(riskDiff)}">
         <div class="sim-comment-icon">
             ${getCommentIcon(riskDiff)}
@@ -628,6 +780,46 @@ const Simulate = (() => {
         const root = document.getElementById("viewRoot");
         if (!root) return;
         root.innerHTML = `<div class="view active">${render()}</div>`;
+    }
+
+    function renderSimForecast(inputs, result) {
+        const futureInputs = {
+            ...inputs,
+            days: Math.max(0, (inputs.days || 0) - 7),
+        };
+        const future = Utils.safeFuzzyInfer(futureInputs);
+        if (!future) return "";
+
+        const diff = future.risk.value - result.risk.value;
+        const isWorse = diff > 3;
+        const isBetter = diff < -3;
+
+        let cls, verdict;
+        if (isWorse) {
+            cls = "bad";
+            verdict = `Риск вырастет на ${diff.toFixed(0)} — до ${future.risk.value.toFixed(0)}`;
+        } else if (isBetter) {
+            cls = "ok";
+            verdict = `Риск снизится на ${Math.abs(diff).toFixed(0)} — до ${future.risk.value.toFixed(0)}`;
+        } else {
+            cls = "neutral";
+            verdict = "Риск останется примерно тем же";
+        }
+
+        return `
+      <div class="sim-forecast sim-forecast-${cls}">
+        <div class="sim-forecast-icon">
+          ${SVG.clock({ cls: "icon icon-sm" })}
+        </div>
+        <div class="sim-forecast-body">
+          <div class="sim-forecast-title">Через 7 дней</div>
+          <div class="sim-forecast-text">${verdict}</div>
+        </div>
+        <div class="sim-forecast-num sim-forecast-num--${cls}">
+          ${future.risk.value.toFixed(0)}
+        </div>
+      </div>
+    `;
     }
 
     return {

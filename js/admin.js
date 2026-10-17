@@ -18,6 +18,28 @@ const Admin = (() => {
     let workFilter = { status: "", type: "", q: "" };
     let analyticsFilter = { status: "", type: "", teacherId: "" };
 
+    /* ---------- Пагинация дашборда ---------- */
+    let adminPage = {
+        departments: 0,
+        attention: 0,
+        activity: 0,
+        works: 0,
+    };
+
+    function nextPage(key, totalPages) {
+        if (adminPage[key] < totalPages - 1) {
+            adminPage[key]++;
+            App.navigate("dashboard");
+        }
+    }
+
+    function prevPage(key) {
+        if (adminPage[key] > 0) {
+            adminPage[key]--;
+            App.navigate("dashboard");
+        }
+    }
+
     function getUser() {
         return Auth.getUser();
     }
@@ -33,6 +55,9 @@ const Admin = (() => {
 
     const VIEWS = {};
 
+    /* =========================================================
+       ДЕМО-ДАННЫЕ
+       ========================================================= */
     VIEWS.demo = function () {
         const users = Storage.getUsers();
         const works = Storage.getWorks();
@@ -96,14 +121,14 @@ const Admin = (() => {
         <div class="notice" style="margin-top:20px;">
     <b>Что будет создано:</b>
     <ul style="margin:8px 0 0 20px;line-height:1.7;">
-        <li><b>20 преподавателей</b> с разными кафедрами, должностями и научными интересами</li>
-        <li><b>100 студентов</b> на разных курсах, группах и направлениях</li>
-        <li><b>200 работ</b> на всех стадиях — от заявки до защиты</li>
-        <li><b>1500+ этапов и задач</b>, распределённых по работам</li>
-        <li><b>800+ версий документов</b> с комментариями к изменениям</li>
-        <li><b>1000+ замечаний</b> от руководителей</li>
-        <li><b>50 консультаций</b> на разных этапах согласования</li>
-        <li><b>300 записей</b> в журнале аудита</li>
+        <li><b>8 преподавателей</b> с разными кафедрами, должностями и научными интересами</li>
+        <li><b>35 студентов</b> на разных курсах, группах и направлениях</li>
+        <li><b>70 работ</b> на всех стадиях — от заявки до защиты</li>
+        <li><b>500+ этапов и задач</b>, распределённых по работам</li>
+        <li><b>300+ версий документов</b> с комментариями к изменениям</li>
+        <li><b>400+ замечаний</b> от руководителей</li>
+        <li><b>15 консультаций</b> на разных этапах согласования</li>
+        <li><b>80 записей</b> в журнале аудита</li>
         <li>Уведомления, справочники и настройки системы</li>
     </ul>
 </div>
@@ -134,146 +159,213 @@ const Admin = (() => {
     `;
     };
 
+    /* =========================================================
+       DASHBOARD
+       ========================================================= */
     VIEWS.dashboard = function () {
         const users = Storage.getUsers();
         const works = Storage.getWorks();
+        const audit = typeof Audit !== "undefined" ? Audit.getAll() : [];
 
         const students = users.filter((u) => u.role === "student");
         const teachers = users.filter((u) => u.role === "teacher");
-        const admins = users.filter((u) => u.role === "admin");
-
         const blocked = users.filter((u) => u.blocked);
+
         const weekAgo = Date.now() - 7 * 86400000;
+        const twoWeeksAgo = Date.now() - 14 * 86400000;
         const newUsersWeek = users.filter((u) => (u.createdAt || 0) > weekAgo);
+        const newUsersPrevWeek = users.filter(
+            (u) =>
+                (u.createdAt || 0) > twoWeeksAgo &&
+                (u.createdAt || 0) <= weekAgo,
+        );
+        const usersTrend = newUsersWeek.length - newUsersPrevWeek.length;
 
         const activeWorks = works.filter(
             (w) => w.status === "active" || w.status === "review",
         );
         const pendingWorks = works.filter((w) => w.status === "pending");
 
-        const sizeKB = Storage.getSizeKB ? Storage.getSizeKB() : 0;
+        const newWorksWeek = works.filter((w) => (w.createdAt || 0) > weekAgo);
+        const newWorksPrevWeek = works.filter(
+            (w) =>
+                (w.createdAt || 0) > twoWeeksAgo &&
+                (w.createdAt || 0) <= weekAgo,
+        );
+        const worksTrend = newWorksWeek.length - newWorksPrevWeek.length;
+
+        const withRisk = works
+            .map((w) => {
+                const res = Utils.safeFuzzyInfer(Utils.buildFuzzyInputs(w));
+                return res ? { w, res } : null;
+            })
+            .filter(Boolean);
+
+        const highRisk = withRisk.filter((x) => x.res.risk.term === "high");
+        const avgRisk = withRisk.length
+            ? Math.round(
+                  withRisk.reduce((a, x) => a + x.res.risk.value, 0) /
+                      withRisk.length,
+              )
+            : 0;
+
+        const dayAgo = Date.now() - 86400000;
+        const auditToday = audit.filter((e) => (e.createdAt || 0) > dayAgo);
+
+        let week7Total = 0;
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            d.setHours(0, 0, 0, 0);
+            const dEnd = new Date(d);
+            dEnd.setHours(23, 59, 59, 999);
+            const count = audit.filter((e) => {
+                const t = e.createdAt || 0;
+                return t >= d.getTime() && t <= dEnd.getTime();
+            }).length;
+            week7Total += count;
+        }
+
+        const overdue = works.filter((w) => {
+            if (!w.deadline) return false;
+            if (w.status === "done" || w.status === "rejected") return false;
+            return daysUntil(w.deadline) < 0;
+        });
 
         return `
-      <!-- ============ KPI админа ============ -->
-      <div class="grid grid-4">
-        <div class="card kpi">
-          <div class="kpi-num">${users.length}</div>
-          <div class="kpi-lbl">Пользователей</div>
-        </div>
-        <div class="card kpi">
-          <div class="kpi-num" style="color:var(--info)">${activeWorks.length}</div>
-          <div class="kpi-lbl">Активных работ</div>
-        </div>
-        <div class="card kpi">
-          <div class="kpi-num" style="color:var(--ok)">+${newUsersWeek.length}</div>
-          <div class="kpi-lbl">Новых за неделю</div>
-        </div>
-        <div class="card kpi">
-          <div class="kpi-num" style="color:${blocked.length > 0 ? "var(--bad)" : "var(--txt-muted)"}">
-            ${blocked.length}
-          </div>
-          <div class="kpi-lbl">Заблокировано</div>
-        </div>
+      <!-- KPI -->
+      <div class="kpi-row" style="margin-bottom:20px;">
+        ${renderKpiTile({
+            label: "Пользователей",
+            value: users.length,
+            iconFn: SVG.users,
+            iconCls: "blue",
+            trend: usersTrend,
+            foot: `+${newUsersWeek.length} за неделю`,
+        })}
+        ${renderKpiTile({
+            label: "Активных работ",
+            value: activeWorks.length,
+            iconFn: SVG.folder,
+            iconCls: "green",
+            trend: worksTrend,
+            foot: `+${newWorksWeek.length} за неделю`,
+        })}
+        ${renderKpiTile({
+            label: "Средний риск",
+            value: avgRisk,
+            iconFn: SVG.alertTriangle,
+            iconCls: "orange",
+            foot: `${highRisk.length} с высоким риском`,
+        })}
+        ${renderKpiTile({
+            label: "Действий за 24ч",
+            value: auditToday.length,
+            iconFn: SVG.activity,
+            iconCls: "purple",
+            foot: `${newUsersWeek.length + newWorksWeek.length} новых объектов`,
+        })}
       </div>
 
-      <!-- ============ Метрики ============ -->
-      <div class="metric-grid mt-16">
-        <div class="metric">
-          <div class="metric-lbl">Студентов</div>
-          <div class="metric-val">${students.length}</div>
-          <div class="metric-sub">${users.length ? Math.round((students.length / users.length) * 100) : 0}% от всех</div>
+      <!-- ОБЪЕДИНЁННЫЙ БЛОК АКТИВНОСТИ -->
+      <div class="card activity-hero-card">
+        <div class="card-head" style="margin-bottom:16px;">
+          <div class="card-title" style="margin-bottom:0;display:flex;align-items:center;gap:8px;">
+            ${SVG.activity({ cls: "icon icon-sm" })}
+            Активность системы
+          </div>
+          <span style="font-size:11px;color:var(--txt-muted);">
+            ${audit.length} записей в журнале
+          </span>
         </div>
-        <div class="metric">
-          <div class="metric-lbl">Преподавателей</div>
-          <div class="metric-val">${teachers.length}</div>
-          <div class="metric-sub">${users.length ? Math.round((teachers.length / users.length) * 100) : 0}% от всех</div>
-        </div>
-        <div class="metric">
-          <div class="metric-lbl">Администраторов</div>
-          <div class="metric-val">${admins.length}</div>
-          <div class="metric-sub">управляющих системой</div>
-        </div>
-        <div class="metric">
-          <div class="metric-lbl">Размер БД</div>
-          <div class="metric-val">${sizeKB} <span style="font-size:14px;font-weight:400;color:var(--txt-muted);">КБ</span></div>
-          <div class="metric-sub">в localStorage</div>
-        </div>
-      </div>
 
-      <!-- ============ Графики ============ -->
-      <div class="grid grid-3 mt-16">
-        <div class="card">
-          <div class="card-title">Риски</div>
-          <div class="chart-box h-220"><canvas id="adminChartRisk"></canvas></div>
-        </div>
-        <div class="card">
-          <div class="card-title">Роли</div>
-          <div class="chart-box h-220"><canvas id="adminChartRoles"></canvas></div>
-        </div>
-        <div class="card">
-          <div class="card-title">Статусы работ</div>
-          <div class="chart-box h-220"><canvas id="adminChartStatuses"></canvas></div>
-        </div>
-      </div>
+        <div class="activity-hero">
+          <div class="activity-hero-heatmap">
+            ${renderHeatmap(audit)}
+          </div>
 
-      <!-- ============ Быстрые действия ============ -->
-      <div class="card mt-16">
-        <div class="card-title">Быстрые действия</div>
-        <div class="quick-actions">
-          <div class="quick-action" onclick="App.navigate('users')">
-            <div class="qa-ico">${SVG.users({ cls: "icon" })}</div>
-            <div class="qa-lbl">Пользователи</div>
-            <div class="qa-desc">Управление аккаунтами</div>
-          </div>
-          <div class="quick-action" onclick="App.navigate('works')">
-            <div class="qa-ico">${SVG.folder({ cls: "icon" })}</div>
-            <div class="qa-lbl">Все работы</div>
-            <div class="qa-desc">Фильтры и детали</div>
-          </div>
-          <div class="quick-action" onclick="App.navigate('analytics')">
-            <div class="qa-ico">${SVG.trending({ cls: "icon" })}</div>
-            <div class="qa-lbl">Аналитика</div>
-            <div class="qa-desc">Отчёты и экспорт</div>
-          </div>
-          <div class="quick-action" onclick="App.navigate('rules')">
-            <div class="qa-ico">${SVG.settings({ cls: "icon" })}</div>
-            <div class="qa-lbl">Правила</div>
-            <div class="qa-desc">Редактор Мамдани</div>
-          </div>
-          <div class="quick-action" onclick="PdfReport.exportDepartment()">
-            <div class="qa-ico">${SVG.fileText({ cls: "icon" })}</div>
-            <div class="qa-lbl">Скачать PDF</div>
-            <div class="qa-desc">Отчёт кафедры</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ============ Нижний блок: активность + внимание ============ -->
-      <div class="grid grid-2 mt-16">
-        <div class="card">
-          <div class="card-head">
-            <div class="card-title" style="margin-bottom:0;">
-              ${SVG.activity({ cls: "icon icon-sm" })}
-              Последние действия
+          <div class="activity-hero-side">
+            <div class="activity-stat">
+              <span class="activity-stat-label">Сегодня</span>
+              <span class="activity-stat-val">${auditToday.length}</span>
             </div>
-            <button class="btn-ghost btn-sm" onclick="App.navigate('audit')">
-              Все →
-            </button>
-          </div>
-          <div id="adminRecentAudit">
-            ${renderRecentAudit()}
+            <div class="activity-stat">
+              <span class="activity-stat-label">За 7 дней</span>
+              <span class="activity-stat-val">${week7Total}</span>
+            </div>
+            <div class="activity-stat">
+              <span class="activity-stat-label">Всего</span>
+              <span class="activity-stat-val">${audit.length}</span>
+            </div>
+            <div class="chart-box" style="height:130px;margin-top:10px;">
+              <canvas id="adminChartActivity"></canvas>
+            </div>
           </div>
         </div>
+      </div>
 
-        <div class="card">
+      <!-- 3 КРУГЛЫХ ГРАФИКА -->
+      <div class="dash-grid" style="margin-bottom:20px;">
+    <div class="card col-4">
+        <div class="card-title" style="font-size:14px;">По рискам</div>
+        <div class="chart-box chart-box--round"><canvas id="adminChartRisk"></canvas></div>
+    </div>
+    <div class="card col-4">
+        <div class="card-title" style="font-size:14px;">По статусам</div>
+        <div class="chart-box chart-box--round"><canvas id="adminChartStatuses"></canvas></div>
+    </div>
+    <div class="card col-4">
+        <div class="card-title" style="font-size:14px;">По типам</div>
+        <div class="chart-box chart-box--round"><canvas id="adminChartTypes"></canvas></div>
+    </div>
+</div>
+
+      <!-- ТРИ КАРТОЧКИ С ПАГИНАЦИЕЙ -->
+      <div class="dash-grid" style="margin-bottom:20px;">
+        <div class="card col-4 dash-card-fixed">
           <div class="card-head">
-            <div class="card-title" style="margin-bottom:0;">
+            <div class="card-title" style="margin-bottom:0;display:flex;align-items:center;gap:8px;">
+              ${SVG.book({ cls: "icon icon-sm" })}
+              Топ кафедр
+            </div>
+          </div>
+          ${renderTopDepartments(teachers, works)}
+        </div>
+
+        <div class="card col-4 dash-card-fixed">
+          <div class="card-head">
+            <div class="card-title" style="margin-bottom:0;display:flex;align-items:center;gap:8px;">
               ${SVG.alertTriangle({ cls: "icon icon-sm" })}
               Требуют внимания
             </div>
           </div>
-          ${renderNeedsAttention(users, works)}
+          ${renderAttentionList({ pendingWorks, highRisk, overdue, blocked, noTeacher: [] })}
         </div>
+
+        <div class="card col-4 dash-card-fixed">
+          <div class="card-head">
+            <div class="card-title" style="margin-bottom:0;display:flex;align-items:center;gap:8px;">
+              ${SVG.activity({ cls: "icon icon-sm" })}
+              Последние действия
+            </div>
+            <button class="btn-ghost btn-sm" onclick="App.navigate('audit')">→</button>
+          </div>
+          ${renderMiniActivity(audit)}
+        </div>
+      </div>
+
+      <!-- ТОП РАБОТ С ПАГИНАЦИЕЙ -->
+      <div class="dash-table-card">
+        <div class="card-head">
+          <div class="card-title" style="margin-bottom:0;display:flex;align-items:center;gap:8px;">
+            ${SVG.folder({ cls: "icon icon-sm" })}
+            Топ работ
+          </div>
+          <button class="btn-ghost btn-sm" onclick="App.navigate('works')">
+            Все →
+          </button>
+        </div>
+        ${renderTopWorksTable(works)}
       </div>
     `;
     };
@@ -281,13 +373,48 @@ const Admin = (() => {
     VIEWS.dashboard_after = function () {
         if (!Charts.hasChart()) return;
 
-        const works = Storage.getWorks()
-            .map((w) => ({
-                w,
-                res: getFuzzyResult(w),
-            }))
-            .filter((e) => e.res);
+        /* --- Активность за 7 дней --- */
+        const audit = typeof Audit !== "undefined" ? Audit.getAll() : [];
+        const labels = [];
+        const data = [];
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            d.setHours(0, 0, 0, 0);
+            const dEnd = new Date(d);
+            dEnd.setHours(23, 59, 59, 999);
+            const count = audit.filter((e) => {
+                const t = e.createdAt || 0;
+                return t >= d.getTime() && t <= dEnd.getTime();
+            }).length;
+            labels.push(
+                d.toLocaleDateString("ru-RU", {
+                    day: "2-digit",
+                    month: "2-digit",
+                }),
+            );
+            data.push(count);
+        }
+        Charts.bar(
+            "adminChartActivity",
+            labels,
+            data,
+            [
+                "#6366f1",
+                "#8b5cf6",
+                "#a855f7",
+                "#d946ef",
+                "#ec4899",
+                "#f43f5e",
+                "#f97316",
+            ],
+            { maxBarThickness: 22 },
+        );
 
+        /* --- Риски --- */
+        const works = Storage.getWorks()
+            .map((w) => ({ w, res: getFuzzyResult(w) }))
+            .filter((e) => e.res);
         const low = works.filter((e) => e.res.risk.term === "low").length;
         const med = works.filter((e) => e.res.risk.term === "med").length;
         const high = works.filter((e) => e.res.risk.term === "high").length;
@@ -296,25 +423,10 @@ const Admin = (() => {
             "adminChartRisk",
             ["Низкий", "Средний", "Высокий"],
             [low, med, high],
-            [Charts.COLORS.ok, Charts.COLORS.warn, Charts.COLORS.bad],
+            ["#34d399", "#fbbf24", "#f87171"],
+            { center: { label: "работ" }, hideLegend: true },
         );
-
-        const users = Storage.getUsers();
-        Charts.doughnut(
-            "adminChartRoles",
-            ["Студенты", "Преподаватели", "Администраторы"],
-            [
-                users.filter((u) => u.role === "student").length,
-                users.filter((u) => u.role === "teacher").length,
-                users.filter((u) => u.role === "admin").length,
-            ],
-            [Charts.COLORS.accent, Charts.COLORS.purple, Charts.COLORS.bad],
-        );
-
-        const statuses = {};
-        Storage.getWorks().forEach((w) => {
-            statuses[w.status] = (statuses[w.status] || 0) + 1;
-        });
+        /* --- Статусы --- */
         const statusLabels = {
             draft: "Черновик",
             pending: "На утверждении",
@@ -324,22 +436,407 @@ const Admin = (() => {
             done: "Защищена",
             rejected: "Отклонена",
         };
+        const statuses = {};
+        Storage.getWorks().forEach((w) => {
+            statuses[w.status] = (statuses[w.status] || 0) + 1;
+        });
         Charts.doughnut(
             "adminChartStatuses",
             Object.keys(statuses).map((k) => statusLabels[k] || k),
             Object.values(statuses),
-            [
-                Charts.COLORS.accent,
-                Charts.COLORS.warn,
-                Charts.COLORS.purple,
-                Charts.COLORS.ok,
-                Charts.COLORS.bad,
-                "#0ea5e9",
-                "#64748b",
-            ],
+            null,
+            { center: { label: "работ" }, hideLegend: true },
+        );
+
+        /* --- Типы работ --- */
+        const typeLabels = {
+            course: "Курсовая",
+            diploma: "Диплом",
+            vkr: "ВКР",
+            master: "Магистерская",
+        };
+        const types = {};
+        Storage.getWorks().forEach((w) => {
+            types[w.type] = (types[w.type] || 0) + 1;
+        });
+        Charts.doughnut(
+            "adminChartTypes",
+            Object.keys(types).map((k) => typeLabels[k] || k),
+            Object.values(types),
+            ["#6366f1", "#8b5cf6", "#06b6d4", "#ec4899"],
+            { center: { label: "работ" }, hideLegend: true },
         );
     };
 
+    /* =========================================================
+       ХЕЛПЕРЫ ДАШБОРДА
+       ========================================================= */
+    function renderKpiTile({ label, value, iconFn, iconCls, trend, foot }) {
+        let trendHtml = "";
+        if (trend !== undefined) {
+            const cls = trend > 0 ? "up" : trend < 0 ? "down" : "flat";
+            const arrow = trend > 0 ? "▲" : trend < 0 ? "▼" : "—";
+            trendHtml = `<span class="kpi-trend ${cls}">${arrow} ${Math.abs(trend)}</span>`;
+        }
+        return `
+      <div class="kpi-tile">
+        <div class="kpi-tile-head">
+          <div class="kpi-tile-label">${escapeHtml(label)}</div>
+          <div class="kpi-tile-icon ${iconCls}">${iconFn({ cls: "icon" })}</div>
+        </div>
+        <div class="kpi-tile-value">${value}</div>
+        <div class="kpi-tile-foot">
+          ${trendHtml}
+          <span>${escapeHtml(foot)}</span>
+        </div>
+      </div>
+    `;
+    }
+
+    function renderHeatmap(audit) {
+        const now = new Date();
+        const start = new Date(now);
+        start.setDate(start.getDate() - 52 * 7);
+        start.setHours(0, 0, 0, 0);
+        const dow = (start.getDay() + 6) % 7;
+        start.setDate(start.getDate() - dow);
+
+        const days = [];
+        const d = new Date(start);
+        while (d <= now) {
+            days.push(new Date(d));
+            d.setDate(d.getDate() + 1);
+        }
+
+        const counts = {};
+        audit.forEach((e) => {
+            const dt = new Date(e.createdAt || 0);
+            if (dt < start) return;
+            const key = `${dt.getFullYear()}-${dt.getMonth()}-${dt.getDate()}`;
+            counts[key] = (counts[key] || 0) + 1;
+        });
+
+        const max = Math.max(1, ...Object.values(counts));
+
+        const cells = days
+            .map((day) => {
+                const key = `${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`;
+                const c = counts[key] || 0;
+                let level = "";
+                if (c > 0) {
+                    const r = c / max;
+                    if (r < 0.25) level = "l1";
+                    else if (r < 0.5) level = "l2";
+                    else if (r < 0.8) level = "l3";
+                    else level = "l4";
+                }
+                const label = day.toLocaleDateString("ru-RU", {
+                    day: "2-digit",
+                    month: "short",
+                });
+                return `<div class="heatmap-cell ${level}" title="${label}: ${c} действий"></div>`;
+            })
+            .join("");
+
+        return `
+      <div class="heatmap-wrap">
+        <div class="heatmap-grid">${cells}</div>
+        <div class="heatmap-legend">
+          <span>Меньше</span>
+          <div class="heatmap-legend-cell"></div>
+          <div class="heatmap-legend-cell l1"></div>
+          <div class="heatmap-legend-cell l2"></div>
+          <div class="heatmap-legend-cell l3"></div>
+          <div class="heatmap-legend-cell l4"></div>
+          <span>Больше</span>
+        </div>
+      </div>
+    `;
+    }
+
+    function renderPagination(page, totalPages, key) {
+        if (totalPages <= 1) {
+            return `<div class="dash-panel-footer">
+                <button class="pg-btn" disabled>‹</button>
+                <span class="pg-info">1 / 1</span>
+                <button class="pg-btn" disabled>›</button>
+            </div>`;
+        }
+        return `<div class="dash-panel-footer">
+            <button class="pg-btn" onclick="Admin.prevPage('${key}')" ${page === 0 ? "disabled" : ""}>‹</button>
+            <span class="pg-info">${page + 1} / ${totalPages}</span>
+            <button class="pg-btn" onclick="Admin.nextPage('${key}', ${totalPages})" ${page >= totalPages - 1 ? "disabled" : ""}>›</button>
+        </div>`;
+    }
+
+    function renderTopDepartments(teachers, works) {
+        const byDept = {};
+        teachers.forEach((t) => {
+            const dept = t.department || "Без кафедры";
+            if (!byDept[dept]) byDept[dept] = { name: dept, count: 0 };
+        });
+        works.forEach((w) => {
+            if (w.status !== "active" && w.status !== "review") return;
+            const t = Storage.getUserById(w.teacherId);
+            if (!t) return;
+            const dept = t.department || "Без кафедры";
+            if (!byDept[dept]) byDept[dept] = { name: dept, count: 0 };
+            byDept[dept].count++;
+        });
+
+        const rows = Object.values(byDept).sort((a, b) => b.count - a.count);
+        const max = Math.max(1, ...rows.map((r) => r.count));
+
+        const perPage = 3;
+        const totalPages = Math.max(1, Math.ceil(rows.length / perPage));
+        const page = Math.min(adminPage.departments, totalPages - 1);
+        const slice = rows.slice(page * perPage, (page + 1) * perPage);
+
+        if (rows.length === 0) {
+            return `<div style="flex:1;display:flex;flex-direction:column;">
+                <div class="empty" style="padding:20px;flex:1;display:flex;align-items:center;justify-content:center;">Нет данных</div>
+                ${renderPagination(0, 1, "departments")}
+            </div>`;
+        }
+
+        return `<div style="flex:1;display:flex;flex-direction:column;">
+            <div style="flex:1;">
+                ${slice
+                    .map(
+                        (r) => `
+                    <div class="dash-top-row">
+                        <div class="dash-top-label">
+                            <span>${escapeHtml(r.name.replace("Кафедра ", ""))}</span>
+                        </div>
+                        <div class="dash-top-bar">
+                            <div class="dash-top-fill" style="width:${(r.count / max) * 100}%;"></div>
+                        </div>
+                        <div class="dash-top-val">${r.count}</div>
+                    </div>
+                `,
+                    )
+                    .join("")}
+            </div>
+            ${renderPagination(page, totalPages, "departments")}
+        </div>`;
+    }
+
+    function renderAttentionList({
+        pendingWorks,
+        highRisk,
+        overdue,
+        noTeacher,
+        blocked,
+    }) {
+        const items = [];
+
+        if (pendingWorks.length > 0) {
+            items.push({
+                icon: SVG.clipboard,
+                text: `<b>${pendingWorks.length}</b> заявок на утверждении`,
+                link: "works",
+                tone: "warn",
+            });
+        }
+        if (highRisk.length > 0) {
+            items.push({
+                icon: SVG.alertTriangle,
+                text: `<b>${highRisk.length}</b> работ с высоким риском`,
+                link: "analytics",
+                tone: "bad",
+            });
+        }
+        if (overdue.length > 0) {
+            items.push({
+                icon: SVG.clock,
+                text: `<b>${overdue.length}</b> просроченных работ`,
+                link: "works",
+                tone: "bad",
+            });
+        }
+        if (noTeacher.length > 0) {
+            items.push({
+                icon: SVG.users,
+                text: `<b>${noTeacher.length}</b> работ без руководителя`,
+                link: "works",
+                tone: "warn",
+            });
+        }
+        if (blocked.length > 0) {
+            items.push({
+                icon: SVG.lock,
+                text: `<b>${blocked.length}</b> заблокированных аккаунтов`,
+                link: "users",
+                tone: "warn",
+            });
+        }
+
+        if (items.length === 0) {
+            return `<div style="flex:1;display:flex;flex-direction:column;">
+                <div style="flex:1;text-align:center;padding:20px;color:var(--txt-muted);font-size:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;">
+                    ${SVG.checkCircle({ cls: "icon icon-xl", style: "opacity:0.5;" })}
+                    <div>Всё в порядке</div>
+                </div>
+                ${renderPagination(0, 1, "attention")}
+            </div>`;
+        }
+
+        const perPage = 3;
+        const totalPages = Math.max(1, Math.ceil(items.length / perPage));
+        const page = Math.min(adminPage.attention, totalPages - 1);
+        const slice = items.slice(page * perPage, (page + 1) * perPage);
+
+        return `<div style="flex:1;display:flex;flex-direction:column;">
+            <div style="flex:1;">
+                ${slice
+                    .map(
+                        (it) => `
+                    <div class="dash-activity-item" style="cursor:pointer;" onclick="App.navigate('${it.link}')">
+                        <div class="dash-activity-avatar" style="background:rgba(15,15,25,.06);color:${it.tone === "bad" ? "#dc2626" : "#d97706"};">
+                            ${it.icon({ cls: "icon icon-sm" })}
+                        </div>
+                        <div class="dash-activity-body">
+                            <div class="dash-activity-text">${it.text}</div>
+                        </div>
+                        <span style="color:var(--txt-muted);font-size:16px;">›</span>
+                    </div>
+                `,
+                    )
+                    .join("")}
+            </div>
+            ${renderPagination(page, totalPages, "attention")}
+        </div>`;
+    }
+
+    function renderMiniActivity(audit) {
+        const items = audit.slice(0, 30);
+
+        if (items.length === 0) {
+            return `<div style="flex:1;display:flex;flex-direction:column;">
+                <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:20px;color:var(--txt-muted);font-size:12px;">
+                    Пока нет действий
+                </div>
+                ${renderPagination(0, 1, "activity")}
+            </div>`;
+        }
+
+        const perPage = 3;
+        const totalPages = Math.max(1, Math.ceil(items.length / perPage));
+        const page = Math.min(adminPage.activity, totalPages - 1);
+        const slice = items.slice(page * perPage, (page + 1) * perPage);
+
+        return `<div style="flex:1;display:flex;flex-direction:column;">
+            <div style="flex:1;">
+                ${slice
+                    .map((e) => {
+                        const user = Storage.getUserById(e.userId);
+                        const ini = user
+                            ? user.fio
+                                  .split(" ")
+                                  .slice(0, 2)
+                                  .map((w) => w[0])
+                                  .join("")
+                            : "?";
+                        const ago = timeAgo(e.createdAt);
+                        return `
+                            <div class="dash-activity-item">
+                                <div class="dash-activity-avatar">${ini}</div>
+                                <div class="dash-activity-body">
+                                    <div class="dash-activity-text">
+                                        <b>${escapeHtml(user?.fio || "—")}</b>
+                                        ${escapeHtml(e.action || "—")}
+                                    </div>
+                                    <div class="dash-activity-time">${ago}</div>
+                                </div>
+                            </div>
+                        `;
+                    })
+                    .join("")}
+            </div>
+            ${renderPagination(page, totalPages, "activity")}
+        </div>`;
+    }
+
+    function renderTopWorksTable(works) {
+        const enriched = works
+            .map((w) => {
+                const res = Utils.safeFuzzyInfer(Utils.buildFuzzyInputs(w));
+                return res ? { w, res } : null;
+            })
+            .filter(Boolean)
+            .sort((a, b) => b.res.rating.value - a.res.rating.value);
+
+        if (enriched.length === 0) {
+            return `<div>
+                <div class="empty" style="padding:20px;">Работ пока нет</div>
+                ${renderPagination(0, 1, "works")}
+            </div>`;
+        }
+
+        const perPage = 5;
+        const totalPages = Math.max(1, Math.ceil(enriched.length / perPage));
+        const page = Math.min(adminPage.works, totalPages - 1);
+        const slice = enriched.slice(page * perPage, (page + 1) * perPage);
+
+        return `<div>
+            ${slice
+                .map((e, i) => {
+                    const rank = page * perPage + i + 1;
+                    const student = Storage.getUserById(e.w.studentId);
+                    const teacher = Storage.getUserById(e.w.teacherId);
+                    const rankCls =
+                        rank === 1
+                            ? "gold"
+                            : rank === 2
+                              ? "silver"
+                              : rank === 3
+                                ? "bronze"
+                                : "";
+                    const progress = Utils.calcProgress(e.w.id);
+                    const riskCls =
+                        e.res.risk.term === "high"
+                            ? "bad"
+                            : e.res.risk.term === "med"
+                              ? "warn"
+                              : "ok";
+                    return `
+                        <div class="dash-table-row" onclick="App.navigate('work-detail', {id: '${e.w.id}'})" style="cursor:pointer;">
+                            <div class="dash-table-rank ${rankCls}">${rank}</div>
+                            <div style="min-width:0;">
+                                <div class="dash-table-name">${escapeHtml(e.w.topic)}</div>
+                                <div class="dash-table-sub">
+                                    ${escapeHtml(student?.fio || "—")} · рук. ${escapeHtml(teacher?.fio?.split(" ").slice(0, 2).join(" ") || "—")}
+                                </div>
+                            </div>
+                            <div class="dash-table-chip ${riskCls}">${progress}%</div>
+                            <div class="dash-table-val">${e.res.rating.value.toFixed(0)}</div>
+                        </div>
+                    `;
+                })
+                .join("")}
+            ${renderPagination(page, totalPages, "works")}
+        </div>`;
+    }
+
+    function timeAgo(ts) {
+        if (!ts) return "—";
+        const diff = Date.now() - ts;
+        const min = Math.floor(diff / 60000);
+        if (min < 1) return "только что";
+        if (min < 60) return `${min} мин. назад`;
+        const hr = Math.floor(min / 60);
+        if (hr < 24) return `${hr} ч. назад`;
+        const d = Math.floor(hr / 24);
+        if (d < 7) return `${d} дн. назад`;
+        return new Date(ts).toLocaleDateString("ru-RU", {
+            day: "2-digit",
+            month: "short",
+        });
+    }
+
+    /* =========================================================
+       ПОЛЬЗОВАТЕЛИ
+       ========================================================= */
     VIEWS.users = function () {
         let users = Storage.getUsers();
 
@@ -815,14 +1312,12 @@ const Admin = (() => {
                     const cur = el.dataset.current;
                     if (!cur) return;
                     if (el.tagName === "SELECT") {
-                        // Проверим, есть ли такое значение среди опций
                         const hasOpt = Array.from(el.options).some(
                             (o) => o.value === cur,
                         );
                         if (hasOpt) {
                             el.value = cur;
                         } else {
-                            // Не нашли — переключаем на «+ Другое...» и заполняем input
                             el.value = "__custom__";
                             const custom = document.getElementById(
                                 id + "_custom",
@@ -984,6 +1479,9 @@ const Admin = (() => {
         App.navigate("users");
     }
 
+    /* =========================================================
+       РАБОТЫ
+       ========================================================= */
     VIEWS.works = function () {
         let works = Storage.getWorks();
 
@@ -1218,6 +1716,10 @@ const Admin = (() => {
       </div>
     `;
     };
+
+    /* =========================================================
+       ПРАВИЛА
+       ========================================================= */
     VIEWS.rules = function () {
         const rules = Fuzzy.getRules();
         return `
@@ -1290,6 +1792,9 @@ const Admin = (() => {
         App.navigate("rules");
     }
 
+    /* =========================================================
+       АНАЛИТИКА
+       ========================================================= */
     VIEWS.analytics = function () {
         const filtered = getFilteredWorksForAnalytics();
         const metrics = calcAnalyticsMetrics(filtered);
@@ -1314,7 +1819,6 @@ const Admin = (() => {
     `;
     };
 
-    /* ---------- HERO ---------- */
     function renderAnalyticsHero(m) {
         return `
       <div class="mf-hero" style="margin-bottom:20px;">
@@ -1333,7 +1837,6 @@ const Admin = (() => {
     `;
     }
 
-    /* ---------- KPI ---------- */
     function renderAnalyticsKpi(m) {
         const riskColor =
             m.avgRisk < 40 ? "ok" : m.avgRisk < 65 ? "warn" : "bad";
@@ -1376,7 +1879,6 @@ const Admin = (() => {
     `;
     }
 
-    /* ---------- ФИЛЬТРЫ ---------- */
     function renderAnalyticsFilters(teachers) {
         const hasFilter =
             analyticsFilter.status ||
@@ -1431,7 +1933,6 @@ const Admin = (() => {
     `;
     }
 
-    /* ---------- ПУСТОЕ СОСТОЯНИЕ ---------- */
     function renderAnalyticsEmpty() {
         const hasFilter =
             analyticsFilter.status ||
@@ -1458,7 +1959,6 @@ const Admin = (() => {
     `;
     }
 
-    /* ---------- 4 ДИАГРАММЫ ---------- */
     function renderAnalyticsCharts() {
         return `
       <div class="grid grid-2" style="margin-bottom:20px;">
@@ -1484,7 +1984,6 @@ const Admin = (() => {
     `;
     }
 
-    /* ---------- 2 ГОРИЗОНТАЛЬНЫХ БАРА ---------- */
     function renderAnalyticsBars(m) {
         return `
       <div class="grid grid-2" style="margin-bottom:20px;">
@@ -1500,7 +1999,6 @@ const Admin = (() => {
     `;
     }
 
-    /* ---------- ТОПЫ ---------- */
     function renderAnalyticsTops(m) {
         const highRisk = [...m.enriched]
             .filter((e) => e.res.risk.term === "high" || e.res.risk.value > 50)
@@ -1590,23 +2088,22 @@ const Admin = (() => {
     `;
     }
 
-    /* ---------- ТАБЛИЦЫ ---------- */
     function renderAnalyticsTables(m) {
         const groups = groupAnalyticsByStudentGroup(m.enriched);
         const teachers = groupAnalyticsByTeacher(m.enriched);
 
         return `
       <div class="grid grid-2" style="margin-bottom:20px;">
-        <div class="card">
+        <div class="card analytics-summary-card">
           <div class="card-head">
             <div class="card-title" style="margin-bottom:0;">Сводка по группам</div>
             <span class="count-chip">${groups.length}</span>
           </div>
           ${
               groups.length === 0
-                  ? '<div class="empty" style="padding:20px;">Нет данных о группах</div>'
+                  ? '<div class="empty" style="padding:20px;flex:1;display:flex;align-items:center;justify-content:center;">Нет данных о группах</div>'
                   : `
-            <div style="overflow-x:auto;">
+            <div class="analytics-summary-scroll">
               <table class="table">
                 <thead>
                   <tr>
@@ -1644,16 +2141,16 @@ const Admin = (() => {
           }
         </div>
 
-        <div class="card">
+        <div class="card analytics-summary-card">
           <div class="card-head">
             <div class="card-title" style="margin-bottom:0;">Сводка по преподавателям</div>
             <span class="count-chip">${teachers.length}</span>
           </div>
           ${
               teachers.length === 0
-                  ? '<div class="empty" style="padding:20px;">Нет данных</div>'
+                  ? '<div class="empty" style="padding:20px;flex:1;display:flex;align-items:center;justify-content:center;">Нет данных</div>'
                   : `
-            <div style="overflow-x:auto;">
+            <div class="analytics-summary-scroll">
               <table class="table">
                 <thead>
                   <tr>
@@ -1696,7 +2193,6 @@ const Admin = (() => {
     `;
     }
 
-    /* ---------- ЭКСПОРТ ---------- */
     function renderAnalyticsExport() {
         return `
       <div class="card">
@@ -1734,7 +2230,6 @@ const Admin = (() => {
 
         const { enriched } = metrics;
 
-        /* ---------- 1. Риски (doughnut) ---------- */
         const riskLow = enriched.filter(
             (e) => e.res.risk.term === "low",
         ).length;
@@ -1752,7 +2247,6 @@ const Admin = (() => {
             [Charts.COLORS.ok, Charts.COLORS.warn, Charts.COLORS.bad],
         );
 
-        /* ---------- 2. Статусы (doughnut) ---------- */
         const statusLabels = {
             draft: "Черновик",
             pending: "На утверждении",
@@ -1773,7 +2267,7 @@ const Admin = (() => {
             statusKeys.map((k) => statusLabels[k] || k),
             statusKeys.map((k) => statusCounts[k]),
             [
-                "#94a3b8", // draft — серый
+                "#94a3b8",
                 Charts.COLORS.warn,
                 Charts.COLORS.info,
                 Charts.COLORS.purple,
@@ -1783,7 +2277,6 @@ const Admin = (() => {
             ],
         );
 
-        /* ---------- 3. Типы работ (doughnut) ---------- */
         const typeCounts = {};
         enriched.forEach((e) => {
             typeCounts[e.w.type] = (typeCounts[e.w.type] || 0) + 1;
@@ -1802,7 +2295,6 @@ const Admin = (() => {
             ],
         );
 
-        /* ---------- 4. Готовность (doughnut) ---------- */
         const readyLow = enriched.filter(
             (e) => e.res.ready.term === "low",
         ).length;
@@ -1820,7 +2312,6 @@ const Admin = (() => {
             [Charts.COLORS.bad, Charts.COLORS.warn, Charts.COLORS.ok],
         );
 
-        /* ---------- 5. Нагрузка преподавателей (horizontal bar, Топ-10) ---------- */
         const teacherLoad = groupAnalyticsByTeacher(enriched).slice(0, 10);
 
         Charts.bar(
@@ -1840,7 +2331,6 @@ const Admin = (() => {
             { label: "Работ", horizontal: true },
         );
 
-        /* ---------- 6. Прогресс по группам (horizontal bar) ---------- */
         const groupProgress = groupAnalyticsByStudentGroup(enriched);
 
         if (groupProgress.length > 0) {
@@ -2094,6 +2584,9 @@ const Admin = (() => {
         reader.readAsText(file);
     }
 
+    /* =========================================================
+       СПРАВОЧНИКИ
+       ========================================================= */
     const REF_KEY = "fp_refs";
 
     function getRefs() {
@@ -2177,6 +2670,9 @@ const Admin = (() => {
         App.navigate("refs");
     }
 
+    /* =========================================================
+       НАСТРОЙКИ
+       ========================================================= */
     const SETTINGS_KEY = "fp_settings";
 
     function getSettings() {
@@ -2261,6 +2757,9 @@ const Admin = (() => {
         location.reload();
     }
 
+    /* =========================================================
+       ПРОФИЛЬ
+       ========================================================= */
     VIEWS.profile = function () {
         const u = getUser();
         if (!u) return "";
@@ -2279,6 +2778,9 @@ const Admin = (() => {
     `;
     };
 
+    /* =========================================================
+       ПРОФИЛЬ ПРЕПОДАВАТЕЛЯ
+       ========================================================= */
     VIEWS["teacher-profile"] = function (params) {
         const t = Storage.getUserById(params?.id);
         if (!t)
@@ -2450,6 +2952,9 @@ const Admin = (() => {
         );
     };
 
+    /* =========================================================
+       ПРОФИЛЬ СТУДЕНТА
+       ========================================================= */
     VIEWS["student-profile"] = function (params) {
         const s = Storage.getUserById(params?.id);
         if (!s)
@@ -2550,6 +3055,9 @@ const Admin = (() => {
     `;
     };
 
+    /* =========================================================
+       ПОДКЛЮЧЕНИЕ ВНЕШНИХ МОДУЛЕЙ
+       ========================================================= */
     VIEWS.mamdani = function (params) {
         return MamdaniViz.render(params);
     };
@@ -3235,6 +3743,9 @@ const Admin = (() => {
         createAnnouncement,
         toggleAnnouncementActive,
         deleteAnnouncement,
+
+        nextPage,
+        prevPage,
 
         closeModal,
     };

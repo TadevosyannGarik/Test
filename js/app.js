@@ -7,16 +7,6 @@ const App = (() => {
 
     /* =========================================================
        НАВИГАЦИЯ — ЕДИНЫЙ ИСТОЧНИК ПРАВДЫ
-
-       Каждый пункт меню описывается один раз:
-         id      — идентификатор (совпадает с ключом в VIEWS)
-         icon    — функция-иконка из SVG
-         label   — подпись для меню
-         roles   — массив ролей, которым доступен пункт
-         order   — порядок в меню (число; сортировка по возрастанию)
-
-       Чтобы добавить новый пункт — просто добавь объект в NAV_ITEMS.
-       Чтобы ограничить роль — допиши/убери её в roles.
        ========================================================= */
     const NAV_ITEMS = [
         // Общие для всех
@@ -57,6 +47,7 @@ const App = (() => {
             roles: ["student"],
             order: 60,
         },
+
         {
             id: "calendar",
             icon: SVG.calendar,
@@ -122,13 +113,7 @@ const App = (() => {
             roles: ["teacher", "admin"],
             order: 70,
         },
-        {
-            id: "mfEditor",
-            icon: SVG.settings,
-            label: "Редактор ФП",
-            roles: ["teacher", "admin"],
-            order: 110,
-        },
+
         {
             id: "rules",
             icon: SVG.settings,
@@ -200,14 +185,14 @@ const App = (() => {
             id: "mamdani",
             icon: SVG.brain,
             label: "Мамдани",
-            roles: ["student", "teacher", "admin"],
+            roles: ["student", "teacher"],
             order: 50,
         },
         {
             id: "simulate",
             icon: SVG.sliders,
             label: "Симулятор",
-            roles: ["student", "teacher", "admin"],
+            roles: ["student", "teacher"],
             order: 60,
         },
         {
@@ -231,6 +216,13 @@ const App = (() => {
             roles: ["student", "teacher", "admin"],
             order: 999,
         },
+        {
+            id: "mfEditor",
+            icon: SVG.settings,
+            label: "Редактор ФП",
+            roles: ["student"],
+            order: 110,
+        },
     ];
 
     /**
@@ -246,20 +238,12 @@ const App = (() => {
 
     /* =========================================================
        МАППИНГ ДОЧЕРНИХ VIEW → РОДИТЕЛЬСКИМ ВКЛАДКАМ
-
-       Используется для подсветки активной вкладки
-       на детальных страницах (profile, work-detail, ...).
        ========================================================= */
     const VIEW_PARENT_MAP = {
-        // Общие
         "create-work": "dashboard",
         "my-work": "dashboard",
-
-        // Преподаватель
         "student-detail": "students",
         "request-detail": "requests",
-
-        // Админ
         "teacher-profile": "users",
         "student-profile": "users",
         "work-detail": "works",
@@ -268,14 +252,10 @@ const App = (() => {
 
     function resolveActiveNavItem(viewId, role) {
         if (!viewId) return null;
-
-        // 1. Если viewId сам является вкладкой — используем его
         const items = navItems(role);
         if (items.some((it) => it.id === viewId)) {
             return viewId;
         }
-
-        // 2. Иначе — ищем в маппинге
         return VIEW_PARENT_MAP[viewId] || null;
     }
 
@@ -299,6 +279,16 @@ const App = (() => {
             .slice(0, 2)
             .join("")
             .toUpperCase();
+    }
+
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return "";
+        return String(str)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
     }
 
     /* =========================================================
@@ -325,7 +315,19 @@ const App = (() => {
         if (roleEl) roleEl.textContent = roleName(user.role);
         if (avEl) avEl.textContent = initials(user.fio);
 
+        // ВСЕГДА рендерим верхнюю навигацию
         renderNav(user.role);
+
+        // Для админа дополнительно — левый сайдбар-виджет
+        if (user.role === "admin") {
+            document.body.classList.add("admin-layout");
+            renderAdminSidebar(user);
+        } else {
+            document.body.classList.remove("admin-layout");
+            const old = document.getElementById("adminSidebar");
+            if (old) old.remove();
+        }
+
         navigate(defaultView(user.role));
         refreshNotifications();
     }
@@ -335,7 +337,7 @@ const App = (() => {
     }
 
     /* =========================================================
-       РЕНДЕР НАВИГАЦИИ
+       РЕНДЕР ВЕРХНЕЙ НАВИГАЦИИ
        ========================================================= */
     function renderNav(role) {
         const nav = document.getElementById("mainNav");
@@ -382,6 +384,155 @@ const App = (() => {
     }
 
     /* =========================================================
+       САЙДБАР АДМИНА — стеклянный, с виджетами
+       ========================================================= */
+    function renderAdminSidebar(user) {
+        let sb = document.getElementById("adminSidebar");
+        if (!sb) {
+            sb = document.createElement("aside");
+            sb.id = "adminSidebar";
+            sb.className = "admin-sidebar";
+            document.body.appendChild(sb);
+        }
+
+        const users = Storage.getUsers();
+        const works = Storage.getWorks();
+        const consults = typeof Consult !== "undefined" ? Consult.getAll() : [];
+        const announcements =
+            typeof Announcements !== "undefined" ? Announcements.getAll() : [];
+        const blocked = users.filter((u) => u.blocked);
+
+        const activeWorks = works.filter(
+            (w) => w.status === "active" || w.status === "review",
+        );
+        const pendingWorks = works.filter((w) => w.status === "pending");
+        const highRisk = works.filter((w) => {
+            const res = Utils.safeFuzzyInfer(Utils.buildFuzzyInputs(w));
+            return res && res.risk.term === "high";
+        });
+        const overdue = works.filter((w) => {
+            if (!w.deadline) return false;
+            if (w.status === "done" || w.status === "rejected") return false;
+            return daysUntil(w.deadline) < 0;
+        });
+        const pendingConsults = consults.filter((c) => c.status === "pending");
+        const activeAnnouncements = announcements.filter(
+            (a) =>
+                a.active !== false &&
+                (!a.expiresAt || a.expiresAt > Date.now()),
+        );
+
+        const penalties =
+            blocked.length * 5 +
+            overdue.length * 3 +
+            highRisk.length * 1 +
+            pendingWorks.length * 0.5;
+        const health = Math.max(0, Math.min(100, Math.round(100 - penalties)));
+        const healthColor =
+            health >= 75 ? "#10b981" : health >= 50 ? "#f59e0b" : "#ef4444";
+        const healthDesc =
+            health >= 75
+                ? "Система работает отлично"
+                : health >= 50
+                  ? "Есть моменты, требующие внимания"
+                  : "Требуется вмешательство";
+
+        sb.innerHTML = `
+        <div>
+            <div class="side-section-title">Статистика</div>
+            <div class="side-stats">
+                <div class="side-stat" onclick="App.navigate('users')">
+                    <div class="side-stat-label">Юзеры</div>
+                    <div class="side-stat-value">${users.length}</div>
+                    <div class="side-stat-sub">${blocked.length} блок.</div>
+                </div>
+                <div class="side-stat" onclick="App.navigate('works')">
+                    <div class="side-stat-label">Работы</div>
+                    <div class="side-stat-value">${works.length}</div>
+                    <div class="side-stat-sub">${activeWorks.length} акт.</div>
+                </div>
+                <div class="side-stat" onclick="App.navigate('consultations')">
+                    <div class="side-stat-label">Консульт.</div>
+                    <div class="side-stat-value">${consults.length}</div>
+                    <div class="side-stat-sub">${pendingConsults.length} ждут</div>
+                </div>
+                <div class="side-stat" onclick="App.navigate('announcements')">
+                    <div class="side-stat-label">Объявл.</div>
+                    <div class="side-stat-value">${announcements.length}</div>
+                    <div class="side-stat-sub">${activeAnnouncements.length} акт.</div>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <div class="side-section-title">Быстрые действия</div>
+            <div class="side-actions">
+                <div class="side-action" onclick="App.navigate('users')">
+                    <div class="side-action-icon">${SVG.users({ cls: "icon" })}</div>
+                    <span>Юзеры</span>
+                </div>
+                <div class="side-action" onclick="App.navigate('works')">
+                    <div class="side-action-icon green">${SVG.folder({ cls: "icon" })}</div>
+                    <span>Работы</span>
+                </div>
+                <div class="side-action" onclick="App.navigate('analytics')">
+                    <div class="side-action-icon purple">${SVG.trending({ cls: "icon" })}</div>
+                    <span>Аналитика</span>
+                </div>
+                <div class="side-action" onclick="App.navigate('demo')">
+                    <div class="side-action-icon pink">${SVG.rocket({ cls: "icon" })}</div>
+                    <span>Демо</span>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <div class="side-section-title">Здоровье системы</div>
+            <div class="side-health">
+                <div class="side-health-head">
+                    <div class="side-health-label">Общее</div>
+                    <div class="side-health-value" style="color:${healthColor};">${health}%</div>
+                </div>
+                <div class="side-health-bar">
+                    <div class="side-health-fill" style="width:${health}%;background:${healthColor};box-shadow:0 0 8px ${healthColor};"></div>
+                </div>
+                <div class="side-health-desc">${healthDesc}</div>
+            </div>
+        </div>
+
+        <div>
+            <div class="side-section-title">Навигация</div>
+            <div class="side-links">
+                <button class="side-link" onclick="App.navigate('audit')">
+                    ${SVG.log({ cls: "icon" })}
+                    <span>Аудит</span>
+                </button>
+                <button class="side-link" onclick="App.navigate('rules')">
+                    ${SVG.settings({ cls: "icon" })}
+                    <span>Правила</span>
+                </button>
+                <button class="side-link" onclick="App.navigate('rankings')">
+                    ${SVG.award({ cls: "icon" })}
+                    <span>Рейтинги</span>
+                </button>
+                <button class="side-link" onclick="App.navigate('refs')">
+                    ${SVG.book({ cls: "icon" })}
+                    <span>Справочники</span>
+                </button>
+                <button class="side-link" onclick="App.navigate('settings')">
+                    ${SVG.settings({ cls: "icon" })}
+                    <span>Настройки</span>
+                </button>
+                <button class="side-link" onclick="PdfReport.exportDepartment()">
+                    ${SVG.fileText({ cls: "icon" })}
+                    <span>Отчёт PDF</span>
+                </button>
+            </div>
+        </div>
+    `;
+    }
+
+    /* =========================================================
        НАВИГАЦИЯ
        ========================================================= */
     function navigate(viewId, params) {
@@ -424,11 +575,9 @@ const App = (() => {
         );
         if (!btn) return;
 
-        // Убираем старый бейдж
         const old = btn.querySelector(".nav-badge");
         if (old) old.remove();
 
-        // Считаем
         const count = Announcements.unreadCount(currentUser.id);
         if (count > 0) {
             const badge = document.createElement("span");
@@ -440,7 +589,6 @@ const App = (() => {
 
     /**
      * Рендер раздела.
-     * ВАЖНО: оборачиваем в <div class="view active"> для анимаций.
      */
     function renderView(viewId, params) {
         const root = document.getElementById("viewRoot");
@@ -546,7 +694,7 @@ const App = (() => {
     function refreshNotifications() {
         if (!currentUser) return;
 
-        // 1. Обновляем счётчик обычных уведомлений (колокольчик)
+        // 1. Колокольчик
         if (typeof Notifications !== "undefined") {
             try {
                 const count = Notifications.unreadCount(currentUser.id);
@@ -567,7 +715,7 @@ const App = (() => {
             }
         }
 
-        // 2. Обновляем бейдж непрочитанных объявлений в nav
+        // 2. Бейдж объявлений в nav
         try {
             if (
                 (currentUser.role === "student" ||
@@ -589,10 +737,10 @@ const App = (() => {
         toast,
         refreshNotifications,
         getUser: () => currentUser,
-        // Для отладки/расширения
         NAV_ITEMS,
         navItems,
         resolveActiveNavItem,
+        renderAdminSidebar,
     };
 })();
 

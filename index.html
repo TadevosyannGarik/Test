@@ -23,6 +23,7 @@
         <link rel="stylesheet" href="css/student.css" />
         <link rel="stylesheet" href="css/teacher.css" />
         <link rel="stylesheet" href="css/admin.css" />
+        <link rel="stylesheet" href="css/admin-layout.css" />
         <link rel="stylesheet" href="css/extras.css" />
         <link rel="stylesheet" href="css/mamdani.css" />
         <link rel="stylesheet" href="css/simulate.css" />
@@ -446,15 +447,20 @@
         <div id="app" class="app" style="display: none">
             <header class="app-header">
                 <div class="app-brand">
-                    <span class="brand-mark">FP</span>
+                    <span class="brand-mark">M</span>
                     <span class="brand-name">Meridian</span>
                 </div>
+
+                <nav class="app-nav" id="mainNav"></nav>
 
                 <div class="app-user">
                     <div class="notif-wrap" style="position: relative">
                         <div
                             class="notif-bell"
                             id="notifBell"
+                            role="button"
+                            tabindex="0"
+                            aria-label="Уведомления"
                             onclick="Notifications.toggle()"
                         >
                             <svg
@@ -480,14 +486,12 @@
                         </div>
                     </div>
 
-                    <div class="app-user-info">
-                        <div class="app-user-name" id="hUserName">—</div>
-                        <div class="app-user-role" id="hUserRole">—</div>
-                    </div>
-
                     <div
                         class="app-avatar"
                         id="hAvatar"
+                        role="button"
+                        tabindex="0"
+                        aria-label="Открыть профиль"
                         onclick="App.navigate('profile')"
                         title="Профиль"
                     >
@@ -513,7 +517,7 @@
                 </div>
             </header>
 
-            <nav class="app-nav" id="mainNav"></nav>
+            <!-- <nav class="app-nav" id="mainNav"></nav> -->
 
             <main class="app-main">
                 <div id="viewRoot"></div>

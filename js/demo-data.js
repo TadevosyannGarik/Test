@@ -1,6 +1,6 @@
 const DemoData = (() => {
     /* =========================================================
-       ПРЕПОДАВАТЕЛИ (20 человек)
+       ПРЕПОДАВАТЕЛИ (8 человек — покрывают 4 кафедры, 3 должности)
        ========================================================= */
     const TEACHERS_DATA = [
         {
@@ -10,7 +10,7 @@ const DemoData = (() => {
             position: "Доцент",
             degree: "к.т.н.",
             interests: "Нечёткая логика, искусственный интеллект",
-            maxLoad: 12,
+            maxLoad: 8,
         },
         {
             fio: "Иванова Мария Сергеевна",
@@ -19,16 +19,7 @@ const DemoData = (() => {
             position: "Профессор",
             degree: "д.т.н.",
             interests: "Машинное обучение, большие данные",
-            maxLoad: 10,
-        },
-        {
-            fio: "Сидорова Елена Алексеевна",
-            email: "sidorova@demo.ru",
-            department: "Кафедра информационных систем",
-            position: "Доцент",
-            degree: "к.т.н.",
-            interests: "Базы данных, SQL, NoSQL",
-            maxLoad: 12,
+            maxLoad: 7,
         },
         {
             fio: "Кузнецов Александр Сергеевич",
@@ -37,7 +28,7 @@ const DemoData = (() => {
             position: "Профессор",
             degree: "д.т.н.",
             interests: "Архитектура ПО, DevOps",
-            maxLoad: 10,
+            maxLoad: 7,
         },
         {
             fio: "Смирнова Ольга Владимировна",
@@ -46,7 +37,7 @@ const DemoData = (() => {
             position: "Доцент",
             degree: "к.т.н.",
             interests: "Тестирование, обеспечение качества",
-            maxLoad: 12,
+            maxLoad: 8,
         },
         {
             fio: "Соколов Дмитрий Андреевич",
@@ -55,16 +46,7 @@ const DemoData = (() => {
             position: "Профессор",
             degree: "д.ф.-м.н.",
             interests: "Численные методы, оптимизация",
-            maxLoad: 10,
-        },
-        {
-            fio: "Михайлова Анна Николаевна",
-            email: "mikhailova@demo.ru",
-            department: "Кафедра прикладной математики",
-            position: "Доцент",
-            degree: "к.ф.-м.н.",
-            interests: "Теория вероятностей, статистика",
-            maxLoad: 12,
+            maxLoad: 7,
         },
         {
             fio: "Новиков Сергей Владимирович",
@@ -73,16 +55,7 @@ const DemoData = (() => {
             position: "Ст. преподаватель",
             degree: "—",
             interests: "Веб-технологии, UX/UI",
-            maxLoad: 14,
-        },
-        {
-            fio: "Фёдорова Татьяна Сергеевна",
-            email: "fedorova@demo.ru",
-            department: "Кафедра программной инженерии",
-            position: "Доцент",
-            degree: "к.т.н.",
-            interests: "Мобильная разработка, Kotlin",
-            maxLoad: 12,
+            maxLoad: 9,
         },
         {
             fio: "Морозов Андрей Петрович",
@@ -91,96 +64,15 @@ const DemoData = (() => {
             position: "Профессор",
             degree: "д.т.н.",
             interests: "Криптография, защита информации",
-            maxLoad: 10,
+            maxLoad: 7,
         },
         {
-            fio: "Волкова Мария Дмитриевна",
-            email: "volkova@demo.ru",
-            department: "Кафедра кибербезопасности",
-            position: "Доцент",
-            degree: "к.т.н.",
-            interests: "Сетевая безопасность, пентест",
-            maxLoad: 12,
-        },
-        {
-            fio: "Лебедев Николай Иванович",
-            email: "lebedev@demo.ru",
-            department: "Кафедра прикладной математики",
-            position: "Профессор",
-            degree: "д.ф.-м.н.",
-            interests: "Дискретная математика, теория графов",
-            maxLoad: 10,
-        },
-        {
-            fio: "Орлова Наталья Владимировна",
-            email: "orlova@demo.ru",
-            department: "Кафедра информационных систем",
-            position: "Ст. преподаватель",
-            degree: "—",
-            interests: "Data Science, Python, анализ данных",
-            maxLoad: 14,
-        },
-        {
-            fio: "Козлов Владимир Николаевич",
-            email: "kozlov@demo.ru",
+            fio: "Фёдорова Татьяна Сергеевна",
+            email: "fedorova@demo.ru",
             department: "Кафедра программной инженерии",
             position: "Доцент",
             degree: "к.т.н.",
-            interests: "Микросервисы, Docker, Kubernetes",
-            maxLoad: 12,
-        },
-        {
-            fio: "Соловьёва Екатерина Андреевна",
-            email: "solovyeva@demo.ru",
-            department: "Кафедра информационных систем",
-            position: "Доцент",
-            degree: "к.т.н.",
-            interests: "Искусственный интеллект, NLP",
-            maxLoad: 12,
-        },
-        {
-            fio: "Никитин Павел Александрович",
-            email: "nikitin@demo.ru",
-            department: "Кафедра программной инженерии",
-            position: "Профессор",
-            degree: "д.т.н.",
-            interests: "Компиляторы, языки программирования",
-            maxLoad: 8,
-        },
-        {
-            fio: "Егорова Светлана Петровна",
-            email: "egorova@demo.ru",
-            department: "Кафедра прикладной математики",
-            position: "Доцент",
-            degree: "к.ф.-м.н.",
-            interests: "Математическое моделирование",
-            maxLoad: 12,
-        },
-        {
-            fio: "Романов Игорь Валентинович",
-            email: "romanov@demo.ru",
-            department: "Кафедра информационных систем",
-            position: "Ст. преподаватель",
-            degree: "—",
-            interests: "Базы данных, PostgreSQL",
-            maxLoad: 14,
-        },
-        {
-            fio: "Захарова Юлия Олеговна",
-            email: "zakharova@demo.ru",
-            department: "Кафедра кибербезопасности",
-            position: "Доцент",
-            degree: "к.т.н.",
-            interests: "Форензика, реагирование на инциденты",
-            maxLoad: 12,
-        },
-        {
-            fio: "Королёв Максим Юрьевич",
-            email: "korolev@demo.ru",
-            department: "Кафедра программной инженерии",
-            position: "Профессор",
-            degree: "д.т.н.",
-            interests: "Распределённые системы, блокчейн",
+            interests: "Мобильная разработка, Kotlin",
             maxLoad: 8,
         },
     ];
@@ -950,7 +842,7 @@ const DemoData = (() => {
     function generate() {
         const existingUsers = Storage.getUsers();
 
-        if (existingUsers.length > 10) {
+        if (existingUsers.length > 15) {
             if (
                 !confirm(
                     `В системе уже ${existingUsers.length} пользователей. ` +
@@ -992,8 +884,8 @@ const DemoData = (() => {
             existingEmails.add(t.email);
         }
 
-        /* --- Студенты (100 человек) --- */
-        const STUDENT_COUNT = 100;
+        /* --- Студенты (35 человек) --- */
+        const STUDENT_COUNT = 35;
         const studentNames = makeUniqueNames(STUDENT_COUNT);
 
         const students = [];
@@ -1038,14 +930,14 @@ const DemoData = (() => {
         const versions = Storage.getVersions();
         const comments = Storage.getComments();
 
-        /* --- План работ: 200 штук --- */
+        /* --- План работ: 70 штук --- */
         const statusPlan = [
-            { status: "pending", count: 15 },
-            { status: "active", count: 60 },
-            { status: "review", count: 25 },
-            { status: "approved", count: 20 },
-            { status: "done", count: 65 },
-            { status: "rejected", count: 15 },
+            { status: "pending", count: 5 },
+            { status: "active", count: 20 },
+            { status: "review", count: 10 },
+            { status: "approved", count: 7 },
+            { status: "done", count: 22 },
+            { status: "rejected", count: 6 },
         ];
 
         let topicIdx = 0;
@@ -1283,7 +1175,7 @@ const DemoData = (() => {
         Storage.setVersions(versions);
         Storage.setComments(comments);
 
-        /* --- Аудит (300 записей) --- */
+        /* --- Аудит (80 записей) --- */
         const auditLog = Storage.get("fp_audit", []);
         const auditActions = [
             "Создана работа",
@@ -1306,7 +1198,7 @@ const DemoData = (() => {
             "Обновлён профиль",
         ];
 
-        for (let i = 0; i < 300; i++) {
+        for (let i = 0; i < 80; i++) {
             const u = pick(users);
             auditLog.push({
                 id: uid(),
@@ -1330,29 +1222,26 @@ const DemoData = (() => {
         }
         Storage.set("fp_audit", auditLog);
 
-        /* --- Уведомления --- */
+        /* --- Уведомления (только для активных — у кого есть работы) --- */
         const notifs = Storage.get("fp_notifications", []);
 
-        for (const s of students) {
+        // Приветственные — только тем пользователям, у кого есть работы
+        const activeUserIds = new Set();
+        works.forEach((w) => {
+            activeUserIds.add(String(w.studentId));
+            activeUserIds.add(String(w.teacherId));
+        });
+
+        for (const id of activeUserIds) {
+            const u = users.find((x) => String(x.id) === id);
+            if (!u) continue;
             notifs.push({
                 id: uid(),
-                userId: s.id,
+                userId: u.id,
                 type: "info",
                 title: "Добро пожаловать в Meridian",
                 text: "Система поможет вам вести работу над курсовой или дипломной.",
                 read: Math.random() > 0.5,
-                createdAt: daysAgo(randInt(30, 200)),
-            });
-        }
-
-        for (const t of teachers) {
-            notifs.push({
-                id: uid(),
-                userId: t.id,
-                type: "info",
-                title: "Добро пожаловать в Meridian",
-                text: "Система поможет вам курировать студенческие работы.",
-                read: Math.random() > 0.3,
                 createdAt: daysAgo(randInt(30, 200)),
             });
         }
@@ -1389,11 +1278,11 @@ const DemoData = (() => {
 
         Storage.set("fp_notifications", notifs);
 
-        /* --- Консультации (50 штук) --- */
+        /* --- Консультации (15 штук) --- */
         const consults = Storage.get("fp_consults", []);
         const statuses = ["pending", "approved", "done", "rejected"];
 
-        for (let i = 0; i < 50; i++) {
+        for (let i = 0; i < 15; i++) {
             const work = pick(activeWorks);
             if (!work) continue;
 

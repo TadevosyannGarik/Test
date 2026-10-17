@@ -4331,6 +4331,13 @@ const Student = (() => {
     VIEWS.simulate = function (params) {
         return Simulate.render(params);
     };
+    VIEWS.mfEditor = function () {
+        return MFEditor.render();
+    };
+
+    VIEWS.mfEditor_after = function () {
+        MFEditor.applyOverrides();
+    };
 
     VIEWS.consultations = function () {
         return Consult.renderPage(getUser());

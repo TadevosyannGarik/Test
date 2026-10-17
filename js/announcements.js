@@ -19,7 +19,32 @@ const Announcements = (() => {
     const escapeHtml =
         typeof Utils !== "undefined" && Utils.escapeHtml
             ? Utils.escapeHtml
-            : (str) => String(str == null ? "" : str);
+            : (str) => {
+                  if (str === null || str === undefined) return "";
+                  return String(str)
+                      .replace(/&/g, "&amp;")
+                      .replace(/</g, "&lt;")
+                      .replace(/>/g, "&gt;")
+                      .replace(/"/g, "&quot;");
+              };
+
+    /* ---------- Локальный emptyState с fallback ---------- */
+    function localEmptyState(title, text, iconFn) {
+        const icon = iconFn
+            ? iconFn({ cls: "icon icon-2xl" })
+            : typeof SVG !== "undefined" && SVG.bell
+              ? SVG.bell({ cls: "icon icon-2xl" })
+              : "";
+        return `
+      <div class="empty-state" style="padding:48px 24px;text-align:center;">
+        ${icon}
+        <h3 style="font-size:17px;font-weight:600;margin-bottom:8px;margin-top:12px;color:var(--txt);">
+          ${escapeHtml(title || "")}
+        </h3>
+        ${text ? `<p style="color:var(--txt-muted);font-size:13px;max-width:400px;margin:0 auto;line-height:1.6;">${escapeHtml(text)}</p>` : ""}
+      </div>
+    `;
+    }
 
     /* =========================================================
        БАЗОВЫЕ ОПЕРАЦИИ
@@ -49,7 +74,6 @@ const Announcements = (() => {
 
     /* =========================================================
        ПРОЧИТАНО / НЕПРОЧИТАНО
-       Хранится как: { "userId1": ["annId1", "annId2"], ... }
        ========================================================= */
     function getReadMap() {
         const map = Storage.get(READ_KEY, {});
@@ -167,6 +191,7 @@ const Announcements = (() => {
        РЕНДЕР
        ========================================================= */
     function iconFor(priority) {
+        if (typeof SVG === "undefined") return () => "";
         if (priority === "urgent") return SVG.alertTriangle;
         if (priority === "important") return SVG.info;
         return SVG.bell;
@@ -244,14 +269,14 @@ const Announcements = (() => {
         <div class="card">
           <div class="card-head">
             <div class="card-title" style="margin-bottom:0;">
-              ${SVG.bell({ cls: "icon icon-sm" })}
+              ${typeof SVG !== "undefined" && SVG.bell ? SVG.bell({ cls: "icon icon-sm" }) : ""}
               Объявления
             </div>
           </div>
-          ${emptyState(
+          ${localEmptyState(
               "Объявлений пока нет",
               "Когда администратор опубликует объявление, оно появится здесь.",
-              SVG.bell,
+              typeof SVG !== "undefined" ? SVG.bell : null,
           )}
         </div>
       `;
@@ -261,7 +286,7 @@ const Announcements = (() => {
       <div class="card">
         <div class="card-head">
           <div class="card-title" style="margin-bottom:0;">
-            ${SVG.bell({ cls: "icon icon-sm" })}
+            ${typeof SVG !== "undefined" && SVG.bell ? SVG.bell({ cls: "icon icon-sm" }) : ""}
             Объявления
             <span class="count-chip">${list.length}</span>
           </div>

@@ -116,14 +116,6 @@ const MamdaniViz = (() => {
         return Storage.getWorks();
     }
 
-    /* =========================================================
-       УМНЫЙ ВЫБОР РАБОТЫ ПО УМОЛЧАНИЮ
-
-       Приоритеты:
-       1. Активные работы (active / review) с максимальным прогрессом
-       2. Approved / done
-       3. Остальные (по updatedAt)
-       ========================================================= */
     function pickDefaultWork(works) {
         if (!works || works.length === 0) return null;
 
@@ -139,7 +131,6 @@ const MamdaniViz = (() => {
             };
             const statusScore = statusOrder[w.status] ?? 99;
             const progress = Utils.calcProgress(w.id);
-            // Хотим: меньше statusScore (приоритет статусу) и больше progress
             return statusScore * 1000 - progress;
         }
 
@@ -147,9 +138,6 @@ const MamdaniViz = (() => {
         return sorted[0];
     }
 
-    /* =========================================================
-       ВХОДЫ ДЛЯ РАСЧЁТА
-       ========================================================= */
     function buildInputs(work) {
         if (!work) return null;
         const inputs = Utils.buildFuzzyInputs(work);
@@ -202,6 +190,18 @@ const MamdaniViz = (() => {
         };
     }
 
+    /* ---------- Склонение слова «день» ---------- */
+    function pluralDays(n) {
+        const n10 = n % 10;
+        const n100 = n % 100;
+        if (n10 === 1 && n100 !== 11) return "день";
+        if (n10 >= 2 && n10 <= 4 && (n100 < 10 || n100 >= 20)) return "дня";
+        return "дней";
+    }
+
+    /* =========================================================
+       ГЛАВНЫЙ РЕНДЕР
+       ========================================================= */
     function render(params) {
         const user = Auth.getUser();
         if (!user) return emptyState("Не авторизован", "", SVG.lock);
@@ -242,22 +242,112 @@ const MamdaniViz = (() => {
             return emptyState("Не удалось посчитать", "", SVG.alertTriangle);
 
         return `
-      ${renderWorkSelector(works, work)}
-      ${renderStatusBanner(result, work, inputs)}
-      ${renderThreeNumbers(result)}
-      ${renderQuickActions(result, work, inputs)}
-      ${renderFactors(inputs)}
-      ${renderDetailedAnalysis(inputs, result, work)}
-      ${renderHistory(work)}
+  <div class="mamdani-header-row">
+    ${renderWorkSelector(works, work)}
+    ${renderStatusBanner(result, work, inputs)}
+  </div>
+  ${renderHowItWorks()}
+  ${renderThreeNumbers(result)}
+  ${renderForecast(result, work, inputs)}
+  <div class="mamdani-two-col">
+    ${renderQuickActions(result, work, inputs)}
+    ${renderFactors(inputs, work)}
+  </div>
+  ${renderDetailedAnalysis(inputs, result, work)}
+  ${renderHistory(work)}
+`;
+    }
+
+    /* =========================================================
+       БЛОК «КАК ЭТО РАБОТАЕТ»
+       ========================================================= */
+    function renderHowItWorks() {
+        return `
+      <div class="how-it-works">
+        <div class="how-head">
+          ${SVG.brain({ cls: "icon icon-lg" })}
+          <div>
+            <div class="how-title">Как система считает оценку</div>
+            <div class="how-sub">Не нужно разбираться в нечёткой логике — просто поймите идею</div>
+          </div>
+          <button class="how-toggle" onclick="MamdaniViz.toggleHowItWorks(this)" type="button">
+            Показать
+          </button>
+        </div>
+        <div class="how-body" style="display:none;">
+          <div class="how-grid">
+            <div class="how-step">
+              <div class="how-step-num">1</div>
+              <div class="how-step-title">Смотрим на ваши цифры</div>
+              <div class="how-step-text">
+                Система берёт <b>прогресс, дни до дедлайна, активность,
+                число правок</b> и ещё несколько показателей.
+              </div>
+            </div>
+            <div class="how-step">
+              <div class="how-step-num">2</div>
+              <div class="how-step-title">Оцениваем «на глаз»</div>
+              <div class="how-step-text">
+                Например, прогресс 73% — это «<b>высокий</b>».
+                А 12 дней до дедлайна — это «<b>мало</b>». Так же,
+                как вы бы сказали вслух.
+              </div>
+            </div>
+            <div class="how-step">
+              <div class="how-step-num">3</div>
+              <div class="how-step-title">Применяем правила</div>
+              <div class="how-step-text">
+                В системе <b>46 правил</b> вида: <i>«ЕСЛИ прогресс высокий
+                И дней мало — ТО риск высокий»</i>. Одни правила
+                срабатывают сильно, другие — слабо.
+              </div>
+            </div>
+            <div class="how-step">
+              <div class="how-step-num">4</div>
+              <div class="how-step-title">Получаем итог</div>
+              <div class="how-step-text">
+                Система объединяет все сработавшие правила и получает
+                три числа: <b>риск</b>, <b>готовность</b>, <b>рейтинг</b> —
+                каждое от 0 до 100.
+              </div>
+            </div>
+          </div>
+          <div class="how-example">
+            <b>Пример:</b> если прогресс высокий (73%) и до дедлайна много дней
+            — риск будет низким. А если прогресс низкий и дней мало — риск
+            высокий. Это и есть «нечёткий вывод по Мамдани» — он работает
+            примерно так, как рассуждает человек.
+          </div>
+        </div>
+      </div>
     `;
     }
 
+    function toggleHowItWorks(btn) {
+        const body = btn.closest(".how-it-works").querySelector(".how-body");
+        const isHidden = body.style.display === "none";
+        body.style.display = isHidden ? "block" : "none";
+        btn.textContent = isHidden ? "Скрыть" : "Показать";
+    }
+
+    /* =========================================================
+       БАННЕР СТАТУСА (с фиксом просрочки)
+       ========================================================= */
     function renderStatusBanner(result, work, inputs) {
-        const risk = result.risk.value;
         const riskTerm = result.risk.term;
+        const daysLeft = work.deadline ? daysUntil(work.deadline) : null;
+        const isOverdue = daysLeft !== null && daysLeft < 0;
 
         let status = {};
-        if (riskTerm === "low") {
+
+        if (isOverdue) {
+            status = {
+                icon: SVG.alertTriangle,
+                cls: "bad",
+                title: "Дедлайн просрочен",
+                text: `Работа должна была быть сдана ${Math.abs(daysLeft)} ${pluralDays(Math.abs(daysLeft))} назад. Срочно свяжитесь с руководителем и обсудите новые сроки.`,
+            };
+        } else if (riskTerm === "low") {
             status = {
                 icon: SVG.checkCircle,
                 cls: "ok",
@@ -280,16 +370,18 @@ const MamdaniViz = (() => {
             };
         }
 
-        // Дней до дедлайна
-        const daysLeft = work.deadline ? daysUntil(work.deadline) : null;
-        const daysText =
-            daysLeft === null
-                ? ""
-                : daysLeft < 0
-                  ? `Дедлайн прошёл ${Math.abs(daysLeft)} дней назад`
-                  : daysLeft === 0
-                    ? "Дедлайн — сегодня"
-                    : `До дедлайна ${daysLeft} ${daysLeft === 1 ? "день" : daysLeft < 5 ? "дня" : "дней"}`;
+        let daysText = "";
+        if (daysLeft !== null) {
+            if (daysLeft < 0) {
+                daysText = `Просрочено на ${Math.abs(daysLeft)} ${pluralDays(Math.abs(daysLeft))}`;
+            } else if (daysLeft === 0) {
+                daysText = "Дедлайн — сегодня";
+            } else if (daysLeft <= 7) {
+                daysText = `До дедлайна ${daysLeft} ${pluralDays(daysLeft)} — осталось мало времени`;
+            } else {
+                daysText = `До дедлайна ${daysLeft} ${pluralDays(daysLeft)}`;
+            }
+        }
 
         return `
       <div class="status-banner status-${status.cls}">
@@ -306,7 +398,7 @@ const MamdaniViz = (() => {
     }
 
     /* =========================================================
-       ТРИ ГЛАВНЫЕ ЦИФРЫ — с объяснением
+       ТРИ ГЛАВНЫЕ ЦИФРЫ
        ========================================================= */
     function renderThreeNumbers(result) {
         const riskTerm = result.risk.term;
@@ -317,7 +409,6 @@ const MamdaniViz = (() => {
         const readyColor = Utils.readyClass(readyTerm);
         const ratingColor = Utils.readyClass(ratingTerm);
 
-        // Подписи-объяснения
         const riskExplain =
             riskTerm === "low"
                 ? "Успеваете вовремя"
@@ -341,7 +432,6 @@ const MamdaniViz = (() => {
 
         return `
       <div class="three-numbers">
-
         <div class="number-card ${riskColor}">
           <div class="number-label">Риск срыва</div>
           <div class="number-value" style="color:var(--${riskColor});">
@@ -383,18 +473,93 @@ const MamdaniViz = (() => {
           </div>
           <div class="number-explain">${ratingExplain}</div>
         </div>
-
       </div>
     `;
     }
 
     /* =========================================================
-       БЫСТРЫЕ ДЕЙСТВИЯ — что делать прямо сейчас
+       ПРОГНОЗ НА НЕДЕЛЮ (NEW)
+       ========================================================= */
+    function renderForecast(result, work, inputs) {
+        const futureInputs = {
+            ...inputs,
+            days: Math.max(0, (inputs.days || 0) - 7),
+        };
+        const future = Utils.safeFuzzyInfer(futureInputs);
+        if (!future) return "";
+
+        const riskDiff = future.risk.value - result.risk.value;
+        const isWorse = riskDiff > 3;
+        const isBetter = riskDiff < -3;
+
+        let verdict, verdictCls, iconFn;
+        if (isWorse) {
+            verdict = `Через неделю риск вырастет на ${riskDiff.toFixed(0)} — до ${future.risk.value.toFixed(0)}`;
+            verdictCls = "bad";
+            iconFn = SVG.alertTriangle;
+        } else if (isBetter) {
+            verdict = `Через неделю риск снизится на ${Math.abs(riskDiff).toFixed(0)} — до ${future.risk.value.toFixed(0)}`;
+            verdictCls = "ok";
+            iconFn = SVG.trending;
+        } else {
+            verdict = "Если ничего не менять — риск останется примерно тем же";
+            verdictCls = "neutral";
+            iconFn = SVG.info;
+        }
+
+        return `
+      <div class="forecast-card forecast-${verdictCls}">
+        <div class="forecast-icon">
+          ${iconFn({ cls: "icon icon-lg" })}
+        </div>
+        <div class="forecast-body">
+          <div class="forecast-title">Прогноз на неделю</div>
+          <div class="forecast-text">${verdict}</div>
+        </div>
+        <div class="forecast-nums">
+          <div class="forecast-num">
+            <div class="forecast-num-lbl">сейчас</div>
+            <div class="forecast-num-val">${result.risk.value.toFixed(0)}</div>
+          </div>
+          <div class="forecast-num-arrow">→</div>
+          <div class="forecast-num">
+            <div class="forecast-num-lbl">через 7 дней</div>
+            <div class="forecast-num-val forecast-num-val--${verdictCls}">${future.risk.value.toFixed(0)}</div>
+          </div>
+        </div>
+      </div>
+    `;
+    }
+
+    /* =========================================================
+       БЫСТРЫЕ ДЕЙСТВИЯ (с фиксом просрочки)
        ========================================================= */
     function renderQuickActions(result, work, inputs) {
         const actions = [];
 
-        // 1. Прогресс низкий → ускориться
+        // 1. Просрочен дедлайн — самая срочная проблема
+        if (work.deadline && daysUntil(work.deadline) < 0) {
+            actions.push({
+                icon: SVG.alertTriangle,
+                title: "Дедлайн уже прошёл",
+                text: `Свяжитесь с руководителем — обсудите новые сроки и план действий.`,
+                btnText: "Написать руководителю",
+                onclick: `App.navigate('consultations')`,
+                cls: "bad",
+            });
+        } else if (work.deadline && daysUntil(work.deadline) <= 7) {
+            const d = daysUntil(work.deadline);
+            actions.push({
+                icon: SVG.clock,
+                title: "Сроки поджимают",
+                text: `До дедлайна ${d} ${pluralDays(d)}. Запишитесь на консультацию.`,
+                btnText: "Записаться на консультацию",
+                onclick: `App.navigate('consultations')`,
+                cls: "bad",
+            });
+        }
+
+        // 2. Прогресс низкий
         if (inputs.progress < 50) {
             actions.push({
                 icon: SVG.trending,
@@ -406,7 +571,7 @@ const MamdaniViz = (() => {
             });
         }
 
-        // 2. ГОСТ низкий
+        // 3. ГОСТ
         if (
             inputs.gost === null ||
             inputs.gost === undefined ||
@@ -428,19 +593,7 @@ const MamdaniViz = (() => {
             });
         }
 
-        // 3. Мало дней
-        if (work.deadline && daysUntil(work.deadline) <= 14) {
-            actions.push({
-                icon: SVG.clock,
-                title: "Сроки поджимают",
-                text: `До дедлайна ${daysUntil(work.deadline)} дн. Запишитесь на консультацию к руководителю.`,
-                btnText: "Записаться на консультацию",
-                onclick: `App.navigate('consultations')`,
-                cls: "bad",
-            });
-        }
-
-        // 4. Низкая активность
+        // 4. Активность низкая
         if (inputs.activity < 4) {
             actions.push({
                 icon: SVG.activity,
@@ -452,7 +605,7 @@ const MamdaniViz = (() => {
             });
         }
 
-        // 5. Оценка руководителя отсутствует
+        // 5. Нет оценки руководителя
         if (inputs.supScore === null || inputs.supScore === undefined) {
             actions.push({
                 icon: SVG.messageCircle,
@@ -464,7 +617,6 @@ const MamdaniViz = (() => {
             });
         }
 
-        // Если ничего — поздравление
         if (actions.length === 0) {
             return `
         <div class="card quick-actions-card">
@@ -486,6 +638,7 @@ const MamdaniViz = (() => {
         <div class="qa-head">
           ${SVG.zap({ cls: "icon icon-sm" })}
           <span>Что делать сейчас</span>
+          <span class="qa-head-count">${actions.length}</span>
         </div>
         <div class="qa-list">
           ${actions
@@ -514,739 +667,10 @@ const MamdaniViz = (() => {
     `;
     }
 
-    function renderFactors(inputs) {
-        const vars = ["progress", "days", "activity", "edits"];
-
-        return `
-      <div class="card factors-card">
-        <div class="factors-head">
-          ${SVG.info({ cls: "icon icon-sm" })}
-          <span>Что повлияло на оценку</span>
-        </div>
-        <div class="factors-sub">
-          Система смотрит на 4 главных показателя вашей работы:
-        </div>
-        <div class="factors-grid">
-          ${vars
-              .map((v) => {
-                  const val = inputs[v] ?? 0;
-                  const dt = Fuzzy.dominantTerm(v, val);
-                  const meaning = FACTOR_MEANING[v]?.[dt.term] || "";
-
-                  const iconFn =
-                      v === "progress"
-                          ? SVG.trending
-                          : v === "days"
-                            ? SVG.calendar
-                            : v === "activity"
-                              ? SVG.activity
-                              : SVG.edit;
-
-                  return `
-              <div class="factor-card factor-card-${dt.term}">
-                <div class="factor-card-icon">
-                  ${iconFn({ cls: "icon icon-lg" })}
-                </div>
-                <div class="factor-card-body">
-                  <div class="factor-card-name">${escapeHtml(VAR_NAMES[v])}</div>
-                  <div class="factor-card-value">${val}${v === "days" ? " дн." : v === "progress" ? "%" : ""}</div>
-                  <div class="factor-card-term">${escapeHtml(TERM_LABELS[dt.term])}</div>
-                  <div class="factor-card-meaning">${escapeHtml(meaning)}</div>
-                </div>
-              </div>
-            `;
-              })
-              .join("")}
-        </div>
-      </div>
-    `;
-    }
-
     /* =========================================================
-       КАК СЧИТАЛАСЬ ОЦЕНКА — разбор по шагам
+       ФАКТОРЫ (с показом реальных дней)
        ========================================================= */
-    function renderDetailedAnalysis(inputs, result, work) {
-        return `
-      <div class="card mt-16">
-        <div class="factors-head">
-          ${SVG.brain({ cls: "icon icon-sm" })}
-          <span>Как считалась оценка</span>
-        </div>
-        <div class="factors-sub">
-          Разберём по шагам, как система пришла к этим цифрам.
-          Нажмите на любой шаг — увидите детали.
-        </div>
-
-        <div class="mamdani-tabs" style="margin-top:16px;">
-          ${renderTab("all", "Кратко")}
-          ${renderTab("fuzz", "1. Ваши данные")}
-          ${renderTab("rules", "2. Проверка правил")}
-          ${renderTab("aggr", "3. Объединение")}
-          ${renderTab("defuzz", "4. Итоговое число")}
-          ${renderTab("compare", "Сравнение методов")}
-        </div>
-
-        <div class="pipeline-v2">
-          ${pipelineStepV2(1, "Ваши данные", "цифры и факты", currentStep === "fuzz")}
-          ${pipelineStepV2(2, "Проверка правил", "что подходит", currentStep === "rules")}
-          ${pipelineStepV2(3, "Объединение", "собираем вместе", currentStep === "aggr")}
-          ${pipelineStepV2(4, "Итоговое число", "0 — 100", currentStep === "defuzz")}
-          ${pipelineStepV2(5, "Готово", "результат", false)}
-        </div>
-
-        <div id="vizBody">
-          ${renderStep(inputs, result, work)}
-        </div>
-      </div>
-    `;
-    }
-
-    function pipelineStepV2(num, title, sub, active) {
-        return `
-      <div class="pipeline-step-v2 ${active ? "active" : ""}">
-        <div class="pipeline-step-v2-num">${num}</div>
-        <div class="pipeline-step-v2-title">${escapeHtml(title)}</div>
-        <div class="pipeline-step-v2-sub">${escapeHtml(sub)}</div>
-      </div>
-    `;
-    }
-
-    /* =========================================================
-       ИСТОРИЯ РАБОТЫ
-       ========================================================= */
-    function renderHistory(work) {
-        const comments = Storage.getCommentsByWork(work.id);
-        const stages = Storage.getStagesByWork(work.id);
-
-        const events = [
-            { time: work.createdAt, label: "Работа создана", icon: SVG.folder },
-            ...stages
-                .filter((s) => s.completedAt)
-                .map((s) => ({
-                    time: s.completedAt,
-                    label: `Этап выполнен: ${s.name}`,
-                    icon: SVG.check,
-                })),
-            ...comments.map((c) => ({
-                time: c.createdAt,
-                label: "Новое замечание руководителя",
-                icon: SVG.messageCircle,
-            })),
-        ].sort((a, b) => a.time - b.time);
-
-        if (events.length < 2) return "";
-
-        const shown = events.slice(-6).reverse();
-
-        return `
-      <div class="card mt-16">
-        <div class="factors-head">
-          ${SVG.activity({ cls: "icon icon-sm" })}
-          <span>Что происходило с работой</span>
-        </div>
-        <div class="factors-sub">
-          Последние ${shown.length} ${shown.length === 1 ? "событие" : shown.length < 5 ? "события" : "событий"}:
-        </div>
-        <div class="history-list-v2">
-          ${shown
-              .map(
-                  (e, i) => `
-            <div class="history-item-v2">
-              <div class="history-item-icon">
-                ${e.icon({ cls: "icon icon-sm" })}
-              </div>
-              <div class="history-item-body">
-                <div class="history-item-label">${escapeHtml(e.label)}</div>
-                <div class="history-item-time">${fmtDateTime(e.time)}</div>
-              </div>
-            </div>
-          `,
-              )
-              .join("")}
-        </div>
-      </div>
-    `;
-    }
-
-    /* =========================================================
-       ВНУТРЕННИЕ ВКЛАДКИ — понятные объяснения
-       ========================================================= */
-
-    function renderOverview(inputs, result) {
-        return `
-      <div class="explain-box">
-        <div class="explain-box-title">Коротко о вашей работе</div>
-        <p>
-          Система взяла данные вашей работы и через
-          <b>${Fuzzy.getRules().length} правил</b> посчитала
-          <b>риск срыва</b>, <b>готовность</b> и <b>оценку качества</b>.
-        </p>
-        <p style="margin-top:10px;">
-          Нажмите на любую вкладку выше, чтобы увидеть, как это работает по шагам.
-        </p>
-      </div>
-    `;
-    }
-
-    /* =========================================================
-       ВКЛАДКА 1: ВАШИ ДАННЫЕ
-       ========================================================= */
-    function renderFuzzDetail(inputs) {
-        const vars = [
-            "progress",
-            "days",
-            "activity",
-            "edits",
-            "volume",
-            "orig",
-            "supScore",
-            "gost",
-        ];
-
-        return `
-      <div class="explain-box">
-        <div class="explain-box-title">Шаг 1. Система смотрит на ваши данные</div>
-        <p>
-          Для каждого показателя система определяет, к какой категории он относится:
-          <b>низкий</b>, <b>средний</b> или <b>высокий</b>.
-          Число показывает, насколько система уверена в этой категории (от 0 до 1).
-        </p>
-      </div>
-
-      <div class="fuzz-table">
-        ${vars
-            .map((v) => {
-                const raw = inputs[v];
-                const isEmpty = raw === null || raw === undefined;
-                const val = isEmpty
-                    ? v === "orig"
-                        ? 65
-                        : v === "supScore"
-                          ? 5
-                          : v === "gost"
-                            ? 70
-                            : 0
-                    : raw;
-
-                const terms = ["low", "med", "high"].map((t) => ({
-                    t,
-                    mu: isEmpty ? 0 : safeMF(v, t, val),
-                }));
-                const maxTerm = terms.reduce((a, b) => (a.mu > b.mu ? a : b));
-                const explanation = isEmpty
-                    ? "Руководитель ещё не проверял этот показатель"
-                    : TERM_EXPLAIN[v]?.[maxTerm.t] || "";
-
-                return `
-            <div class="fuzz-row-v2 ${isEmpty ? "empty" : ""}">
-              <div class="fuzz-row-v2-head">
-                <div class="fuzz-row-v2-name">${escapeHtml(VAR_NAMES[v])}</div>
-                <div class="fuzz-row-v2-value">${isEmpty ? "—" : val}</div>
-                ${
-                    isEmpty
-                        ? `<span class="fuzz-row-v2-badge" style="background:var(--bg-soft);color:var(--txt-muted);">нет данных</span>`
-                        : `<span class="fuzz-row-v2-badge fuzz-badge-${maxTerm.t}">
-                             ${escapeHtml(TERM_LABELS[maxTerm.t])}
-                           </span>`
-                }
-              </div>
-              <div class="fuzz-row-v2-explain">${escapeHtml(explanation)}</div>
-              <div class="fuzz-row-v2-bars">
-                ${terms
-                    .map(
-                        (x) => `
-                  <div class="fuzz-bar-v2-row">
-                    <span class="fuzz-bar-v2-lbl">${escapeHtml(TERM_LABELS[x.t])}</span>
-                    <div class="fuzz-bar-v2-track">
-                      <div class="fuzz-bar-v2-fill fuzz-${x.t}" style="width:${x.mu * 100}%"></div>
-                    </div>
-                    <span class="fuzz-bar-v2-val">${x.mu.toFixed(2)}</span>
-                  </div>
-                `,
-                    )
-                    .join("")}
-              </div>
-            </div>
-          `;
-            })
-            .join("")}
-      </div>
-    `;
-    }
-
-    /* =========================================================
-       ВКЛАДКА 2: ПРОВЕРКА ПРАВИЛ
-       ========================================================= */
-    function renderRulesDetail(inputs, result) {
-        const allFired = [
-            ...(result.risk.fired || []),
-            ...(result.ready.fired || []),
-            ...(result.rating.fired || []),
-        ];
-
-        const uniq = {};
-        allFired.forEach((f) => {
-            const id = f.rule?.id;
-            if (id === undefined) return;
-            if (!uniq[id] || uniq[id].strength < f.strength) uniq[id] = f;
-        });
-        const fired = Object.values(uniq).sort(
-            (a, b) => b.strength - a.strength,
-        );
-
-        return `
-      <div class="explain-box">
-        <div class="explain-box-title">Шаг 2. Система проверяет правила</div>
-        <p>
-          В системе <b>${Fuzzy.getRules().length} правил</b> вида
-          «ЕСЛИ что-то ТО результат».
-          Для вашей работы сработало <b>${fired.length}</b>
-          ${fired.length === 1 ? "правило" : fired.length < 5 ? "правила" : "правил"}.
-          Чем сильнее сработало правило — тем больше оно влияет на результат.
-        </p>
-      </div>
-
-      ${
-          fired.length === 0
-              ? `<div class="empty" style="padding:30px;text-align:center;">
-                  Ни одно правило не сработало для вашей работы
-                 </div>`
-              : fired.map((f) => renderRuleCardV2(f)).join("")
-      }
-    `;
-    }
-
-    function renderRuleCardV2(f) {
-        const strength = f.strength;
-        const level = strength > 0.7 ? "high" : strength > 0.4 ? "med" : "low";
-        const word =
-            strength > 0.7 ? "сильно" : strength > 0.4 ? "умеренно" : "слабо";
-
-        const ifStr = f.rule.if
-            .map((c) => {
-                const [v, t] = c.split("=");
-                return `${VAR_NAMES[v] || v} — ${TERM_LABELS[t] || t}`;
-            })
-            .join(" И ");
-        const [rv, rt] = f.rule.then.split("=");
-        const thenStr = `${VAR_NAMES[rv] || rv} — ${TERM_LABELS[rt] || rt}`;
-
-        return `
-      <div class="rule-v2">
-        <div class="rule-v2-strength rule-strength-${level}">
-          ${(strength * 100).toFixed(0)}%
-        </div>
-        <div class="rule-v2-body">
-          <div class="rule-v2-line">
-            <span class="rule-v2-tag">ЕСЛИ</span>
-            <span>${escapeHtml(ifStr)}</span>
-          </div>
-          <div class="rule-v2-line">
-            <span class="rule-v2-tag rule-v2-tag-then">ТО</span>
-            <span><b>${escapeHtml(thenStr)}</b></span>
-          </div>
-          <div class="rule-v2-footer">
-            Сработало ${word}
-            ${f.rule.desc ? ` · ${escapeHtml(f.rule.desc)}` : ""}
-          </div>
-        </div>
-      </div>
-    `;
-    }
-
-    /* =========================================================
-       ВКЛАДКА 3: ОБЪЕДИНЕНИЕ
-       ========================================================= */
-    function renderAggrDetail(result) {
-        const acc = result.risk.acc;
-        const maxAcc = Math.max(acc.low, acc.med, acc.high, 0.01);
-
-        return `
-      <div class="explain-box">
-        <div class="explain-box-title">Шаг 3. Система объединяет результаты</div>
-        <p>
-          Правил много, и некоторые дают разные ответы. Система берёт
-          <b>самое сильное сработавшее правило</b> для каждого варианта:
-          «риск низкий», «риск средний» или «риск высокий».
-        </p>
-      </div>
-
-      <div class="aggr-grid-v2">
-        ${renderAggrCardV2("Низкий риск", acc.low, maxAcc, "low")}
-        ${renderAggrCardV2("Средний риск", acc.med, maxAcc, "med")}
-        ${renderAggrCardV2("Высокий риск", acc.high, maxAcc, "high")}
-      </div>
-
-      <div class="explain-box" style="margin-top:16px;">
-        <div class="explain-box-title">График</div>
-        <p>
-          Три тонкие линии — это три возможных исхода. <b>Жирная линия</b> —
-          итог, который получился после объединения всех правил.
-        </p>
-      </div>
-      <div class="chart-box h-260" style="margin-top:12px;">
-        <canvas id="vizAggrChart"></canvas>
-      </div>
-    `;
-    }
-
-    function renderAggrCardV2(label, value, maxAcc, cls) {
-        const pct = maxAcc > 0 ? (value / maxAcc) * 100 : 0;
-        const active = value > 0.05;
-        const word =
-            value > 0.5 ? "Сильно" : value > 0 ? "Слабо" : "Не сработало";
-
-        return `
-      <div class="aggr-card-v2 aggr-v2-${cls} ${active ? "active" : ""}">
-        <div class="aggr-card-v2-label">${escapeHtml(label)}</div>
-        <div class="aggr-card-v2-value">${(value * 100).toFixed(0)}%</div>
-        <div class="aggr-card-v2-bar">
-          <div class="aggr-card-v2-fill" style="width:${pct}%"></div>
-        </div>
-        <div class="aggr-card-v2-word">${word}</div>
-      </div>
-    `;
-    }
-
-    /* =========================================================
-       ВКЛАДКА 4: ИТОГОВОЕ ЧИСЛО
-       ========================================================= */
-    function renderDefuzzDetail(result) {
-        return `
-      <div class="explain-box">
-        <div class="explain-box-title">Шаг 4. Система получает итоговое число</div>
-        <p>
-          Из графика система находит <b>среднюю точку</b> — это и есть итоговое число риска.
-          Оно всегда от 0 до 100.
-        </p>
-      </div>
-
-      <div class="defuzz-grid-v2">
-        ${renderDefuzzCardV2("Риск срыва", result.risk, "risk")}
-        ${renderDefuzzCardV2("Готовность", result.ready, "ready")}
-        ${renderDefuzzCardV2("Оценка качества", result.rating, "rating")}
-      </div>
-
-      <div class="explain-box" style="margin-top:16px;">
-        <div class="explain-box-title">График</div>
-        <p>
-          Красная линия — <b>итоговое число риска = ${result.risk.value.toFixed(0)}</b>.
-          Это точка, где уверенность системы максимальна.
-        </p>
-      </div>
-      <div class="chart-box h-260" style="margin-top:12px;">
-        <canvas id="vizDefuzzChart"></canvas>
-      </div>
-    `;
-    }
-
-    function renderDefuzzCardV2(label, data, kind) {
-        const color =
-            kind === "risk"
-                ? Utils.riskClass(data.term)
-                : kind === "ready"
-                  ? Utils.readyClass(data.term)
-                  : Utils.readyClass(data.term);
-
-        return `
-      <div class="defuzz-card-v2">
-        <div class="defuzz-card-v2-label">${escapeHtml(label)}</div>
-        <div class="defuzz-card-v2-value" style="color:var(--${color});">
-          ${data.value.toFixed(0)}
-        </div>
-        <div class="defuzz-card-v2-bar">
-          <div class="defuzz-card-v2-fill" style="width:${data.value}%;background:var(--${color});"></div>
-        </div>
-        <div class="defuzz-card-v2-term">${escapeHtml(Fuzzy.termLabel(data.term, kind))}</div>
-      </div>
-    `;
-    }
-
-    /* =========================================================
-       ВКЛАДКА 5: СРАВНЕНИЕ МЕТОДОВ
-       ========================================================= */
-    function renderCompareDetail(inputs, mamdani) {
-        const sugeno = Fuzzy.sugenoInfer(inputs);
-        const crisp = Fuzzy.crispInfer(inputs);
-
-        return `
-      <div class="explain-box">
-        <div class="explain-box-title">Сравнение методов оценки</div>
-        <p>
-          Одну работу можно оценить <b>тремя способами</b>.
-          Meridian использует <b>Мамдани</b> — самый точный метод.
-          Сравните с другими:
-        </p>
-      </div>
-
-      <div class="algo-compare-v2">
-        <div class="algo-card-v2 selected">
-          <div class="algo-card-v2-badge">Мы используем</div>
-          <div class="algo-card-v2-title">Мамдани</div>
-          <div class="algo-card-v2-value" style="color:var(--accent-viz);">
-            ${mamdani.risk.value.toFixed(0)}
-          </div>
-          <div class="algo-card-v2-desc">
-            Каждое правило можно прочитать и понять. Самый прозрачный метод.
-          </div>
-        </div>
-        <div class="algo-card-v2">
-          <div class="algo-card-v2-title">Сугено</div>
-          <div class="algo-card-v2-value" style="color:var(--warn);">
-            ${sugeno.risk.value.toFixed(0)}
-          </div>
-          <div class="algo-card-v2-desc">
-            Упрощённая версия. Быстрее, но менее точная.
-          </div>
-        </div>
-        <div class="algo-card-v2">
-          <div class="algo-card-v2-title">Обычная формула</div>
-          <div class="algo-card-v2-value" style="color:var(--txt-muted);">
-            ${crisp.risk.value.toFixed(0)}
-          </div>
-          <div class="algo-card-v2-desc">
-            Без правил. Считается по одной формуле.
-          </div>
-        </div>
-      </div>
-
-      <div class="explain-box" style="margin-top:16px;">
-        <div class="explain-box-title">Почему Мамдани лучше?</div>
-        <ul class="explain-list">
-          <li><b>Понятно.</b> Каждое правило — обычными словами.</li>
-          <li><b>Прозрачно.</b> Видно, какие правила сработали и почему.</li>
-          <li><b>Плавно.</b> Небольшие изменения не дают резких скачков.</li>
-          <li><b>Гибко.</b> Правила можно менять без переписывания программы.</li>
-        </ul>
-      </div>
-    `;
-    }
-
-    function renderWorkSelector(works, work) {
-        const student = Storage.getUserById(work.studentId);
-        return `
-      <div class="mamdani-work">
-        <div class="mamdani-work-info">
-          <div class="mamdani-work-label">Оценка работы</div>
-          <div class="mamdani-work-topic">${escapeHtml(work.topic)}</div>
-          <div class="mamdani-work-student">
-            ${escapeHtml(student?.fio || "—")}
-            ${student?.group ? `· ${escapeHtml(student.group)}` : ""}
-          </div>
-        </div>
-        <select onchange="MamdaniViz.selectWork(this.value)" class="mamdani-select">
-          ${works
-              .map(
-                  (w) => `
-            <option value="${w.id}" ${Storage.sameId(w.id, selectedWorkId) ? "selected" : ""}>
-              ${escapeHtml(w.topic.slice(0, 60))}${w.topic.length > 60 ? "…" : ""}
-            </option>
-          `,
-              )
-              .join("")}
-        </select>
-      </div>
-    `;
-    }
-
-    function renderHero(result, avg) {
-        const riskClass = Utils.riskClass(result.risk.term);
-        const icon =
-            result.risk.term === "high"
-                ? SVG.alertTriangle
-                : result.risk.term === "med"
-                  ? SVG.info
-                  : SVG.checkCircle;
-
-        let trendHtml = "";
-        if (avg) {
-            const diff = result.risk.value - avg.risk;
-            const diffText = `${diff > 0 ? "+" : ""}${diff.toFixed(1)}`;
-            const trendClass = diff > 2 ? "up" : diff < -2 ? "down" : "flat";
-            const trendArrow = diff > 2 ? "▲" : diff < -2 ? "▼" : "●";
-            const trendLabel =
-                diff > 2
-                    ? `Выше среднего на ${diffText}`
-                    : diff < -2
-                      ? `Ниже среднего на ${diffText}`
-                      : "На уровне среднего";
-
-            trendHtml = `
-        <div class="hero-trend ${trendClass}">
-          <span class="hero-trend-arrow">${trendArrow}</span>
-          <span class="hero-trend-text">${escapeHtml(trendLabel)}</span>
-        </div>
-      `;
-        }
-
-        return `
-      <div class="mamdani-hero-final ${riskClass}">
-        <div class="hero-icon">${icon({ cls: "icon icon-xl" })}</div>
-        <div class="hero-body">
-          <div class="hero-title">
-            ${escapeHtml(RECOMMENDATION.risk[result.risk.term])}
-          </div>
-          ${trendHtml}
-        </div>
-      </div>
-    `;
-    }
-
-    function renderActions(work) {
-        const user = Auth.getUser();
-        const role = user?.role || "student";
-
-        const actions = [];
-
-        // Студент — консультация + PDF
-        if (role === "student") {
-            actions.push(`
-        <button class="action-btn" onclick="App.navigate('consultations')">
-          ${SVG.calendar({ cls: "icon icon-sm" })}
-          <span>Записаться на консультацию</span>
-        </button>
-      `);
-            actions.push(`
-        <button class="action-btn" onclick="PdfReport.exportStudent('${work.id}')">
-          ${SVG.fileText({ cls: "icon icon-sm" })}
-          <span>Скачать PDF</span>
-        </button>
-      `);
-        } else {
-            actions.push(`
-        <button class="action-btn" onclick="MamdaniViz.contactStudent('${work.id}')">
-          ${SVG.messageCircle({ cls: "icon icon-sm" })}
-          <span>Написать студенту</span>
-        </button>
-      `);
-            actions.push(`
-        <button class="action-btn" onclick="MamdaniViz.openCommentModal('${work.id}')">
-          ${SVG.edit({ cls: "icon icon-sm" })}
-          <span>Добавить комментарий</span>
-        </button>
-      `);
-            actions.push(`
-        <button class="action-btn" onclick="PdfReport.exportStudent('${work.id}')">
-          ${SVG.fileText({ cls: "icon icon-sm" })}
-          <span>Скачать PDF</span>
-        </button>
-      `);
-        }
-
-        return `
-      <div class="mamdani-actions" style="grid-template-columns:repeat(${actions.length}, 1fr);">
-        ${actions.join("")}
-      </div>
-    `;
-    }
-
-    function renderMainResult(result) {
-        const riskClass = Utils.riskClass(result.risk.term);
-        const readyClass = Utils.readyClass(result.ready.term);
-        const ratingClass = Utils.readyClass(result.rating.term);
-
-        return `
-      <div class="mamdani-main">
-        <div class="main-risk ${riskClass}">
-          <div class="main-risk-label">Риск срыва сроков</div>
-          <div class="main-risk-value">${result.risk.value.toFixed(0)}</div>
-          <div class="main-risk-term">${escapeHtml(Fuzzy.termLabel(result.risk.term, "risk"))}</div>
-        </div>
-
-        <div class="main-side">
-          <div class="main-side-card ${readyClass}">
-            <div class="main-side-label">Готовность</div>
-            <div class="main-side-value">${result.ready.value.toFixed(0)}</div>
-            <div class="main-side-term">${escapeHtml(Fuzzy.termLabel(result.ready.term, "ready"))}</div>
-          </div>
-          <div class="main-side-card ${ratingClass}">
-            <div class="main-side-label">Рейтинг</div>
-            <div class="main-side-value">${result.rating.value.toFixed(0)}</div>
-            <div class="main-side-term">${escapeHtml(Fuzzy.termLabel(result.rating.term, "rating"))}</div>
-          </div>
-        </div>
-      </div>
-    `;
-    }
-
-    function renderTodo(inputs, result) {
-        const todos = [];
-
-        if (result.risk.term === "high") {
-            todos.push({
-                icon: "🚨",
-                title: "Срочно связаться со студентом",
-                text: "Обсудить план и сроки",
-            });
-        }
-        if (inputs.progress < 50) {
-            todos.push({
-                icon: "📈",
-                title: "Ускорить темп работы",
-                text: `Прогресс ${inputs.progress}% — стоит подтянуть`,
-            });
-        }
-        if (
-            inputs.gost !== null &&
-            inputs.gost !== undefined &&
-            inputs.gost < 70
-        ) {
-            todos.push({
-                icon: "📄",
-                title: "Обратить внимание на ГОСТ",
-                text: `Соответствие ${inputs.gost}% — нужно доработать`,
-            });
-        }
-        if (inputs.gost === null || inputs.gost === undefined) {
-            todos.push({
-                icon: "📝",
-                title: "Проверить оформление по ГОСТу",
-                text: "Оценка ещё не проводилась",
-            });
-        }
-        if (inputs.activity < 4) {
-            todos.push({
-                icon: "💬",
-                title: "Проверить активность студента",
-                text: "Давно не выходил на связь",
-            });
-        }
-
-        if (todos.length === 0) {
-            todos.push({
-                icon: "✅",
-                title: "Всё в порядке",
-                text: "Работа идёт по плану, вмешательство не требуется",
-            });
-        }
-
-        return `
-      <div class="mamdani-todo">
-        <div class="mamdani-section-title">
-          ${SVG.zap({ cls: "icon icon-sm" })}
-          Что делать прямо сейчас
-        </div>
-        <div class="todo-list">
-          ${todos
-              .slice(0, 3)
-              .map(
-                  (t) => `
-            <div class="todo-item">
-              <div class="todo-icon">${t.icon}</div>
-              <div class="todo-body">
-                <div class="todo-title">${escapeHtml(t.title)}</div>
-                <div class="todo-text">${escapeHtml(t.text)}</div>
-              </div>
-            </div>
-          `,
-              )
-              .join("")}
-        </div>
-      </div>
-    `;
-    }
-
-    function renderFactors(inputs) {
+    function renderFactors(inputs, work) {
         const vars = ["progress", "days", "activity", "edits"];
 
         return `
@@ -1258,17 +682,39 @@ const MamdaniViz = (() => {
         <div class="factor-list">
           ${vars
               .map((v) => {
-                  const val = inputs[v] ?? 0;
+                  let val = inputs[v] ?? 0;
+                  let displayVal = val;
+                  let unit = "";
+
+                  // Для «дней до дедлайна» показываем реальное значение
+                  if (v === "days" && work.deadline) {
+                      const realDays = daysUntil(work.deadline);
+                      displayVal = realDays;
+                      val = Math.max(0, realDays);
+                  }
+
                   const dt = Fuzzy.dominantTerm(v, val);
-                  const meaning = FACTOR_MEANING[v]?.[dt.term] || "";
+                  let meaning = FACTOR_MEANING[v]?.[dt.term] || "";
+                  let termLabel = TERM_LABELS[dt.term];
+                  let termCls = `factor-term-${dt.term}`;
+
+                  // Переопределяем смысл и цвет для просроченного дедлайна
+                  if (v === "days" && displayVal < 0) {
+                      meaning = `просрочено на ${Math.abs(displayVal)} ${pluralDays(Math.abs(displayVal))}`;
+                      termLabel = "просрочено";
+                      termCls = "factor-term-high";
+                  }
+
+                  if (v === "progress") unit = "%";
+                  if (v === "days") unit = " дн.";
 
                   return `
               <div class="factor-item">
                 <div class="factor-item-head">
                   <span class="factor-item-name">${escapeHtml(VAR_NAMES[v])}</span>
-                  <span class="factor-item-val">${val}</span>
-                  <span class="factor-item-term factor-term-${dt.term}">
-                    ${escapeHtml(TERM_LABELS[dt.term])}
+                  <span class="factor-item-val">${displayVal}${unit}</span>
+                  <span class="factor-item-term ${termCls}">
+                    ${escapeHtml(termLabel)}
                   </span>
                 </div>
                 <div class="factor-item-meaning">→ ${escapeHtml(meaning)}</div>
@@ -1281,12 +727,15 @@ const MamdaniViz = (() => {
     `;
     }
 
+    /* =========================================================
+       ПОДРОБНЫЙ РАЗБОР
+       ========================================================= */
     function renderDetailedAnalysis(inputs, result, work) {
         return `
-      <div class="card" style="margin-top:20px;">
-        <div class="card-head">
-          <div class="card-title">📊 Подробный разбор</div>
-        </div>
+      <div class="mamdani-detailed-card">
+    <div class="card-head">
+      <div class="card-title">Подробный разбор</div>
+    </div>
         <p style="font-size:13px;color:var(--txt-muted);margin-bottom:20px;line-height:1.6;">
           Пошагово — как система пришла к результату.
           Нажми на любой шаг, чтобы увидеть детали.
@@ -1294,15 +743,15 @@ const MamdaniViz = (() => {
 
         <div class="mamdani-tabs">
           ${renderTab("all", "Общий обзор")}
-          ${renderTab("fuzz", "1. Фаззификация")}
-          ${renderTab("rules", "2. Правила")}
+          ${renderTab("fuzz", "1. Оценка показателей")}
+          ${renderTab("rules", "2. Сработавшие правила")}
           ${renderTab("aggr", "3. Агрегация")}
           ${renderTab("defuzz", "4. Дефаззификация")}
           ${renderTab("compare", "Сравнение алгоритмов")}
         </div>
 
         <div class="pipeline">
-          ${pipelineStep(1, "Фаззификация", "вход → μ", currentStep === "fuzz")}
+          ${pipelineStep(1, "Оценка", "числа → категории", currentStep === "fuzz")}
           ${pipelineStep(2, "Правила", "min по посылке", currentStep === "rules")}
           ${pipelineStep(3, "Агрегация", "max по терму", currentStep === "aggr")}
           ${pipelineStep(4, "Дефаззификация", "центр тяжести", currentStep === "defuzz")}
@@ -1350,6 +799,9 @@ const MamdaniViz = (() => {
         }
     }
 
+    /* =========================================================
+       ОБЗОР
+       ========================================================= */
     function renderOverview(inputs, result) {
         const ratingColor = Utils.readyClass(result.rating.term);
 
@@ -1386,6 +838,9 @@ const MamdaniViz = (() => {
     `;
     }
 
+    /* =========================================================
+       ФАЗЗИФИКАЦИЯ
+       ========================================================= */
     function renderFuzzDetail(inputs) {
         const vars = [
             "progress",
@@ -1400,9 +855,13 @@ const MamdaniViz = (() => {
 
         return `
       <div class="mamdani-explain">
-        <b>Фаззификация</b> — превращение обычных чисел в «степени уверенности».
-        Например, если прогресс 42%, система говорит:
-        <b>«на 60% это средний и на 40% низкий»</b>.
+        <b>Шаг 1. Как система оценила каждый показатель</b>
+        <br><br>
+        Каждый показатель система относит к категории — <b>низкий</b>,
+        <b>средний</b> или <b>высокий</b>. Рядом — «уверенность»
+        от 0 до 1: чем ближе к 1, тем сильнее система склоняется
+        к этой категории. Например, прогресс 73% — это уверенно
+        «высокий», а 45% — «средний, с наклоном в низкий».
         <br><br>
         <b>Примечание:</b> если руководитель ещё не проверял работу,
         переменные «оригинальность», «оценка» и «ГОСТ» показаны серым —
@@ -1474,6 +933,9 @@ const MamdaniViz = (() => {
     `;
     }
 
+    /* =========================================================
+       ПРАВИЛА
+       ========================================================= */
     function renderRulesDetail(inputs, result) {
         const allFired = [
             ...(result.risk.fired || []),
@@ -1493,9 +955,10 @@ const MamdaniViz = (() => {
 
         return `
       <div class="mamdani-explain">
-        <b>Правила</b> — основа системы. Каждое правило —
-        «ЕСЛИ что-то ТО результат». Система берёт только те правила,
-        у которых <b>посылка истинна</b>.
+        <b>Шаг 2. Сработавшие правила</b>
+        <br><br>
+        Правила — основа системы. Каждое правило — «ЕСЛИ что-то ТО результат».
+        Система берёт только те правила, у которых <b>посылка истинна</b>.
         <br><br>
         Всего в базе <b>${Fuzzy.getRules().length}</b> правил.
         Ниже — только те, что сработали для текущей работы.
@@ -1547,12 +1010,17 @@ const MamdaniViz = (() => {
     `;
     }
 
+    /* =========================================================
+       АГРЕГАЦИЯ
+       ========================================================= */
     function renderAggrDetail(result) {
         const acc = result.risk.acc;
 
         return `
       <div class="mamdani-explain">
-        <b>Агрегация</b> — объединение сработавших правил для одного выхода.
+        <b>Шаг 3. Агрегация</b>
+        <br><br>
+        Агрегация — объединение сработавших правил для одного выхода.
         Система берёт <b>максимум</b> по каждому терму — то, во что верит сильнее всего.
       </div>
 
@@ -1591,11 +1059,16 @@ const MamdaniViz = (() => {
     `;
     }
 
+    /* =========================================================
+       ДЕФАЗЗИФИКАЦИЯ
+       ========================================================= */
     function renderDefuzzDetail(result) {
         return `
       <div class="mamdani-explain">
-        <b>Дефаззификация</b> — превращение нечёткого результата
-        обратно в <b>обычное число</b>. Система берёт «центр тяжести» —
+        <b>Шаг 4. Дефаззификация</b>
+        <br><br>
+        Дефаззификация — превращение нечёткого результата обратно в
+        <b>обычное число</b>. Система берёт «центр тяжести» —
         где уверенность максимальна.
       </div>
 
@@ -1640,6 +1113,9 @@ const MamdaniViz = (() => {
     `;
     }
 
+    /* =========================================================
+       СРАВНЕНИЕ
+       ========================================================= */
     function renderCompareDetail(inputs, mamdani) {
         const sugeno = Fuzzy.sugenoInfer(inputs);
         const crisp = Fuzzy.crispInfer(inputs);
@@ -1724,6 +1200,9 @@ const MamdaniViz = (() => {
     `;
     }
 
+    /* =========================================================
+       ИСТОРИЯ
+       ========================================================= */
     function renderHistory(work) {
         const comments = Storage.getCommentsByWork(work.id);
         const stages = Storage.getStagesByWork(work.id);
@@ -1769,9 +1248,41 @@ const MamdaniViz = (() => {
     `;
     }
 
+    /* =========================================================
+       СЕЛЕКТОР РАБОТЫ
+       ========================================================= */
+    function renderWorkSelector(works, work) {
+        const student = Storage.getUserById(work.studentId);
+        return `
+      <div class="mamdani-work">
+        <div class="mamdani-work-info">
+          <div class="mamdani-work-label">Оценка работы</div>
+          <div class="mamdani-work-topic">${escapeHtml(work.topic)}</div>
+          <div class="mamdani-work-student">
+            ${escapeHtml(student?.fio || "—")}
+            ${student?.group ? `· ${escapeHtml(student.group)}` : ""}
+          </div>
+        </div>
+        <select onchange="MamdaniViz.selectWork(this.value)" class="mamdani-select">
+          ${works
+              .map(
+                  (w) => `
+            <option value="${w.id}" ${Storage.sameId(w.id, selectedWorkId) ? "selected" : ""}>
+              ${escapeHtml(w.topic.slice(0, 60))}${w.topic.length > 60 ? "…" : ""}
+            </option>
+          `,
+              )
+              .join("")}
+        </select>
+      </div>
+    `;
+    }
+
+    /* =========================================================
+       ГРАФИКИ
+       ========================================================= */
     function drawCharts() {
-        if (typeof Charts === "undefined") return;
-        if (!Charts.hasChart()) return;
+        if (typeof Charts === "undefined" || !Charts.hasChart()) return;
 
         const work = Storage.getWorkById(selectedWorkId);
         if (!work) return;
@@ -1781,221 +1292,136 @@ const MamdaniViz = (() => {
         const result = Utils.safeFuzzyInfer(inputs);
         if (!result) return;
 
-        const C = {
-            ok: Charts.COLORS.ok,
-            warn: Charts.COLORS.warn,
-            bad: Charts.COLORS.bad,
-            accent: Charts.COLORS.accent,
-            txt: Charts.COLORS.txt,
-            line: Charts.COLORS.line,
-        };
+        const C = Charts.COLORS;
 
-        const aggrCanvas = document.getElementById("vizAggrChart");
-        if (aggrCanvas) {
-            if (aggrCanvas._chart) {
-                try {
-                    aggrCanvas._chart.destroy();
-                } catch (e) {}
-                aggrCanvas._chart = null;
-            }
+        /* ---------- График агрегации ---------- */
+        const x = Array.from({ length: 101 }, (_, i) => i);
+        const acc = result.risk.acc;
 
-            const x = Array.from({ length: 101 }, (_, i) => i);
-            const acc = result.risk.acc;
-            const dataLow = x.map((v) =>
-                Math.min(acc.low, Fuzzy.OUT.risk.low(v)),
-            );
-            const dataMed = x.map((v) =>
-                Math.min(acc.med, Fuzzy.OUT.risk.med(v)),
-            );
-            const dataHigh = x.map((v) =>
-                Math.min(acc.high, Fuzzy.OUT.risk.high(v)),
-            );
-            const dataMax = x.map((v, i) =>
-                Math.max(dataLow[i], dataMed[i], dataHigh[i]),
-            );
+        const dataLow = x.map((v) => Math.min(acc.low, Fuzzy.OUT.risk.low(v)));
+        const dataMed = x.map((v) => Math.min(acc.med, Fuzzy.OUT.risk.med(v)));
+        const dataHigh = x.map((v) =>
+            Math.min(acc.high, Fuzzy.OUT.risk.high(v)),
+        );
+        const dataMax = x.map((v, i) =>
+            Math.max(dataLow[i], dataMed[i], dataHigh[i]),
+        );
 
-            aggrCanvas._chart = new Chart(aggrCanvas, {
-                type: "line",
-                data: {
-                    labels: x,
-                    datasets: [
-                        {
-                            label: "Низкий",
-                            data: dataLow,
-                            borderColor: C.ok,
-                            borderWidth: 1.5,
-                            pointRadius: 0,
-                            fill: false,
-                        },
-                        {
-                            label: "Средний",
-                            data: dataMed,
-                            borderColor: C.warn,
-                            borderWidth: 1.5,
-                            pointRadius: 0,
-                            fill: false,
-                        },
-                        {
-                            label: "Высокий",
-                            data: dataHigh,
-                            borderColor: C.bad,
-                            borderWidth: 1.5,
-                            pointRadius: 0,
-                            fill: false,
-                        },
-                        {
-                            label: "Итоговая функция",
-                            data: dataMax,
-                            borderColor: C.accent,
-                            borderWidth: 3,
-                            pointRadius: 0,
-                            fill: true,
-                            backgroundColor: "rgba(99, 102, 241, 0.12)",
-                        },
-                    ],
+        Charts.line(
+            "vizAggrChart",
+            x,
+            [
+                {
+                    label: "Низкий",
+                    data: dataLow,
+                    color: C.ok,
+                    borderWidth: 1.5,
+                    tension: 0,
+                    fill: false,
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: { duration: 300 },
-                    plugins: {
-                        legend: {
-                            labels: {
-                                color: C.txt,
-                                font: { size: 11 },
-                                boxWidth: 12,
-                                usePointStyle: true,
-                            },
+                {
+                    label: "Средний",
+                    data: dataMed,
+                    color: C.warn,
+                    borderWidth: 1.5,
+                    tension: 0,
+                    fill: false,
+                },
+                {
+                    label: "Высокий",
+                    data: dataHigh,
+                    color: C.bad,
+                    borderWidth: 1.5,
+                    tension: 0,
+                    fill: false,
+                },
+                {
+                    label: "Итоговая функция",
+                    data: dataMax,
+                    color: C.accent,
+                    borderWidth: 3,
+                    tension: 0,
+                    fill: true,
+                    fillAlpha: 0.15,
+                    order: -1,
+                },
+            ],
+            {
+                min: 0,
+                max: 1,
+                scales: {
+                    x: {
+                        ticks: {
+                            color: C.txtMuted,
+                            font: { size: 10 },
+                            maxTicksLimit: 11,
                         },
                     },
-                    scales: {
-                        x: {
-                            ticks: {
-                                color: C.txt,
-                                font: { size: 10 },
-                                maxTicksLimit: 11,
-                            },
-                            grid: { color: C.line, drawBorder: false },
-                            title: {
-                                display: true,
-                                text: "Риск (0 — низкий, 100 — высокий)",
-                                color: C.txt,
-                                font: { size: 11 },
-                            },
-                        },
-                        y: {
-                            min: 0,
-                            max: 1,
-                            ticks: { color: C.txt, font: { size: 10 } },
-                            grid: { color: C.line, drawBorder: false },
-                            title: {
-                                display: true,
-                                text: "Уверенность (μ)",
-                                color: C.txt,
-                                font: { size: 11 },
-                            },
-                        },
+                    y: {
+                        min: 0,
+                        max: 1,
+                        ticks: { stepSize: 0.25 },
                     },
                 },
-            });
-        }
+            },
+        );
 
-        const defuzzCanvas = document.getElementById("vizDefuzzChart");
-        if (defuzzCanvas) {
-            if (defuzzCanvas._chart) {
-                try {
-                    defuzzCanvas._chart.destroy();
-                } catch (e) {}
-                defuzzCanvas._chart = null;
-            }
+        /* ---------- График дефаззификации ---------- */
+        const centerValue = result.risk.value;
+        const centerIndex = Math.round(centerValue);
+        const centerY = dataMax[centerIndex] || 0.5;
 
-            const x = Array.from({ length: 101 }, (_, i) => i);
-            const acc = result.risk.acc;
-
-            const dataLow = x.map((v) =>
-                Math.min(acc.low, Fuzzy.OUT.risk.low(v)),
-            );
-            const dataMed = x.map((v) =>
-                Math.min(acc.med, Fuzzy.OUT.risk.med(v)),
-            );
-            const dataHigh = x.map((v) =>
-                Math.min(acc.high, Fuzzy.OUT.risk.high(v)),
-            );
-            const dataMax = x.map((v, i) =>
-                Math.max(dataLow[i], dataMed[i], dataHigh[i]),
-            );
-
-            const centerValue = result.risk.value;
-
-            defuzzCanvas._chart = new Chart(defuzzCanvas, {
-                type: "line",
-                data: {
-                    labels: x,
-                    datasets: [
-                        {
-                            label: "Итоговая функция",
-                            data: dataMax,
-                            borderColor: C.accent,
-                            backgroundColor: "rgba(99, 102, 241, 0.18)",
-                            borderWidth: 2.5,
-                            pointRadius: 0,
-                            fill: true,
-                        },
-                        {
-                            label: `Центр тяжести = ${centerValue.toFixed(1)}`,
-                            data: x.map((v) =>
-                                Math.abs(v - centerValue) < 0.5
-                                    ? dataMax[Math.round(v)] || 0.5
-                                    : null,
-                            ),
-                            borderColor: C.bad,
-                            borderWidth: 3,
-                            pointRadius: 0,
-                            fill: false,
-                        },
-                    ],
+        Charts.line(
+            "vizDefuzzChart",
+            x,
+            [
+                {
+                    label: "Итоговая функция",
+                    data: dataMax,
+                    color: C.accent,
+                    borderWidth: 2.5,
+                    tension: 0,
+                    fill: true,
+                    fillAlpha: 0.2,
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: { duration: 300 },
-                    plugins: {
-                        legend: {
-                            labels: {
-                                color: C.txt,
-                                font: { size: 11 },
-                                boxWidth: 12,
-                                usePointStyle: true,
-                            },
+                {
+                    label: `Центр тяжести = ${centerValue.toFixed(1)}`,
+                    data: x.map((v) => (v === centerIndex ? centerY : null)),
+                    color: C.bad,
+                    borderWidth: 0,
+                    showLine: false,
+                    pointRadius: 8,
+                    pointBackgroundColor: C.bad,
+                    pointBorderColor: "#ffffff",
+                    pointBorderWidth: 3,
+                    pointHoverRadius: 10,
+                    spanGaps: true,
+                },
+            ],
+            {
+                min: 0,
+                max: 1,
+                scales: {
+                    x: {
+                        ticks: {
+                            color: C.txtMuted,
+                            font: { size: 10 },
+                            maxTicksLimit: 11,
                         },
                     },
-                    scales: {
-                        x: {
-                            ticks: {
-                                color: C.txt,
-                                font: { size: 10 },
-                                maxTicksLimit: 11,
-                            },
-                            grid: { color: C.line, drawBorder: false },
-                            title: {
-                                display: true,
-                                text: "Риск (0 — низкий, 100 — высокий)",
-                                color: C.txt,
-                                font: { size: 11 },
-                            },
-                        },
-                        y: {
-                            min: 0,
-                            max: 1,
-                            ticks: { color: C.txt, font: { size: 10 } },
-                            grid: { color: C.line, drawBorder: false },
-                        },
+                    y: {
+                        min: 0,
+                        max: 1,
+                        ticks: { stepSize: 0.25 },
                     },
                 },
-            });
-        }
+            },
+        );
     }
 
+    /* =========================================================
+       ДЕЙСТВИЯ
+       ========================================================= */
     function step(s) {
         currentStep = s;
         renderView();
@@ -2092,5 +1518,6 @@ const MamdaniViz = (() => {
         openCommentModal,
         saveComment,
         renderView,
+        toggleHowItWorks,
     };
 })();

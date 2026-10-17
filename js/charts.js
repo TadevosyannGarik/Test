@@ -1,7 +1,8 @@
+/* =========================================================
+   CHARTS — Chart.js с ярким minimal-дизайном
+   ========================================================= */
+
 const Charts = (() => {
-    /* =========================================================
-       ЧТЕНИЕ CSS-ПЕРЕМЕННОЙ
-       ========================================================= */
     function cssVar(name, fallback) {
         try {
             const v = getComputedStyle(document.documentElement)
@@ -13,36 +14,59 @@ const Charts = (() => {
         }
     }
 
-    /* =========================================================
-       КЭШ ЦВЕТОВ
+    /* ---------- Яркая палитра (как на референсе) ---------- */
+    const PALETTE = {
+        green: "#34d399",
+        emerald: "#10b981",
+        teal: "#14b8a6",
+        cyan: "#22d3ee",
+        sky: "#0ea5e9",
+        blue: "#60a5fa",
+        indigo: "#6366f1",
+        purple: "#a78bfa",
+        violet: "#8b5cf6",
+        pink: "#f472b6",
+        rose: "#f43f5e",
+        red: "#f87171",
+        orange: "#fb923c",
+        amber: "#fbbf24",
+        yellow: "#facc15",
+        lime: "#a3e635",
+    };
 
-       _colors пересобирается вызовом refreshColors().
-       Автоматически сбрасывается при:
-         - смене prefers-color-scheme
-         - изменении размера окна (на всякий случай)
-       ========================================================= */
+    /* ---------- Пары [светлый, тёмный] для градиентов ---------- */
+    const GRADIENTS = [
+        ["#34d399", "#059669"], // green
+        ["#60a5fa", "#2563eb"], // blue
+        ["#fb923c", "#ea580c"], // orange
+        ["#f472b6", "#db2777"], // pink
+        ["#a78bfa", "#7c3aed"], // purple
+        ["#22d3ee", "#0891b2"], // cyan
+        ["#fbbf24", "#d97706"], // amber
+        ["#f87171", "#dc2626"], // red
+        ["#14b8a6", "#0d9488"], // teal
+        ["#a3e635", "#65a30d"], // lime
+    ];
+
+    /* ---------- Плоская палитра из пар ---------- */
+    const FLAT_PALETTE = GRADIENTS.map((g) => g[0]);
+
     let _colors = null;
-
     function getColors() {
         if (_colors) return _colors;
         _colors = {
-            accent: cssVar("--accent", "#6366f1"),
-            ok: cssVar("--ok", "#10b981"),
-            warn: cssVar("--warn", "#f59e0b"),
-            bad: cssVar("--bad", "#ef4444"),
-            info: cssVar("--info", "#3b82f6"),
-            purple: "#8b5cf6",
-            txt: cssVar("--txt-muted", "#71717a"),
+            txt: cssVar("--txt", "#18181b"),
+            txtMuted: cssVar("--txt-muted", "#71717a"),
             txtSoft: cssVar("--txt-soft", "#a1a1aa"),
-            line: cssVar("--line", "#e4e4e7"),
-            bg: cssVar("--bg-elev", "#ffffff"),
+            accent: cssVar("--accent", "#5b5bd6"),
+            ok: cssVar("--ok", "#059669"),
+            warn: cssVar("--warn", "#d97706"),
+            bad: cssVar("--bad", "#dc2626"),
+            info: cssVar("--info", "#2563eb"),
         };
         return _colors;
     }
 
-    /* =========================================================
-       ПРОКСИ-ОБЁРТКА — всегда читает актуальные цвета
-       ========================================================= */
     const COLORS = new Proxy(
         {},
         {
@@ -52,22 +76,17 @@ const Charts = (() => {
         },
     );
 
-    /* =========================================================
-       ПРОВЕРКА НАЛИЧИЯ CHART.JS
-       ========================================================= */
     function hasChart() {
         return typeof Chart !== "undefined";
     }
 
-    /* =========================================================
-       ГЛУБОКОЕ СЛИЯНИЕ ОПЦИЙ
-       ========================================================= */
-    function deepMerge(target, source) {
-        if (!source) return target;
-        const out = { ...target };
-        for (const key of Object.keys(source)) {
-            const tv = target[key];
-            const sv = source[key];
+    /* ---------- Глубокое слияние ---------- */
+    function deepMerge(t, s) {
+        if (!s) return t;
+        const out = { ...t };
+        for (const k of Object.keys(s)) {
+            const tv = t[k];
+            const sv = s[k];
             if (
                 tv &&
                 sv &&
@@ -76,62 +95,89 @@ const Charts = (() => {
                 !Array.isArray(tv) &&
                 !Array.isArray(sv)
             ) {
-                out[key] = deepMerge(tv, sv);
+                out[k] = deepMerge(tv, sv);
             } else {
-                out[key] = sv;
+                out[k] = sv;
             }
         }
         return out;
     }
 
-    /* =========================================================
-       БАЗОВЫЕ ОПЦИИ ДЛЯ ВСЕХ ГРАФИКОВ
-       ========================================================= */
+    /* ---------- Базовые опции ---------- */
     function baseOpts(extra = {}) {
         const C = getColors();
         const base = {
             responsive: true,
             maintainAspectRatio: false,
-            animation: { duration: 400, easing: "easeOutQuart" },
+            layout: {
+                padding: { top: 8, right: 12, bottom: 4, left: 6 },
+            },
+            animation: {
+                duration: 750,
+                easing: "easeOutQuart",
+            },
+            interaction: { mode: "nearest", intersect: false },
             plugins: {
                 legend: {
                     labels: {
-                        color: C.txt,
-                        font: { size: 12, family: "Inter, sans-serif" },
-                        padding: 12,
-                        boxWidth: 12,
-                        boxHeight: 12,
+                        color: C.txtMuted,
+                        font: {
+                            size: 11,
+                            family: "Inter, sans-serif",
+                            weight: "600",
+                        },
+                        padding: 14,
+                        boxWidth: 8,
+                        boxHeight: 8,
                         usePointStyle: true,
+                        pointStyle: "circle",
                     },
                 },
                 tooltip: {
-                    backgroundColor: C.bg,
-                    titleColor: C.txt,
-                    bodyColor: C.txt,
-                    borderColor: C.line,
+                    backgroundColor: "rgba(15, 15, 25, 0.94)",
+                    titleColor: "#fff",
+                    bodyColor: "rgba(255, 255, 255, 0.92)",
+                    borderColor: "rgba(255, 255, 255, 0.14)",
                     borderWidth: 1,
-                    padding: 10,
-                    boxPadding: 6,
-                    cornerRadius: 6,
+                    padding: 12,
+                    cornerRadius: 10,
+                    displayColors: true,
+                    boxWidth: 8,
+                    boxHeight: 8,
+                    boxPadding: 4,
+                    usePointStyle: true,
+                    titleFont: {
+                        size: 12.5,
+                        weight: "700",
+                        family: "Inter, sans-serif",
+                    },
+                    bodyFont: {
+                        size: 12,
+                        weight: "500",
+                        family: "Inter, sans-serif",
+                    },
+                    titleMarginBottom: 6,
+                    caretSize: 5,
                 },
             },
+            // По умолчанию всё скрыто — графикам даём только данные
             scales: {
                 x: {
-                    ticks: { color: C.txt, font: { size: 11 } },
-                    grid: { color: C.line, drawBorder: false },
+                    display: false,
+                    grid: { display: false, drawBorder: false },
+                    border: { display: false },
                 },
                 y: {
-                    ticks: { color: C.txt, font: { size: 11 } },
-                    grid: { color: C.line, drawBorder: false },
+                    display: false,
+                    grid: { display: false, drawBorder: false },
+                    border: { display: false },
                 },
             },
         };
         return deepMerge(base, extra);
     }
 
-    /* =========================================================
-       УНИЧТОЖЕНИЕ СТАРОГО ГРАФИКА
-       ========================================================= */
+    /* ---------- Уничтожение ---------- */
     function destroyOld(ctx) {
         if (!ctx) return;
         if (ctx._chart) {
@@ -142,22 +188,129 @@ const Charts = (() => {
         }
         if (hasChart()) {
             try {
-                const existing = Chart.getChart(ctx);
-                if (existing) existing.destroy();
+                const ex = Chart.getChart(ctx);
+                if (ex) ex.destroy();
             } catch (e) {}
         }
     }
 
+    /* ---------- hex → rgba ---------- */
+    function hexToRgba(hex, a = 1) {
+        if (!hex) return `rgba(0,0,0,${a})`;
+        if (hex.startsWith("rgba") || hex.startsWith("rgb")) return hex;
+        hex = hex.replace("#", "");
+        if (hex.length === 3) {
+            hex = hex
+                .split("")
+                .map((c) => c + c)
+                .join("");
+        }
+        const r = parseInt(hex.substring(0, 2), 16);
+        const g = parseInt(hex.substring(2, 4), 16);
+        const b = parseInt(hex.substring(4, 6), 16);
+        return `rgba(${r}, ${g}, ${b}, ${a})`;
+    }
+
+    /* ---------- Защита от NaN ---------- */
+    function sanitizeData(arr) {
+        if (!Array.isArray(arr)) return [];
+        return arr.map((v) => {
+            const n = Number(v);
+            return isFinite(n) ? n : 0;
+        });
+    }
+
+    /* ---------- Получить пару цветов по индексу ---------- */
+    function getPair(i) {
+        return GRADIENTS[i % GRADIENTS.length];
+    }
+    function getFlat(i) {
+        return FLAT_PALETTE[i % FLAT_PALETTE.length];
+    }
+
+    /* ---------- Плагин: центральный текст в doughnut ---------- */
+    const centerTextPlugin = {
+        id: "mCenterText",
+        afterDraw(chart) {
+            const opts = chart.options?.plugins?.mCenterText;
+            if (!opts || !opts.display) return;
+            const { ctx, chartArea } = chart;
+            if (!chartArea) return;
+            const cx = (chartArea.left + chartArea.right) / 2;
+            const cy = (chartArea.top + chartArea.bottom) / 2;
+            ctx.save();
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            const C = getColors();
+            const value = opts.value;
+            const label = opts.label;
+            if (value !== undefined && value !== null && value !== "") {
+                ctx.font = "700 34px Inter, -apple-system, sans-serif";
+                ctx.fillStyle = C.txt;
+                ctx.fillText(String(value), cx, cy - (label ? 10 : 0));
+            }
+            if (label) {
+                ctx.font = "700 10px Inter, -apple-system, sans-serif";
+                ctx.fillStyle = C.txtMuted;
+                ctx.fillText(String(label).toUpperCase(), cx, cy + 20);
+            }
+            ctx.restore();
+        },
+    };
+
+    if (hasChart()) {
+        try {
+            if (!Chart.registry.plugins.get("mCenterText")) {
+                Chart.register(centerTextPlugin);
+            }
+        } catch (e) {}
+    }
+
     /* =========================================================
-       DOUGHNUT
+       DOUGHNUT — яркое кольцо со скруглениями и зазорами
        ========================================================= */
-    function doughnut(canvasId, labels, data, colors) {
+    function doughnut(canvasId, labels, data, colors, opts = {}) {
         if (!hasChart()) return null;
         const ctx = document.getElementById(canvasId);
-        if (!ctx) return null;
+        if (!ctx || ctx.tagName !== "CANVAS") return null;
 
         destroyOld(ctx);
         const C = getColors();
+        const safeData = sanitizeData(data);
+
+        let palette;
+        if (colors && colors.length) {
+            palette = colors;
+        } else {
+            palette = safeData.map((_, i) => getFlat(i));
+        }
+
+        const sum = safeData.reduce((a, v) => a + v, 0);
+        const centerValue =
+            opts.center?.value !== undefined ? opts.center.value : sum;
+        const centerLabel = opts.center?.label || opts.centerLabel || "";
+
+        const hideLegend = opts.hideLegend === true;
+
+        const legendCfg = hideLegend
+            ? { display: false }
+            : {
+                  display: true,
+                  position: "bottom",
+                  labels: {
+                      color: C.txtMuted,
+                      font: {
+                          size: 11,
+                          family: "Inter, sans-serif",
+                          weight: "600",
+                      },
+                      padding: 14,
+                      boxWidth: 8,
+                      boxHeight: 8,
+                      usePointStyle: true,
+                      pointStyle: "circle",
+                  },
+              };
 
         ctx._chart = new Chart(ctx, {
             type: "doughnut",
@@ -165,33 +318,102 @@ const Charts = (() => {
                 labels,
                 datasets: [
                     {
-                        data,
-                        backgroundColor: colors || [C.ok, C.warn, C.bad],
-                        borderWidth: 0,
-                        hoverOffset: 6,
+                        data: safeData,
+                        backgroundColor: palette,
+                        borderColor: "rgba(255, 255, 255, 0.95)",
+                        borderWidth: 3,
+                        hoverOffset: 10,
+                        hoverBorderColor: "#ffffff",
+                        hoverBorderWidth: 4,
+                        spacing: 3,
                     },
                 ],
             },
             options: baseOpts({
+                cutout: opts.cutout || "72%",
                 plugins: {
-                    legend: { position: "bottom", labels: { color: C.txt } },
+                    legend: legendCfg,
+                    tooltip: {
+                        callbacks: {
+                            label: (item) => {
+                                const v = item.parsed;
+                                const pct =
+                                    sum > 0 ? Math.round((v / sum) * 100) : 0;
+                                return ` ${item.label}: ${v} (${pct}%)`;
+                            },
+                        },
+                    },
+                    mCenterText: {
+                        display:
+                            opts.center?.display !== false &&
+                            centerValue !== undefined,
+                        value: centerValue,
+                        label: centerLabel,
+                    },
                 },
-                cutout: "68%",
+                scales: { x: { display: false }, y: { display: false } },
             }),
         });
         return ctx._chart;
     }
 
     /* =========================================================
-       BAR
+       BAR — яркие скруглённые столбики с gradient
        ========================================================= */
     function bar(canvasId, labels, data, colors, opts = {}) {
         if (!hasChart()) return null;
         const ctx = document.getElementById(canvasId);
-        if (!ctx) return null;
+        if (!ctx || ctx.tagName !== "CANVAS") return null;
 
         destroyOld(ctx);
         const C = getColors();
+        const horizontal = !!opts.horizontal;
+        const safeData = sanitizeData(data);
+
+        // Каждому столбику — свой цвет из палитры (или gradient-пара)
+        const useGradient = opts.gradient !== false;
+
+        function bgColor(c) {
+            const i = c.dataIndex;
+            const chart = c.chart;
+            const area = chart.chartArea;
+
+            const pair = getPair(i);
+            const light = pair[0];
+            const dark = pair[1];
+
+            // Если пользователь передал явные цвета — используем их
+            let baseColor;
+            if (Array.isArray(colors)) {
+                baseColor = colors[i] || light;
+            } else if (typeof colors === "string") {
+                baseColor = colors;
+            } else {
+                baseColor = light;
+            }
+
+            if (!area) return baseColor;
+
+            const g = horizontal
+                ? chart.ctx.createLinearGradient(area.left, 0, area.right, 0)
+                : chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
+
+            if (useGradient) {
+                g.addColorStop(0, horizontal ? light : baseColor);
+                g.addColorStop(
+                    1,
+                    horizontal
+                        ? baseColor
+                        : typeof colors === "string"
+                          ? hexToRgba(baseColor, 0.65)
+                          : dark,
+                );
+            } else {
+                g.addColorStop(0, baseColor);
+                g.addColorStop(1, baseColor);
+            }
+            return g;
+        }
 
         ctx._chart = new Chart(ctx, {
             type: "bar",
@@ -200,29 +422,65 @@ const Charts = (() => {
                 datasets: [
                     {
                         label: opts.label || "",
-                        data,
-                        backgroundColor: colors || C.accent,
-                        borderRadius: 6,
+                        data: safeData,
+                        backgroundColor: bgColor,
+                        borderRadius: opts.borderRadius ?? 10,
                         borderSkipped: false,
-                        maxBarThickness: 32,
+                        maxBarThickness: opts.maxBarThickness || 34,
+                        categoryPercentage: 0.72,
+                        barPercentage: 0.85,
                     },
                 ],
             },
             options: baseOpts({
-                indexAxis: opts.horizontal ? "y" : "x",
+                indexAxis: horizontal ? "y" : "x",
+                layout: {
+                    padding: horizontal
+                        ? { top: 4, right: 12, bottom: 4, left: 6 }
+                        : { top: 12, right: 12, bottom: 4, left: 6 },
+                },
                 plugins: {
-                    legend: { display: !!opts.label, labels: { color: C.txt } },
+                    legend: {
+                        display: !!opts.label,
+                        labels: { color: C.txtMuted },
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: (item) => {
+                                const v = item.parsed[horizontal ? "x" : "y"];
+                                const unit = opts.unit || "";
+                                return ` ${opts.label || "Значение"}: ${v}${unit}`;
+                            },
+                        },
+                    },
                 },
                 scales: {
                     x: {
-                        min: 0,
-                        max: opts.max ?? undefined,
-                        ticks: { color: C.txt },
-                        grid: { color: C.line, drawBorder: false },
+                        display: horizontal ? false : true,
+                        ticks: {
+                            color: C.txtMuted,
+                            font: { size: 10.5, weight: "500" },
+                            padding: 6,
+                            maxRotation: 0,
+                            autoSkip: true,
+                        },
+                        grid: { display: false },
+                        border: { display: false },
                     },
                     y: {
-                        ticks: { color: C.txt },
-                        grid: { display: false, drawBorder: false },
+                        // Вертикальный bar → скрываем Y
+                        // Горизонтальный bar → показываем подписи категорий
+                        display: horizontal ? true : false,
+                        ticks: horizontal
+                            ? {
+                                  color: C.txtMuted,
+                                  font: { size: 10.5, weight: "500" },
+                                  padding: 8,
+                              }
+                            : { display: false },
+                        grid: { display: false },
+                        border: { display: false },
+                        beginAtZero: true,
                     },
                 },
             }),
@@ -231,12 +489,12 @@ const Charts = (() => {
     }
 
     /* =========================================================
-       LINE
+       LINE (area с gradient) — толстые линии, точки, без осей
        ========================================================= */
     function line(canvasId, labels, datasets, opts = {}) {
         if (!hasChart()) return null;
         const ctx = document.getElementById(canvasId);
-        if (!ctx) return null;
+        if (!ctx || ctx.tagName !== "CANVAS") return null;
 
         destroyOld(ctx);
         const C = getColors();
@@ -245,40 +503,94 @@ const Charts = (() => {
             type: "line",
             data: {
                 labels,
-                datasets: datasets.map((d) => ({
-                    label: d.label,
-                    data: d.data,
-                    borderColor: d.color || C.accent,
-                    backgroundColor: d.fill
-                        ? hexToRgba(d.color || C.accent, 0.12)
-                        : "transparent",
-                    tension: 0.35,
-                    borderWidth: 2,
-                    pointRadius: 2,
-                    pointHoverRadius: 5,
-                    pointBackgroundColor: d.color || C.accent,
-                    pointBorderColor: C.bg,
-                    pointBorderWidth: 2,
-                    fill: !!d.fill,
-                })),
+                datasets: datasets.map((d, i) => {
+                    const pair = getPair(i);
+                    const color = d.color || pair[0];
+                    const dark = pair[1];
+                    const safe = sanitizeData(d.data);
+
+                    return {
+                        label: d.label,
+                        data: safe,
+                        borderColor: color,
+                        borderWidth: d.borderWidth ?? 3,
+                        backgroundColor: (c) => {
+                            if (!d.fill) return "transparent";
+                            const area = c.chart.chartArea;
+                            if (!area) return hexToRgba(color, 0.15);
+                            const g = c.chart.ctx.createLinearGradient(
+                                0,
+                                area.top,
+                                0,
+                                area.bottom,
+                            );
+                            g.addColorStop(
+                                0,
+                                hexToRgba(color, d.fillAlpha ?? 0.35),
+                            );
+                            g.addColorStop(1, hexToRgba(color, 0.01));
+                            return g;
+                        },
+                        tension: d.tension ?? 0.4,
+                        fill: !!d.fill,
+                        pointRadius: d.pointRadius ?? 4,
+                        pointHoverRadius: d.pointHoverRadius ?? 7,
+                        pointBackgroundColor: color,
+                        pointBorderColor: "#ffffff",
+                        pointBorderWidth: 2,
+                        pointHoverBackgroundColor: color,
+                        pointHoverBorderColor: "#ffffff",
+                        pointHoverBorderWidth: 3,
+                        showLine: d.showLine !== false,
+                        spanGaps: d.spanGaps ?? false,
+                        borderDash: d.borderDash || undefined,
+                        order: d.order ?? 0,
+                    };
+                }),
             },
             options: baseOpts({
                 plugins: {
                     legend: {
-                        display: datasets.length > 1,
-                        labels: { color: C.txt },
+                        display:
+                            opts.plugins?.legend?.display ??
+                            datasets.length > 1,
+                        labels: {
+                            color: C.txtMuted,
+                            filter:
+                                opts.plugins?.legend?.labels?.filter ||
+                                (() => true),
+                        },
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: (item) => {
+                                const unit = opts.unit || "";
+                                return ` ${item.dataset.label}: ${item.parsed.y}${unit}`;
+                            },
+                        },
                     },
                 },
                 scales: {
                     x: {
-                        ticks: { color: C.txt },
-                        grid: { color: C.line, drawBorder: false },
+                        // X-категории видны — но очень минимально
+                        display: opts.showXAxis !== false,
+                        ticks: {
+                            color: C.txtMuted,
+                            font: { size: 10.5, weight: "500" },
+                            maxTicksLimit: opts.maxTicksLimit || 8,
+                            padding: 6,
+                            maxRotation: 0,
+                            autoSkip: true,
+                        },
+                        grid: { display: false },
+                        border: { display: false },
                     },
                     y: {
+                        // Y скрыт полностью — только tooltip
+                        display: false,
+                        beginAtZero: true,
                         min: opts.min ?? 0,
                         max: opts.max ?? undefined,
-                        ticks: { color: C.txt },
-                        grid: { color: C.line, drawBorder: false },
                     },
                 },
             }),
@@ -287,15 +599,21 @@ const Charts = (() => {
     }
 
     /* =========================================================
-       POLAR AREA
+       POLAR
        ========================================================= */
     function polar(canvasId, labels, data, colors, opts = {}) {
         if (!hasChart()) return null;
         const ctx = document.getElementById(canvasId);
-        if (!ctx) return null;
+        if (!ctx || ctx.tagName !== "CANVAS") return null;
 
         destroyOld(ctx);
         const C = getColors();
+        const safeData = sanitizeData(data);
+
+        const palette =
+            colors && colors.length
+                ? colors
+                : safeData.map((_, i) => hexToRgba(getFlat(i), 0.8));
 
         ctx._chart = new Chart(ctx, {
             type: "polarArea",
@@ -303,15 +621,10 @@ const Charts = (() => {
                 labels,
                 datasets: [
                     {
-                        data,
-                        backgroundColor: colors || [
-                            C.accent,
-                            C.purple,
-                            C.ok,
-                            C.warn,
-                            C.bad,
-                        ],
-                        borderWidth: 0,
+                        data: safeData,
+                        backgroundColor: palette,
+                        borderColor: "rgba(255, 255, 255, 0.9)",
+                        borderWidth: 2,
                     },
                 ],
             },
@@ -319,18 +632,19 @@ const Charts = (() => {
                 plugins: {
                     legend: {
                         position: opts.legendPosition || "bottom",
-                        labels: { color: C.txt },
+                        labels: { color: C.txtMuted },
                     },
                 },
                 scales: {
                     r: {
                         ticks: {
-                            color: C.txt,
+                            color: C.txtMuted,
                             backdropColor: "transparent",
                             font: { size: 10 },
+                            padding: 6,
                         },
-                        grid: { color: C.line },
-                        angleLines: { color: C.line },
+                        grid: { color: "rgba(15,15,25,0.06)" },
+                        angleLines: { color: "rgba(15,15,25,0.06)" },
                     },
                 },
             }),
@@ -344,7 +658,7 @@ const Charts = (() => {
     function radar(canvasId, labels, datasets, opts = {}) {
         if (!hasChart()) return null;
         const ctx = document.getElementById(canvasId);
-        if (!ctx) return null;
+        if (!ctx || ctx.tagName !== "CANVAS") return null;
 
         destroyOld(ctx);
         const C = getColors();
@@ -353,24 +667,31 @@ const Charts = (() => {
             type: "radar",
             data: {
                 labels,
-                datasets: datasets.map((d) => ({
-                    label: d.label,
-                    data: d.data,
-                    borderColor: d.color || C.accent,
-                    backgroundColor: hexToRgba(d.color || C.accent, 0.15),
-                    borderWidth: 2,
-                    pointBackgroundColor: d.color || C.accent,
-                    pointBorderColor: C.bg,
-                    pointBorderWidth: 2,
-                    pointRadius: 3,
-                    pointHoverRadius: 5,
-                })),
+                datasets: datasets.map((d, i) => {
+                    const pair = getPair(i);
+                    const color = d.color || pair[0];
+                    return {
+                        label: d.label,
+                        data: sanitizeData(d.data),
+                        borderColor: color,
+                        backgroundColor: hexToRgba(color, d.fillAlpha ?? 0.22),
+                        borderWidth: 2.5,
+                        pointBackgroundColor: color,
+                        pointBorderColor: "#ffffff",
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        pointHoverBackgroundColor: color,
+                        pointHoverBorderColor: "#ffffff",
+                        pointHoverBorderWidth: 2.5,
+                    };
+                }),
             },
             options: baseOpts({
                 plugins: {
                     legend: {
                         display: datasets.length > 1,
-                        labels: { color: C.txt },
+                        labels: { color: C.txtMuted },
                     },
                 },
                 scales: {
@@ -378,14 +699,26 @@ const Charts = (() => {
                         min: opts.min ?? 0,
                         max: opts.max ?? 100,
                         ticks: {
-                            color: C.txt,
+                            color: C.txtMuted,
                             backdropColor: "transparent",
                             stepSize: opts.stepSize ?? 25,
-                            font: { size: 10 },
+                            font: { size: 9.5 },
+                            showLabelBackdrop: false,
                         },
-                        grid: { color: C.line },
-                        angleLines: { color: C.line },
-                        pointLabels: { color: C.txt, font: { size: 11 } },
+                        grid: { color: "rgba(15,15,25,0.06)", lineWidth: 1 },
+                        angleLines: {
+                            color: "rgba(15,15,25,0.06)",
+                            lineWidth: 1,
+                        },
+                        pointLabels: {
+                            color: C.txtMuted,
+                            font: {
+                                size: 11,
+                                family: "Inter, sans-serif",
+                                weight: "600",
+                            },
+                            padding: 10,
+                        },
                     },
                 },
             }),
@@ -393,62 +726,11 @@ const Charts = (() => {
         return ctx._chart;
     }
 
-    /* =========================================================
-       ЦВЕТ В RGBA
-       ========================================================= */
-    function hexToRgba(hex, alpha = 1) {
-        if (!hex) return `rgba(0,0,0,${alpha})`;
-        if (hex.startsWith("rgba")) return hex;
-        hex = hex.replace("#", "");
-        if (hex.length === 3)
-            hex = hex
-                .split("")
-                .map((c) => c + c)
-                .join("");
-        const r = parseInt(hex.substring(0, 2), 16);
-        const g = parseInt(hex.substring(2, 4), 16);
-        const b = parseInt(hex.substring(4, 6), 16);
-        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-    }
-
-    /* =========================================================
-       СБРОС КЭША ЦВЕТОВ
-       ========================================================= */
     function refreshColors() {
         _colors = null;
     }
-
-    /* =========================================================
-       АВТОМАТИЧЕСКАЯ РЕАКЦИЯ НА СМЕНУ ТЕМЫ
-       ========================================================= */
-    function initColorListeners() {
-        // 1. Смена prefers-color-scheme (dark/light)
-        if (window.matchMedia) {
-            try {
-                const mql = window.matchMedia("(prefers-color-scheme: dark)");
-                // Современные браузеры
-                if (typeof mql.addEventListener === "function") {
-                    mql.addEventListener("change", () => {
-                        refreshColors();
-                    });
-                } else if (typeof mql.addListener === "function") {
-                    // Safari < 14
-                    mql.addListener(() => {
-                        refreshColors();
-                    });
-                }
-            } catch (e) {
-                console.warn("[Charts] matchMedia error:", e);
-            }
-        }
-    }
-
-    /* =========================================================
-       ИНИЦИАЛИЗАЦИЯ
-       ========================================================= */
     function init() {
         refreshColors();
-        initColorListeners();
     }
 
     return {
@@ -461,12 +743,12 @@ const Charts = (() => {
         COLORS,
         refreshColors,
         init,
+        hexToRgba,
+        PALETTE,
+        GRADIENTS,
     };
 })();
 
-/* =========================================================
-   АВТОЗАПУСК ПОСЛЕ ЗАГРУЗКИ DOM
-   ========================================================= */
 document.addEventListener("DOMContentLoaded", () => {
     Charts.init();
 });
