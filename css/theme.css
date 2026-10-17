@@ -566,8 +566,11 @@ h4,
 .mt-8 {
     margin-top: 8px;
 }
+.mt-12 {
+    margin-top: 20px;
+}
 .mt-16 {
-    margin-top: 16px;
+    margin-top: 20px;
 }
 .mt-24 {
     margin-top: 24px;

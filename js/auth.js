@@ -4,9 +4,6 @@ const Auth = (() => {
 
     const escapeHtml = Utils.escapeHtml;
 
-    /* =========================================================
-       СПРАВОЧНИКИ (fp_refs) — используются в полях регистрации
-       ========================================================= */
     const REF_KEY = "fp_refs";
 
     const DEFAULT_REFS = {
@@ -29,12 +26,6 @@ const Auth = (() => {
         };
     }
 
-    /* =========================================================
-       ХЕЛПЕРЫ ДЛЯ ПОЛЕЙ ИЗ СПРАВОЧНИКОВ
-
-       Если в справочнике есть значения — рендерим <select> + «+ Другое...».
-       Если справочник пуст — рендерим обычный <input>.
-       ========================================================= */
     function renderRefField({
         id,
         label,
@@ -48,7 +39,6 @@ const Auth = (() => {
         const reqMark = required ? '<span class="req">*</span>' : "";
         const wrapperClass = `field ${cssClass}`.trim();
 
-        // Справочник пуст — обычный input
         if (options.length === 0) {
             return `
                 <div class="${wrapperClass}">
@@ -59,7 +49,6 @@ const Auth = (() => {
             `;
         }
 
-        // Есть справочник — выпадающий список + «Другое»
         const optionsHtml = options
             .map((o) => {
                 const val = escapeHtml(o);
@@ -83,9 +72,6 @@ const Auth = (() => {
         `;
     }
 
-    /**
-     * Обработчик изменения select: показывает/скрывает поле «своё значение».
-     */
     function onRefSelectChange(selectEl) {
         if (!selectEl || !selectEl.id) return;
         const custom = document.getElementById(selectEl.id + "_custom");
@@ -100,9 +86,6 @@ const Auth = (() => {
         }
     }
 
-    /**
-     * Возвращает итоговое значение поля (выбор из select или «своё»).
-     */
     function getRefValue(id) {
         const el = document.getElementById(id);
         if (!el) return "";
@@ -116,9 +99,6 @@ const Auth = (() => {
         return el.value.trim();
     }
 
-    /**
-     * Валидация: если поле — select, проверяем «выбрано» или «введено своё».
-     */
     function validateRefField(id, required) {
         const el = document.getElementById(id);
         if (!el) return true;
@@ -129,9 +109,6 @@ const Auth = (() => {
         return ok;
     }
 
-    /* =========================================================
-       ДЕМО-ПОЛЬЗОВАТЕЛИ
-       ========================================================= */
     function getDemoUsers() {
         return [
             {
@@ -143,8 +120,6 @@ const Auth = (() => {
                 faculty: "ФИТ",
                 group: "ПИ-21-1",
                 course: 3,
-                direction: "Программная инженерия",
-                recordBook: "21-1234",
                 blocked: false,
                 createdAt: Date.now(),
             },
@@ -155,9 +130,7 @@ const Auth = (() => {
                 email: "teacher@demo.ru",
                 pass: hashPass("123456"),
                 department: "Кафедра информационных систем",
-                position: "Доцент",
                 degree: "к.т.н.",
-                interests: "Нечёткая логика, искусственный интеллект",
                 maxLoad: 8,
                 blocked: false,
                 createdAt: Date.now(),
@@ -193,9 +166,6 @@ const Auth = (() => {
         if (changed) Storage.setUsers(users);
     }
 
-    /* =========================================================
-       ПЕРЕКЛЮЧЕНИЕ ТАБОВ / РОЛИ
-       ========================================================= */
     function switchTab(mode) {
         const loginTab = document.getElementById("tabLogin");
         const registerTab = document.getElementById("tabRegister");
@@ -227,13 +197,6 @@ const Auth = (() => {
         renderRoleFields(role);
     }
 
-    /* =========================================================
-       РЕНДЕР ПОЛЕЙ ПО РОЛИ
-
-       Поля «Факультет», «Группа», «Направление» (студент)
-       и «Кафедра» (преподаватель, админ) — выпадающие списки
-       из справочников (с fallback на input, если справочник пуст).
-       ========================================================= */
     function renderRoleFields(role) {
         const label = document.getElementById("roleSectionLabel");
         const box = document.getElementById("roleFields");
@@ -264,27 +227,14 @@ const Auth = (() => {
                         placeholder: "ПИ-21-1",
                     })}
                 </div>
-                <div class="row-2">
-                    <div class="field">
-                        <label>Курс <span class="req">*</span></label>
-                        <select id="r_course">
-                            <option value="">— выберите —</option>
-                            <option>1</option><option>2</option><option>3</option>
-                            <option>4</option><option>5</option><option>6</option>
-                        </select>
-                        <div class="field-err">Обязательно</div>
-                    </div>
-                    ${renderRefField({
-                        id: "r_direction",
-                        label: "Направление",
-                        refKey: "directions",
-                        required: false,
-                        placeholder: "Программная инженерия",
-                    })}
-                </div>
                 <div class="field">
-                    <label>Номер зачётки</label>
-                    <input type="text" id="r_recordBook" placeholder="21-1234">
+                    <label>Курс <span class="req">*</span></label>
+                    <select id="r_course">
+                        <option value="">— выберите —</option>
+                        <option>1</option><option>2</option><option>3</option>
+                        <option>4</option><option>5</option><option>6</option>
+                    </select>
+                    <div class="field-err">Обязательно</div>
                 </div>
             `;
         } else if (role === "teacher") {
@@ -298,24 +248,13 @@ const Auth = (() => {
                         placeholder: "Кафедра информационных систем",
                     })}
                     <div class="field">
-                        <label>Должность <span class="req">*</span></label>
-                        <input type="text" id="r_position" placeholder="Доцент">
-                        <div class="field-err">Обязательно</div>
-                    </div>
-                </div>
-                <div class="row-2">
-                    <div class="field">
                         <label>Учёная степень</label>
                         <input type="text" id="r_degree" placeholder="к.т.н.">
                     </div>
-                    <div class="field">
-                        <label>Макс. нагрузка (работ)</label>
-                        <input type="number" id="r_maxLoad" value="8" min="1" max="30">
-                    </div>
                 </div>
                 <div class="field">
-                    <label>Научные интересы</label>
-                    <input type="text" id="r_interests" placeholder="Нечёткая логика, ИИ">
+                    <label>Макс. нагрузка (работ)</label>
+                    <input type="number" id="r_maxLoad" value="8" min="1" max="30">
                 </div>
             `;
         } else {
@@ -348,9 +287,6 @@ const Auth = (() => {
         }
     }
 
-    /* =========================================================
-       ВАЛИДАЦИЯ И СООБЩЕНИЯ
-       ========================================================= */
     function markField(id, valid) {
         const el = document.getElementById(id);
         if (!el) return valid;
@@ -373,9 +309,6 @@ const Auth = (() => {
         m.textContent = "";
     }
 
-    /* =========================================================
-       РЕГИСТРАЦИЯ
-       ========================================================= */
     function register() {
         hideMsg();
         let ok = true;
@@ -404,25 +337,16 @@ const Auth = (() => {
             ok &= validateRefField("r_group", true);
             const c = document.getElementById("r_course");
             if (c) ok &= markField("r_course", c.value !== "");
-            ok &= validateRefField("r_direction", false);
 
             roleData.faculty = getRefValue("r_faculty");
             roleData.group = getRefValue("r_group");
             roleData.course = c ? +c.value : 1;
-            roleData.direction = getRefValue("r_direction");
-            roleData.recordBook =
-                document.getElementById("r_recordBook")?.value.trim() || "";
         } else if (selectedRole === "teacher") {
             ok &= validateRefField("r_department", true);
-            const p = document.getElementById("r_position");
-            if (p) ok &= markField("r_position", p.value.trim().length > 0);
 
             roleData.department = getRefValue("r_department");
-            roleData.position = p?.value.trim() || "";
             roleData.degree =
                 document.getElementById("r_degree")?.value.trim() || "";
-            roleData.interests =
-                document.getElementById("r_interests")?.value.trim() || "";
             roleData.maxLoad =
                 +document.getElementById("r_maxLoad")?.value || 8;
         } else {
@@ -469,9 +393,6 @@ const Auth = (() => {
         setTimeout(() => loginAs(newUser), 600);
     }
 
-    /* =========================================================
-       ВХОД
-       ========================================================= */
     function login() {
         hideMsg();
         const email =
@@ -586,9 +507,6 @@ const Auth = (() => {
         return currentUser;
     }
 
-    /* =========================================================
-       ПУБЛИЧНЫЙ API
-       ========================================================= */
     return {
         seedDemo,
         switchTab,
@@ -601,7 +519,6 @@ const Auth = (() => {
         restoreSession,
         getUser,
 
-        // Хелперы для полей из справочников (используются в admin.js)
         renderRefField,
         onRefSelectChange,
         getRefValue,

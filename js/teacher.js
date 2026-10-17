@@ -669,9 +669,8 @@ const Teacher = (() => {
           <div>${statusBadge(w.status)}</div>
         </div>
 
-        ${w.annotation ? `<div class="request-body"><b>Аннотация:</b> ${escapeHtml(w.annotation)}</div>` : ""}
-        ${w.goal ? `<div class="request-body"><b>Цель:</b> ${escapeHtml(w.goal)}</div>` : ""}
-        ${w.deadline ? `<div class="request-meta">Планируемая защита: ${escapeHtml(w.deadline)}</div>` : ""}
+        ${w.description || w.annotation ? `<div class="request-body">${escapeHtml(w.description || w.annotation)}</div>` : ""}
+${w.deadline ? `<div class="request-meta">Планируемая защита: ${escapeHtml(w.deadline)}</div>` : ""}
 
         ${rejectReason}
 
@@ -743,10 +742,7 @@ const Teacher = (() => {
         </div>
       </div>
 
-      ${w.annotation ? `<div class="card"><div class="card-title">Аннотация</div><div style="font-size:13px;line-height:1.6;">${escapeHtml(w.annotation)}</div></div>` : ""}
-      ${w.keywords ? `<div class="card mt-16"><div class="card-title">Ключевые слова</div><div style="font-size:13px;">${escapeHtml(w.keywords)}</div></div>` : ""}
-      ${w.goal ? `<div class="card mt-16"><div class="card-title">Цель работы</div><div style="font-size:13px;">${escapeHtml(w.goal)}</div></div>` : ""}
-      ${w.tasksText ? `<div class="card mt-16"><div class="card-title">Задачи</div><div style="font-size:13px;white-space:pre-line;line-height:1.6;">${escapeHtml(w.tasksText)}</div></div>` : ""}
+      ${w.description || w.annotation ? `<div class="card mt-16"><div class="card-title">Краткое описание</div><div style="font-size:13px;line-height:1.6;">${escapeHtml(w.description || w.annotation)}</div></div>` : ""}
 
       ${
           w.status === "pending"

@@ -121,8 +121,8 @@ const Admin = (() => {
         <div class="notice" style="margin-top:20px;">
     <b>Что будет создано:</b>
     <ul style="margin:8px 0 0 20px;line-height:1.7;">
-        <li><b>8 преподавателей</b> с разными кафедрами, должностями и научными интересами</li>
-        <li><b>35 студентов</b> на разных курсах, группах и направлениях</li>
+        <li><b>8 преподавателей</b> с разными кафедрами и научными степенями</li>
+        <li><b>35 студентов</b> на разных курсах и группах</li>
         <li><b>70 работ</b> на всех стадиях — от заявки до защиты</li>
         <li><b>500+ этапов и задач</b>, распределённых по работам</li>
         <li><b>300+ версий документов</b> с комментариями к изменениям</li>
@@ -267,7 +267,7 @@ const Admin = (() => {
         })}
       </div>
 
-      <!-- ОБЪЕДИНЁННЫЙ БЛОК АКТИВНОСТИ -->
+      <!-- АКТИВНОСТЬ -->
       <div class="card activity-hero-card">
         <div class="card-head" style="margin-bottom:16px;">
           <div class="card-title" style="margin-bottom:0;display:flex;align-items:center;gap:8px;">
@@ -306,19 +306,19 @@ const Admin = (() => {
 
       <!-- 3 КРУГЛЫХ ГРАФИКА -->
       <div class="dash-grid" style="margin-bottom:20px;">
-    <div class="card col-4">
-        <div class="card-title" style="font-size:14px;">По рискам</div>
-        <div class="chart-box chart-box--round"><canvas id="adminChartRisk"></canvas></div>
-    </div>
-    <div class="card col-4">
-        <div class="card-title" style="font-size:14px;">По статусам</div>
-        <div class="chart-box chart-box--round"><canvas id="adminChartStatuses"></canvas></div>
-    </div>
-    <div class="card col-4">
-        <div class="card-title" style="font-size:14px;">По типам</div>
-        <div class="chart-box chart-box--round"><canvas id="adminChartTypes"></canvas></div>
-    </div>
-</div>
+        <div class="card col-4">
+          <div class="card-title" style="font-size:14px;">По рискам</div>
+          <div class="chart-box chart-box--round"><canvas id="adminChartRisk"></canvas></div>
+        </div>
+        <div class="card col-4">
+          <div class="card-title" style="font-size:14px;">По статусам</div>
+          <div class="chart-box chart-box--round"><canvas id="adminChartStatuses"></canvas></div>
+        </div>
+        <div class="card col-4">
+          <div class="card-title" style="font-size:14px;">По типам</div>
+          <div class="chart-box chart-box--round"><canvas id="adminChartTypes"></canvas></div>
+        </div>
+      </div>
 
       <!-- ТРИ КАРТОЧКИ С ПАГИНАЦИЕЙ -->
       <div class="dash-grid" style="margin-bottom:20px;">
@@ -354,7 +354,7 @@ const Admin = (() => {
         </div>
       </div>
 
-      <!-- ТОП РАБОТ С ПАГИНАЦИЕЙ -->
+      <!-- ТОП РАБОТ -->
       <div class="dash-table-card">
         <div class="card-head">
           <div class="card-title" style="margin-bottom:0;display:flex;align-items:center;gap:8px;">
@@ -373,7 +373,6 @@ const Admin = (() => {
     VIEWS.dashboard_after = function () {
         if (!Charts.hasChart()) return;
 
-        /* --- Активность за 7 дней --- */
         const audit = typeof Audit !== "undefined" ? Audit.getAll() : [];
         const labels = [];
         const data = [];
@@ -411,7 +410,6 @@ const Admin = (() => {
             { maxBarThickness: 22 },
         );
 
-        /* --- Риски --- */
         const works = Storage.getWorks()
             .map((w) => ({ w, res: getFuzzyResult(w) }))
             .filter((e) => e.res);
@@ -426,7 +424,7 @@ const Admin = (() => {
             ["#34d399", "#fbbf24", "#f87171"],
             { center: { label: "работ" }, hideLegend: true },
         );
-        /* --- Статусы --- */
+
         const statusLabels = {
             draft: "Черновик",
             pending: "На утверждении",
@@ -448,7 +446,6 @@ const Admin = (() => {
             { center: { label: "работ" }, hideLegend: true },
         );
 
-        /* --- Типы работ --- */
         const typeLabels = {
             course: "Курсовая",
             diploma: "Диплом",
@@ -898,7 +895,7 @@ const Admin = (() => {
             u.role === "student"
                 ? `${escapeHtml(u.faculty || "")} · ${escapeHtml(u.group || "")} · ${u.course || ""} курс`
                 : u.role === "teacher"
-                  ? `${escapeHtml(u.department || "")} · ${escapeHtml(u.position || "")}`
+                  ? `${escapeHtml(u.department || "")}${u.degree ? " · " + escapeHtml(u.degree) : ""}`
                   : `${escapeHtml(u.department || "")} · ${escapeHtml(u.accessLevel || "")}`;
 
         const isMe = Storage.sameId(u.id, getUser().id);
@@ -1126,17 +1123,7 @@ const Admin = (() => {
               placeholder: "ПИ-21-1",
           })}
         </div>
-        <div class="row-2">
-          <div class="field"><label>Курс</label><input type="number" id="cu_course" min="1" max="6" value="1"></div>
-          ${Auth.renderRefField({
-              id: "cu_direction",
-              label: "Направление",
-              refKey: "directions",
-              required: false,
-              placeholder: "Программная инженерия",
-          })}
-        </div>
-        <div class="field"><label>Номер зачётки</label><input type="text" id="cu_recordBook" placeholder="21-1234"></div>
+        <div class="field"><label>Курс</label><input type="number" id="cu_course" min="1" max="6" value="1"></div>
       `;
         } else if (createRole === "teacher") {
             box.innerHTML = `
@@ -1149,13 +1136,9 @@ const Admin = (() => {
               required: false,
               placeholder: "Кафедра ИС",
           })}
-          <div class="field"><label>Должность</label><input type="text" id="cu_position" placeholder="Доцент"></div>
-        </div>
-        <div class="row-2">
           <div class="field"><label>Учёная степень</label><input type="text" id="cu_degree" placeholder="к.т.н."></div>
-          <div class="field"><label>Макс. нагрузка</label><input type="number" id="cu_maxLoad" value="8" min="1" max="30"></div>
         </div>
-        <div class="field"><label>Научные интересы</label><input type="text" id="cu_interests" placeholder="Нечёткая логика, ИИ"></div>
+        <div class="field"><label>Макс. нагрузка</label><input type="number" id="cu_maxLoad" value="8" min="1" max="30"></div>
       `;
         } else {
             box.innerHTML = `
@@ -1180,6 +1163,7 @@ const Admin = (() => {
       `;
         }
     }
+
     function createUser() {
         const fio = document.getElementById("cu_fio")?.value.trim() || "";
         const email =
@@ -1211,19 +1195,12 @@ const Admin = (() => {
             roleData.faculty = Auth.getRefValue("cu_faculty");
             roleData.group = Auth.getRefValue("cu_group");
             roleData.course = +document.getElementById("cu_course")?.value || 1;
-            roleData.direction = Auth.getRefValue("cu_direction");
-            roleData.recordBook =
-                document.getElementById("cu_recordBook")?.value.trim() || "";
         } else if (createRole === "teacher") {
             roleData.department = Auth.getRefValue("cu_department");
-            roleData.position =
-                document.getElementById("cu_position")?.value.trim() || "";
             roleData.degree =
                 document.getElementById("cu_degree")?.value.trim() || "";
             roleData.maxLoad =
                 +document.getElementById("cu_maxLoad")?.value || 8;
-            roleData.interests =
-                document.getElementById("cu_interests")?.value.trim() || "";
         } else {
             roleData.department = Auth.getRefValue("cu_department");
             roleData.position =
@@ -1305,33 +1282,29 @@ const Admin = (() => {
     `;
         App.openModal(html);
         setTimeout(() => {
-            ["eu_faculty", "eu_group", "eu_direction", "eu_department"].forEach(
-                (id) => {
-                    const el = document.getElementById(id);
-                    if (!el) return;
-                    const cur = el.dataset.current;
-                    if (!cur) return;
-                    if (el.tagName === "SELECT") {
-                        const hasOpt = Array.from(el.options).some(
-                            (o) => o.value === cur,
-                        );
-                        if (hasOpt) {
-                            el.value = cur;
-                        } else {
-                            el.value = "__custom__";
-                            const custom = document.getElementById(
-                                id + "_custom",
-                            );
-                            if (custom) {
-                                custom.style.display = "block";
-                                custom.value = cur;
-                            }
-                        }
-                    } else {
+            ["eu_faculty", "eu_group", "eu_department"].forEach((id) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                const cur = el.dataset.current;
+                if (!cur) return;
+                if (el.tagName === "SELECT") {
+                    const hasOpt = Array.from(el.options).some(
+                        (o) => o.value === cur,
+                    );
+                    if (hasOpt) {
                         el.value = cur;
+                    } else {
+                        el.value = "__custom__";
+                        const custom = document.getElementById(id + "_custom");
+                        if (custom) {
+                            custom.style.display = "block";
+                            custom.value = cur;
+                        }
                     }
-                },
-            );
+                } else {
+                    el.value = cur;
+                }
+            });
         }, 0);
     }
 
@@ -1362,20 +1335,7 @@ const Admin = (() => {
               `id="eu_group" data-current="${escapeHtml(u.group || "")}"`,
           )}
         </div>
-        <div class="row-2">
-          <div class="field"><label>Курс</label><input type="number" id="eu_course" value="${u.course || 1}" min="1" max="6"></div>
-          ${Auth.renderRefField({
-              id: "eu_direction",
-              label: "Направление",
-              refKey: "directions",
-              required: false,
-              placeholder: "Программная инженерия",
-          }).replace(
-              'id="eu_direction"',
-              `id="eu_direction" data-current="${escapeHtml(u.direction || "")}"`,
-          )}
-        </div>
-        <div class="field"><label>Номер зачётки</label><input type="text" id="eu_recordBook" value="${escapeHtml(u.recordBook || "")}"></div>
+        <div class="field"><label>Курс</label><input type="number" id="eu_course" value="${u.course || 1}" min="1" max="6"></div>
       `;
         }
         if (u.role === "teacher") {
@@ -1391,13 +1351,9 @@ const Admin = (() => {
               'id="eu_department"',
               `id="eu_department" data-current="${escapeHtml(u.department || "")}"`,
           )}
-          <div class="field"><label>Должность</label><input type="text" id="eu_position" value="${escapeHtml(u.position || "")}"></div>
-        </div>
-        <div class="row-2">
           <div class="field"><label>Учёная степень</label><input type="text" id="eu_degree" value="${escapeHtml(u.degree || "")}"></div>
-          <div class="field"><label>Макс. нагрузка</label><input type="number" id="eu_maxLoad" value="${u.maxLoad || 8}"></div>
         </div>
-        <div class="field"><label>Научные интересы</label><input type="text" id="eu_interests" value="${escapeHtml(u.interests || "")}"></div>
+        <div class="field"><label>Макс. нагрузка</label><input type="number" id="eu_maxLoad" value="${u.maxLoad || 8}"></div>
       `;
         }
         return `
@@ -1449,17 +1405,10 @@ const Admin = (() => {
             u.faculty = Auth.getRefValue("eu_faculty");
             u.group = Auth.getRefValue("eu_group");
             u.course = +document.getElementById("eu_course")?.value || 1;
-            u.direction = Auth.getRefValue("eu_direction");
-            u.recordBook =
-                document.getElementById("eu_recordBook")?.value.trim() || "";
         } else if (u.role === "teacher") {
             u.department = Auth.getRefValue("eu_department");
-            u.position =
-                document.getElementById("eu_position")?.value.trim() || "";
             u.degree = document.getElementById("eu_degree")?.value.trim() || "";
             u.maxLoad = +document.getElementById("eu_maxLoad")?.value || 8;
-            u.interests =
-                document.getElementById("eu_interests")?.value.trim() || "";
         } else {
             u.department = Auth.getRefValue("eu_department");
             u.position =
@@ -2832,7 +2781,6 @@ const Admin = (() => {
           <div class="profile-hero-sub">${escapeHtml(t.email)}</div>
           <div class="profile-hero-chips">
             <span class="role-chip teacher">Преподаватель</span>
-            ${t.position ? `<span class="tag">${escapeHtml(t.position)}</span>` : ""}
             ${t.degree ? `<span class="tag">${escapeHtml(t.degree)}</span>` : ""}
             ${t.department ? `<span class="tag">${escapeHtml(t.department)}</span>` : ""}
           </div>
@@ -2860,13 +2808,8 @@ const Admin = (() => {
             <div class="info-item"><div class="info-lbl">ФИО</div><div class="info-val">${escapeHtml(t.fio)}</div></div>
             <div class="info-item"><div class="info-lbl">Email</div><div class="info-val">${escapeHtml(t.email)}</div></div>
             <div class="info-item"><div class="info-lbl">Кафедра</div><div class="info-val">${escapeHtml(t.department || "—")}</div></div>
-            <div class="info-item"><div class="info-lbl">Должность</div><div class="info-val">${escapeHtml(t.position || "—")}</div></div>
             <div class="info-item"><div class="info-lbl">Учёная степень</div><div class="info-val">${escapeHtml(t.degree || "—")}</div></div>
             <div class="info-item"><div class="info-lbl">Макс. нагрузка</div><div class="info-val">${maxLoad} работ</div></div>
-            <div class="info-item" style="grid-column:1/-1;">
-              <div class="info-lbl">Научные интересы</div>
-              <div class="info-val">${escapeHtml(t.interests || "—")}</div>
-            </div>
           </div>
         </div>
 
@@ -3016,8 +2959,6 @@ const Admin = (() => {
           <div class="info-item"><div class="info-lbl">Факультет</div><div class="info-val">${escapeHtml(s.faculty || "—")}</div></div>
           <div class="info-item"><div class="info-lbl">Группа</div><div class="info-val">${escapeHtml(s.group || "—")}</div></div>
           <div class="info-item"><div class="info-lbl">Курс</div><div class="info-val">${s.course || "—"}</div></div>
-          <div class="info-item"><div class="info-lbl">Направление</div><div class="info-val">${escapeHtml(s.direction || "—")}</div></div>
-          <div class="info-item"><div class="info-lbl">Номер зачётки</div><div class="info-val">${escapeHtml(s.recordBook || "—")}</div></div>
           <div class="info-item"><div class="info-lbl">Регистрация</div><div class="info-val">${fmtDate(s.createdAt)}</div></div>
         </div>
       </div>

@@ -1,85 +1,63 @@
 const DemoData = (() => {
-    /* =========================================================
-       ПРЕПОДАВАТЕЛИ (8 человек — покрывают 4 кафедры, 3 должности)
-       ========================================================= */
     const TEACHERS_DATA = [
         {
             fio: "Петров Пётр Петрович",
             email: "teacher@demo.ru",
             department: "Кафедра информационных систем",
-            position: "Доцент",
             degree: "к.т.н.",
-            interests: "Нечёткая логика, искусственный интеллект",
             maxLoad: 8,
         },
         {
             fio: "Иванова Мария Сергеевна",
             email: "ivanova@demo.ru",
             department: "Кафедра информационных систем",
-            position: "Профессор",
             degree: "д.т.н.",
-            interests: "Машинное обучение, большие данные",
             maxLoad: 7,
         },
         {
             fio: "Кузнецов Александр Сергеевич",
             email: "kuznetsov@demo.ru",
             department: "Кафедра программной инженерии",
-            position: "Профессор",
             degree: "д.т.н.",
-            interests: "Архитектура ПО, DevOps",
             maxLoad: 7,
         },
         {
             fio: "Смирнова Ольга Владимировна",
             email: "smirnova@demo.ru",
             department: "Кафедра программной инженерии",
-            position: "Доцент",
             degree: "к.т.н.",
-            interests: "Тестирование, обеспечение качества",
             maxLoad: 8,
         },
         {
             fio: "Соколов Дмитрий Андреевич",
             email: "sokolov@demo.ru",
             department: "Кафедра прикладной математики",
-            position: "Профессор",
             degree: "д.ф.-м.н.",
-            interests: "Численные методы, оптимизация",
             maxLoad: 7,
         },
         {
             fio: "Новиков Сергей Владимирович",
             email: "novikov@demo.ru",
             department: "Кафедра информационных систем",
-            position: "Ст. преподаватель",
             degree: "—",
-            interests: "Веб-технологии, UX/UI",
             maxLoad: 9,
         },
         {
             fio: "Морозов Андрей Петрович",
             email: "morozov@demo.ru",
             department: "Кафедра кибербезопасности",
-            position: "Профессор",
             degree: "д.т.н.",
-            interests: "Криптография, защита информации",
             maxLoad: 7,
         },
         {
             fio: "Фёдорова Татьяна Сергеевна",
             email: "fedorova@demo.ru",
             department: "Кафедра программной инженерии",
-            position: "Доцент",
             degree: "к.т.н.",
-            interests: "Мобильная разработка, Kotlin",
             maxLoad: 8,
         },
     ];
 
-    /* =========================================================
-       ГЕНЕРАЦИЯ РУССКИХ ФИО СТУДЕНТОВ
-       ========================================================= */
     const STUDENT_LAST_NAMES = [
         "Абрамов",
         "Авдеев",
@@ -782,9 +760,6 @@ const DemoData = (() => {
         "Прошу оценить текущий прогресс.",
     ];
 
-    /* =========================================================
-       УТИЛИТЫ
-       ========================================================= */
     function pick(arr) {
         return arr[Math.floor(Math.random() * arr.length)];
     }
@@ -812,9 +787,6 @@ const DemoData = (() => {
         return shuffle(arr).slice(0, count);
     }
 
-    /**
-     * Генерирует count уникальных русских ФИО.
-     */
     function makeUniqueNames(count) {
         const used = new Set();
         const result = [];
@@ -836,9 +808,6 @@ const DemoData = (() => {
         return result;
     }
 
-    /* =========================================================
-       ГЕНЕРАЦИЯ ДЕМО-ДАННЫХ
-       ========================================================= */
     function generate() {
         const existingUsers = Storage.getUsers();
 
@@ -857,7 +826,6 @@ const DemoData = (() => {
         const users = [...existingUsers];
         const existingEmails = new Set(users.map((u) => u.email));
 
-        /* --- Преподаватели --- */
         const teachers = [];
         for (const t of TEACHERS_DATA) {
             if (existingEmails.has(t.email)) {
@@ -872,9 +840,7 @@ const DemoData = (() => {
                 email: t.email,
                 pass: hashPass("123456"),
                 department: t.department,
-                position: t.position,
                 degree: t.degree,
-                interests: t.interests,
                 maxLoad: t.maxLoad,
                 blocked: false,
                 createdAt: daysAgo(randInt(300, 400)),
@@ -884,7 +850,6 @@ const DemoData = (() => {
             existingEmails.add(t.email);
         }
 
-        /* --- Студенты (35 человек) --- */
         const STUDENT_COUNT = 35;
         const studentNames = makeUniqueNames(STUDENT_COUNT);
 
@@ -907,8 +872,6 @@ const DemoData = (() => {
                 faculty: g.faculty,
                 group: g.group,
                 course: g.course,
-                direction: g.direction,
-                recordBook: `${g.course}${String(i + 1).padStart(3, "0")}`,
                 blocked: false,
                 createdAt: daysAgo(randInt(200, 400)),
             };
@@ -930,7 +893,6 @@ const DemoData = (() => {
         const versions = Storage.getVersions();
         const comments = Storage.getComments();
 
-        /* --- План работ: 70 штук --- */
         const statusPlan = [
             { status: "pending", count: 5 },
             { status: "active", count: 20 },
@@ -972,19 +934,9 @@ const DemoData = (() => {
                     teacherId: teacher.id,
                     type: pick(["course", "diploma", "vkr", "master"]),
                     topic,
-                    annotation:
+                    description:
                         `Работа посвящена исследованию в области «${topic.toLowerCase()}». ` +
-                        `Рассматриваются современные подходы и предлагается авторское решение. ` +
-                        `Особое внимание уделено практической реализации и апробации.`,
-                    keywords:
-                        "нечёткая логика, управление, автоматизация, исследование",
-                    goal: "Разработать и апробировать информационную систему.",
-                    tasksText:
-                        "1. Изучить предметную область\n" +
-                        "2. Спроектировать систему\n" +
-                        "3. Реализовать прототип\n" +
-                        "4. Провести тестирование\n" +
-                        "5. Оформить документацию",
+                        `Рассматриваются современные подходы и предлагается авторское решение.`,
                     deadline,
                     status: plan.status,
                     createdAt,
@@ -1025,7 +977,6 @@ const DemoData = (() => {
                     activeWorks.push(work);
                 }
 
-                /* --- Этапы --- */
                 if (
                     ["active", "review", "approved", "done"].includes(
                         plan.status,
@@ -1061,7 +1012,6 @@ const DemoData = (() => {
                     }
                 }
 
-                /* --- Задачи --- */
                 if (
                     ["active", "review", "approved", "done"].includes(
                         plan.status,
@@ -1120,7 +1070,6 @@ const DemoData = (() => {
                     }
                 }
 
-                /* --- Версии --- */
                 if (
                     ["active", "review", "approved", "done"].includes(
                         plan.status,
@@ -1148,7 +1097,6 @@ const DemoData = (() => {
                     }
                 }
 
-                /* --- Комментарии --- */
                 if (
                     ["active", "review", "approved", "done"].includes(
                         plan.status,
@@ -1175,7 +1123,6 @@ const DemoData = (() => {
         Storage.setVersions(versions);
         Storage.setComments(comments);
 
-        /* --- Аудит (80 записей) --- */
         const auditLog = Storage.get("fp_audit", []);
         const auditActions = [
             "Создана работа",
@@ -1222,10 +1169,8 @@ const DemoData = (() => {
         }
         Storage.set("fp_audit", auditLog);
 
-        /* --- Уведомления (только для активных — у кого есть работы) --- */
         const notifs = Storage.get("fp_notifications", []);
 
-        // Приветственные — только тем пользователям, у кого есть работы
         const activeUserIds = new Set();
         works.forEach((w) => {
             activeUserIds.add(String(w.studentId));
@@ -1278,7 +1223,6 @@ const DemoData = (() => {
 
         Storage.set("fp_notifications", notifs);
 
-        /* --- Консультации (15 штук) --- */
         const consults = Storage.get("fp_consults", []);
         const statuses = ["pending", "approved", "done", "rejected"];
 
@@ -1325,7 +1269,6 @@ const DemoData = (() => {
         }
         Storage.set("fp_consults", consults);
 
-        /* --- Справочники --- */
         const refs = Storage.get("fp_refs", null);
         if (!refs) {
             Storage.set("fp_refs", {
@@ -1362,7 +1305,6 @@ const DemoData = (() => {
             });
         }
 
-        /* --- Настройки --- */
         const settings = Storage.get("fp_settings", null);
         if (!settings) {
             Storage.set("fp_settings", {

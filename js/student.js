@@ -632,37 +632,24 @@ const Student = (() => {
           ).join("")}
         </div>
 
-        <div class="section-label">Тема и описание</div>
-        <div class="form-grid">
-          <div class="field full">
-            <label>Тема работы <span class="req">*</span></label>
-            <input type="text" id="w_topic"
-              placeholder="Например: Информационная система управления проектами на основе нечёткой логики">
-            <div class="field-err">Укажите тему (минимум 10 символов)</div>
-          </div>
-          <div class="field full">
-            <label>Аннотация</label>
-            <textarea id="w_annotation" rows="3"
-              placeholder="Краткое описание работы (2–4 предложения)"></textarea>
-          </div>
-          <div class="field full">
-            <label>Ключевые слова</label>
-            <input type="text" id="w_keywords" placeholder="нечёткая логика, Мамдани, управление проектами">
-          </div>
-          <div class="field">
-            <label>Цель работы</label>
-            <input type="text" id="w_goal" placeholder="Разработать ИС...">
-          </div>
-          <div class="field">
-            <label>Планируемая дата защиты</label>
-            <input type="date" id="w_deadline">
-          </div>
-          <div class="field full">
-            <label>Задачи (по одной на строку)</label>
-            <textarea id="w_tasks" rows="3"
-              placeholder="Изучить предметную область&#10;Спроектировать архитектуру&#10;Реализовать прототип"></textarea>
-          </div>
-        </div>
+        <div class="section-label">Тема и сроки</div>
+<div class="form-grid">
+  <div class="field full">
+    <label>Тема работы <span class="req">*</span></label>
+    <input type="text" id="w_topic"
+      placeholder="Например: Информационная система управления проектами на основе нечёткой логики">
+    <div class="field-err">Укажите тему (минимум 10 символов)</div>
+  </div>
+  <div class="field full">
+    <label>Краткое описание <span class="text-muted" style="font-weight:400;">(необязательно)</span></label>
+    <textarea id="w_description" rows="2"
+      placeholder="1–2 предложения о чём работа — для ориентира руководителя"></textarea>
+  </div>
+  <div class="field">
+    <label>Планируемая дата защиты</label>
+    <input type="date" id="w_deadline">
+  </div>
+</div>
 
         <div class="section-label">Выбор руководителя</div>
         ${
@@ -778,16 +765,14 @@ const Student = (() => {
             teacherId: draftTeacherId,
             type: draftWorkType,
             topic,
-            annotation:
-                document.getElementById("w_annotation")?.value.trim() || "",
-            keywords: document.getElementById("w_keywords")?.value.trim() || "",
-            goal: document.getElementById("w_goal")?.value.trim() || "",
-            tasksText: document.getElementById("w_tasks")?.value.trim() || "",
+            description:
+                document.getElementById("w_description")?.value.trim() || "",
             deadline: document.getElementById("w_deadline")?.value || null,
             status: "pending",
             createdAt: Date.now(),
             updatedAt: Date.now(),
         };
+
         Storage.saveWork(work);
         selectedWorkId = work.id;
 

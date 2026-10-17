@@ -1397,3 +1397,109 @@
         font-size: 20px;
     }
 }
+
+/* =========================================================
+   WORK GRID — сетка для «Этапы + Дедлайны» в моей работе
+   ========================================================= */
+.work-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: start;
+}
+@media (max-width: 900px) {
+    .work-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+}
+
+/* Дополнительно: даём всем карточкам на странице my-work
+   нормальный вертикальный ритм */
+#viewRoot > .view.active > .card,
+#viewRoot > .view.active > .work-grid,
+#viewRoot > .view.active > .work-summary,
+#viewRoot > .view.active > .work-hero {
+    margin-bottom: 20px;
+}
+
+/* Убираем дублирующий отступ у последнего элемента */
+#viewRoot > .view.active > *:last-child {
+    margin-bottom: 0;
+}
+
+/* =========================================================
+   ВЕРСИИ + ЗАМЕЧАНИЯ — в один ряд, одинаковые, со скроллом
+   ========================================================= */
+.work-bottom-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 20px;
+    align-items: stretch;
+}
+@media (max-width: 900px) {
+    .work-bottom-row {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+}
+
+/* Фиксированная высота карточки, чтобы не зависеть от данных */
+.work-scroll-card {
+    display: flex;
+    flex-direction: column;
+    height: 420px;
+    overflow: hidden;
+    padding: 0 !important;
+}
+.work-scroll-card .card-head {
+    padding: 20px 22px 16px;
+    margin-bottom: 0 !important;
+    border-bottom: 1px solid rgba(15, 15, 25, 0.06);
+    flex-shrink: 0;
+}
+
+/* Скроллящееся тело */
+.work-scroll-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 14px 22px 20px;
+}
+
+/* Кастомный скроллбар */
+.work-scroll-body::-webkit-scrollbar {
+    width: 8px;
+}
+.work-scroll-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+.work-scroll-body::-webkit-scrollbar-thumb {
+    background: rgba(15, 15, 25, 0.15);
+    border-radius: 100px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+.work-scroll-body::-webkit-scrollbar-thumb:hover {
+    background: rgba(15, 15, 25, 0.28);
+    background-clip: padding-box;
+    border: 2px solid transparent;
+}
+
+/* Пустое состояние по центру */
+.work-scroll-body > .empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100%;
+    text-align: center;
+}
+
+/* Мобильные — авто-высота (скролл не нужен) */
+@media (max-width: 900px) {
+    .work-scroll-card {
+        height: auto;
+        max-height: 500px;
+    }
+}
