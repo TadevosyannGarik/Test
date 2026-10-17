@@ -742,5 +742,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     Auth.seedDemo();
     Auth.pickRole("student");
-    Auth.restoreSession();
+
+    const restored = Auth.restoreSession();
+    if (!restored) {
+        if (typeof Landing !== "undefined") {
+            Landing.show();
+        } else {
+            Auth.showAuth("login");
+        }
+    }
 });

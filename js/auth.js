@@ -467,6 +467,7 @@ const Auth = (() => {
 
     function loginAs(user) {
         if (!user) return;
+        if (typeof Landing !== "undefined") Landing.hide();
         if (booted) return;
 
         if (user.blocked) {
@@ -538,6 +539,47 @@ const Auth = (() => {
         return currentUser;
     }
 
+    function showLanding() {
+        if (typeof Landing !== "undefined") Landing.show();
+        const auth = document.getElementById("authScreen");
+        const app = document.getElementById("app");
+        if (auth) auth.style.display = "none";
+        if (app) app.style.display = "none";
+    }
+
+    function showAuth(mode = "login") {
+        if (typeof Landing !== "undefined") Landing.hide();
+        const auth = document.getElementById("authScreen");
+        const app = document.getElementById("app");
+        if (auth) auth.style.display = "flex";
+        if (app) app.style.display = "none";
+
+        if (mode === "register") switchTab("register");
+        else switchTab("login");
+
+        hideMsg();
+    }
+
+    function demoLogin(role) {
+        const emails = {
+            student: "student@demo.ru",
+            teacher: "teacher@demo.ru",
+            admin: "admin@demo.ru",
+        };
+        const email = emails[role];
+        if (!email) return;
+
+        const users = Storage.getUsers();
+        const u = users.find((x) => x.email === email);
+        if (!u) {
+            App.toast("Демо-аккаунт не найден. Обновите страницу.");
+            return;
+        }
+
+        if (typeof Landing !== "undefined") Landing.hide();
+        loginAs(u);
+    }
+
     return {
         seedDemo,
         switchTab,
@@ -549,6 +591,10 @@ const Auth = (() => {
         logout,
         restoreSession,
         getUser,
+
+        showLanding,
+        showAuth,
+        demoLogin,
 
         renderRefField,
         onRefSelectChange,

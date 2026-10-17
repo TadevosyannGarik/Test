@@ -1,19 +1,8 @@
-/* =========================================================
-   OVERRIDES — Soft Glassmorphism style
-
-   ВАЖНО: этот файл перебивает стили из theme.css/app.css/*.css
-   через !important. Он даёт приложению «стеклянный» воздушный вид.
-   ========================================================= */
-
 :root {
     --bg: #f8f9fa;
     --card-radius: 24px;
     --card-radius-sm: 16px;
-    --accent-gradient: linear-gradient(
-        135deg,
-        var(--accent-viz) 0%,
-        #8b5cf6 100%
-    );
+    --accent-gradient: var(--txt);
 }
 
 body {
@@ -22,9 +11,6 @@ body {
     background: var(--bg);
 }
 
-/* =========================================================
-   SVG-ФИЛЬТР
-   ========================================================= */
 .bg-filter {
     position: absolute;
     width: 0;
@@ -32,9 +18,6 @@ body {
     pointer-events: none;
 }
 
-/* =========================================================
-   ФОНОВЫЕ ПЯТНА
-   ========================================================= */
 .bg-blobs {
     position: fixed;
     inset: 0;
@@ -60,7 +43,6 @@ body {
     will-change: transform, border-radius;
 }
 
-/* --- Пятно A --- */
 .bg-blob-a {
     width: clamp(280px, 30vw, 460px);
     height: clamp(280px, 30vw, 460px);
@@ -70,6 +52,7 @@ body {
     animation-name: moveA;
     animation-duration: 28s;
 }
+
 .bg-blob-a span:nth-child(1) {
     width: 62%;
     height: 55%;
@@ -79,6 +62,7 @@ body {
     animation-name: morphA1, innerDrift1;
     animation-duration: 18s, 12s;
 }
+
 .bg-blob-a span:nth-child(2) {
     width: 58%;
     height: 62%;
@@ -88,6 +72,7 @@ body {
     animation-name: morphA2, innerDrift2;
     animation-duration: 22s, 15s;
 }
+
 .bg-blob-a span:nth-child(3) {
     width: 52%;
     height: 50%;
@@ -97,6 +82,7 @@ body {
     animation-name: morphA1, innerDrift3;
     animation-duration: 25s, 18s;
 }
+
 .bg-blob-a span:nth-child(4) {
     width: 48%;
     height: 52%;
@@ -107,7 +93,6 @@ body {
     animation-duration: 20s, 14s;
 }
 
-/* --- Пятно B --- */
 .bg-blob-b {
     width: clamp(260px, 28vw, 440px);
     height: clamp(260px, 28vw, 440px);
@@ -117,6 +102,7 @@ body {
     animation-name: moveB;
     animation-duration: 32s;
 }
+
 .bg-blob-b span:nth-child(1) {
     width: 58%;
     height: 60%;
@@ -126,6 +112,7 @@ body {
     animation-name: morphA2, innerDrift2;
     animation-duration: 21s, 13s;
 }
+
 .bg-blob-b span:nth-child(2) {
     width: 62%;
     height: 56%;
@@ -135,6 +122,7 @@ body {
     animation-name: morphA1, innerDrift3;
     animation-duration: 19s, 16s;
 }
+
 .bg-blob-b span:nth-child(3) {
     width: 50%;
     height: 58%;
@@ -144,6 +132,7 @@ body {
     animation-name: morphA2, innerDrift1;
     animation-duration: 24s, 14s;
 }
+
 .bg-blob-b span:nth-child(4) {
     width: 54%;
     height: 48%;
@@ -154,7 +143,6 @@ body {
     animation-duration: 17s, 11s;
 }
 
-/* --- Пятно C --- */
 .bg-blob-c {
     width: clamp(260px, 28vw, 440px);
     height: clamp(260px, 28vw, 440px);
@@ -164,6 +152,7 @@ body {
     animation-name: moveC;
     animation-duration: 30s;
 }
+
 .bg-blob-c span:nth-child(1) {
     width: 60%;
     height: 54%;
@@ -173,6 +162,7 @@ body {
     animation-name: morphA1, innerDrift3;
     animation-duration: 23s, 15s;
 }
+
 .bg-blob-c span:nth-child(2) {
     width: 54%;
     height: 62%;
@@ -182,6 +172,7 @@ body {
     animation-name: morphA2, innerDrift1;
     animation-duration: 20s, 12s;
 }
+
 .bg-blob-c span:nth-child(3) {
     width: 58%;
     height: 50%;
@@ -191,6 +182,7 @@ body {
     animation-name: morphA1, innerDrift2;
     animation-duration: 26s, 17s;
 }
+
 .bg-blob-c span:nth-child(4) {
     width: 46%;
     height: 54%;
@@ -201,7 +193,6 @@ body {
     animation-duration: 18s, 13s;
 }
 
-/* --- Пятно D --- */
 .bg-blob-d {
     width: clamp(280px, 30vw, 460px);
     height: clamp(280px, 30vw, 460px);
@@ -211,6 +202,7 @@ body {
     animation-name: moveD;
     animation-duration: 34s;
 }
+
 .bg-blob-d span:nth-child(1) {
     width: 56%;
     height: 60%;
@@ -220,6 +212,7 @@ body {
     animation-name: morphA2, innerDrift1;
     animation-duration: 22s, 14s;
 }
+
 .bg-blob-d span:nth-child(2) {
     width: 62%;
     height: 54%;
@@ -229,6 +222,7 @@ body {
     animation-name: morphA1, innerDrift2;
     animation-duration: 20s, 16s;
 }
+
 .bg-blob-d span:nth-child(3) {
     width: 52%;
     height: 58%;
@@ -238,6 +232,7 @@ body {
     animation-name: morphA2, innerDrift3;
     animation-duration: 25s, 12s;
 }
+
 .bg-blob-d span:nth-child(4) {
     width: 50%;
     height: 52%;
@@ -248,7 +243,6 @@ body {
     animation-duration: 19s, 15s;
 }
 
-/* --- Пятно E --- */
 .bg-blob-e {
     width: clamp(180px, 18vw, 280px);
     height: clamp(180px, 18vw, 280px);
@@ -258,6 +252,7 @@ body {
     animation-name: moveE;
     animation-duration: 40s;
 }
+
 .bg-blob-e span:nth-child(1) {
     width: 60%;
     height: 56%;
@@ -267,6 +262,7 @@ body {
     animation-name: morphA1, innerDrift2;
     animation-duration: 24s, 13s;
 }
+
 .bg-blob-e span:nth-child(2) {
     width: 54%;
     height: 60%;
@@ -276,6 +272,7 @@ body {
     animation-name: morphA2, innerDrift3;
     animation-duration: 21s, 15s;
 }
+
 .bg-blob-e span:nth-child(3) {
     width: 58%;
     height: 52%;
@@ -285,6 +282,7 @@ body {
     animation-name: morphA1, innerDrift1;
     animation-duration: 27s, 17s;
 }
+
 .bg-blob-e span:nth-child(4) {
     width: 46%;
     height: 50%;
@@ -295,9 +293,6 @@ body {
     animation-duration: 19s, 11s;
 }
 
-/* =========================================================
-   ДВИЖЕНИЕ ПЯТЕН
-   ========================================================= */
 @keyframes moveA {
     0% {
         transform: translate(0, 0) rotate(0deg);
@@ -327,6 +322,7 @@ body {
         transform: translate(0, 0) rotate(360deg);
     }
 }
+
 @keyframes moveB {
     0% {
         transform: translate(0, 0) rotate(0deg);
@@ -353,6 +349,7 @@ body {
         transform: translate(0, 0) rotate(-360deg);
     }
 }
+
 @keyframes moveC {
     0% {
         transform: translate(0, 0) rotate(0deg);
@@ -379,6 +376,7 @@ body {
         transform: translate(0, 0) rotate(360deg);
     }
 }
+
 @keyframes moveD {
     0% {
         transform: translate(0, 0) rotate(0deg);
@@ -408,6 +406,7 @@ body {
         transform: translate(0, 0) rotate(-360deg);
     }
 }
+
 @keyframes moveE {
     0% {
         transform: translate(0, 0) rotate(0deg);
@@ -432,9 +431,6 @@ body {
     }
 }
 
-/* =========================================================
-   МОРФИНГ ФОРМ
-   ========================================================= */
 @keyframes morphA1 {
     0%,
     100% {
@@ -447,6 +443,7 @@ body {
         border-radius: 60% 40% 48% 52% / 42% 58% 45% 55%;
     }
 }
+
 @keyframes morphA2 {
     0%,
     100% {
@@ -460,9 +457,6 @@ body {
     }
 }
 
-/* =========================================================
-   ВНУТРЕННЕЕ ДВИЖЕНИЕ КРУГОВ
-   ========================================================= */
 @keyframes innerDrift1 {
     0%,
     100% {
@@ -478,6 +472,7 @@ body {
         transform: translate(10%, -6%) scale(1.1);
     }
 }
+
 @keyframes innerDrift2 {
     0%,
     100% {
@@ -493,6 +488,7 @@ body {
         transform: translate(-6%, 12%) scale(1.05);
     }
 }
+
 @keyframes innerDrift3 {
     0%,
     100% {
@@ -512,9 +508,6 @@ body {
     z-index: 1;
 }
 
-/* =========================================================
-   ШАПКА И НАВИГАЦИЯ
-   ========================================================= */
 .app-header {
     background: rgba(255, 255, 255, 0.45) !important;
     backdrop-filter: blur(30px) saturate(180%);
@@ -531,9 +524,6 @@ body {
     box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.4) !important;
 }
 
-/* =========================================================
-   КАРТОЧКИ — мягкое стекло
-   ========================================================= */
 .card {
     background: linear-gradient(
         135deg,
@@ -566,9 +556,6 @@ body {
         0 8px 32px rgba(0, 0, 0, 0.05) !important;
 }
 
-/* =========================================================
-   ОСТАЛЬНЫЕ ПОВЕРХНОСТИ
-   ========================================================= */
 .kpi,
 .metric,
 .work-hero,
@@ -617,9 +604,6 @@ body {
         0 6px 20px rgba(0, 0, 0, 0.04) !important;
 }
 
-/* =========================================================
-   МОДАЛКИ
-   ========================================================= */
 .modal-back {
     background: rgba(17, 17, 17, 0.2) !important;
     backdrop-filter: blur(10px) !important;
@@ -627,11 +611,7 @@ body {
 }
 
 .modal {
-    background: linear-gradient(
-        135deg,
-        rgb(255, 255, 255),
-        rgb(255, 255, 255)
-    ) !important;
+    background: #ffffff !important;
     backdrop-filter: blur(40px) saturate(180%);
     -webkit-backdrop-filter: blur(40px) saturate(180%);
     border: 1px solid rgba(255, 255, 255, 0.55) !important;
@@ -641,9 +621,6 @@ body {
         0 12px 48px rgba(0, 0, 0, 0.1) !important;
 }
 
-/* =========================================================
-   УВЕДОМЛЕНИЯ
-   ========================================================= */
 .notif-panel {
     background: linear-gradient(
         135deg,
@@ -659,9 +636,6 @@ body {
         0 12px 48px rgba(0, 0, 0, 0.1) !important;
 }
 
-/* =========================================================
-   TOAST
-   ========================================================= */
 .toast {
     background: rgba(17, 17, 17, 0.85) !important;
     backdrop-filter: blur(20px) saturate(180%);
@@ -670,9 +644,6 @@ body {
     box-shadow: none !important;
 }
 
-/* =========================================================
-   АВТОРИЗАЦИЯ
-   ========================================================= */
 .auth-card {
     background: linear-gradient(
         135deg,
@@ -688,22 +659,20 @@ body {
         0 16px 56px rgba(0, 0, 0, 0.08) !important;
 }
 
-/* =========================================================
-   КНОПКИ — мягкие и скруглённые
-   ========================================================= */
 .btn-primary {
     border-radius: 100px !important;
     background: var(--accent-gradient) !important;
     box-shadow:
         inset 0 1px 0 rgba(255, 255, 255, 0.2),
-        0 2px 8px rgba(99, 102, 241, 0.25) !important;
+        0 2px 8px rgba(17, 17, 17, 0.15) !important;
     font-weight: 500;
 }
+
 .btn-primary:hover {
     transform: translateY(-1px);
     box-shadow:
         inset 0 1px 0 rgba(255, 255, 255, 0.25),
-        0 6px 16px rgba(99, 102, 241, 0.35) !important;
+        0 6px 16px rgba(17, 17, 17, 0.2) !important;
 }
 
 .btn-ghost {
@@ -714,6 +683,7 @@ body {
     border-radius: 100px !important;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
 }
+
 .btn-ghost:hover {
     background: rgba(255, 255, 255, 0.55) !important;
     border-color: rgba(255, 255, 255, 0.65) !important;
@@ -725,6 +695,7 @@ body {
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
 }
+
 .btn-icon:hover {
     background: rgba(255, 255, 255, 0.5) !important;
 }
@@ -739,14 +710,12 @@ body {
     border-radius: 100px;
 }
 
-/* =========================================================
-   ФОРМЫ И ПОЛЯ
-   ========================================================= */
 .field input,
 .field select,
 .field textarea {
     background: transparent;
 }
+
 .field-boxed input,
 .field-boxed select,
 .field-boxed textarea {
@@ -779,9 +748,6 @@ body {
     border-radius: 100px !important;
 }
 
-/* =========================================================
-   БЕЙДЖИ, ТЕГИ, ЧИПЫ
-   ========================================================= */
 .badge,
 .tag,
 .role-chip,
@@ -799,9 +765,6 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.5) !important;
 }
 
-/* =========================================================
-   КАНБАН, СПИСКИ, TIMELINE
-   ========================================================= */
 .kanban-col {
     background: rgba(255, 255, 255, 0.3) !important;
     backdrop-filter: blur(12px);
@@ -823,17 +786,13 @@ body {
     border-radius: 0 var(--card-radius-sm) var(--card-radius-sm) 0 !important;
 }
 
-/* Прогресс-бары */
 .progress-bar,
 .pbar-fill,
 .fuzzy-progress-fill {
     border-radius: 100px !important;
 }
 
-/* =========================================================
-   МОБИЛЬНЫЕ
-   ========================================================= */
-@media (max-width: 700px) {
+@media (max-width: 640px) {
     .bg-blob {
         filter: url(#blobShape) blur(30px);
         opacity: 0.6;
@@ -911,9 +870,6 @@ body {
     }
 }
 
-/* =========================================================
-   ПРЕДПОЧТЕНИЯ СИСТЕМЫ
-   ========================================================= */
 @media (prefers-reduced-motion: reduce) {
     .bg-blob,
     .bg-blob span {

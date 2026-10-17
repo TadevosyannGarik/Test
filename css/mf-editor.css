@@ -1,24 +1,14 @@
-/* =========================================================
-   MF-EDITOR — редактор функций принадлежности
-   ========================================================= */
-
-/* =========================================================
-   HERO
-   ========================================================= */
 .mf-hero {
     display: flex;
     align-items: flex-start;
     gap: 22px;
     padding: 28px 32px;
     border-radius: var(--r-xl);
-    background: linear-gradient(
-        135deg,
-        rgba(99, 102, 241, 0.1),
-        rgba(139, 92, 246, 0.06)
-    );
-    border: 1px solid rgba(99, 102, 241, 0.18);
+    background: var(--bg-soft);
+    border: 1px solid var(--line);
     margin-bottom: 20px;
 }
+
 .mf-hero-icon {
     display: inline-flex;
     align-items: center;
@@ -26,11 +16,11 @@
     width: 56px;
     height: 56px;
     border-radius: 50%;
-    background: var(--accent-viz);
-    color: #fff;
+    background: var(--accent);
+    color: #ffffff;
     flex-shrink: 0;
-    box-shadow: 0 8px 24px var(--accent-viz-glow);
 }
+
 .mf-hero-title {
     font-size: 19px;
     font-weight: 600;
@@ -38,19 +28,18 @@
     letter-spacing: -0.02em;
     margin-bottom: 8px;
 }
+
 .mf-hero-text {
     font-size: 13px;
     color: var(--txt-muted);
     line-height: 1.65;
 }
+
 .mf-hero-text b {
     color: var(--txt);
     font-weight: 600;
 }
 
-/* =========================================================
-   NOTICE
-   ========================================================= */
 .mf-notice {
     display: flex;
     align-items: center;
@@ -64,27 +53,25 @@
     color: var(--txt);
     margin-bottom: 20px;
 }
+
 .mf-notice .icon {
     color: var(--warn);
     flex-shrink: 0;
 }
+
 .mf-notice b {
     color: var(--txt);
     font-weight: 600;
 }
 
-/* =========================================================
-   PRESETS
-   ========================================================= */
 .mf-presets {
     padding: 22px 24px;
     border-radius: var(--r-xl);
-    background: rgba(255, 255, 255, 0.6);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.5);
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
     margin-bottom: 20px;
 }
+
 .mf-presets-label {
     display: flex;
     align-items: center;
@@ -96,16 +83,19 @@
     font-weight: 700;
     margin-bottom: 16px;
 }
+
 .mf-presets-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 12px;
 }
+
 @media (max-width: 900px) {
     .mf-presets-grid {
         grid-template-columns: 1fr;
     }
 }
+
 .mf-preset {
     padding: 18px 20px;
     border: 1.5px solid var(--line);
@@ -115,12 +105,14 @@
     text-align: left;
     transition: all var(--t-fast);
 }
+
 .mf-preset:hover {
-    border-color: var(--accent-viz);
-    background: var(--accent-viz-soft);
+    border-color: var(--accent);
+    background: var(--bg-soft);
     transform: translateY(-2px);
     box-shadow: var(--shadow-sm);
 }
+
 .mf-preset-title {
     font-size: 13px;
     font-weight: 600;
@@ -128,25 +120,22 @@
     margin-bottom: 4px;
     letter-spacing: -0.005em;
 }
+
 .mf-preset-desc {
     font-size: 11px;
     color: var(--txt-muted);
     line-height: 1.4;
 }
 
-/* =========================================================
-   LIVE-ТЕСТ
-   ========================================================= */
 .mf-live {
     padding: 26px 28px;
     border-radius: var(--r-xl);
-    background: rgba(255, 255, 255, 0.65);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.5);
-    border-left: 5px solid var(--accent-viz);
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-left: 5px solid var(--accent);
     margin-bottom: 20px;
 }
+
 .mf-live-title {
     display: flex;
     align-items: center;
@@ -157,12 +146,14 @@
     margin-bottom: 6px;
     letter-spacing: -0.01em;
 }
+
 .mf-live-desc {
     font-size: 12px;
     color: var(--txt-muted);
     line-height: 1.5;
     margin-bottom: 20px;
 }
+
 .mf-live-desc b {
     color: var(--txt);
 }
@@ -170,24 +161,27 @@
 .mf-live-slider {
     margin-bottom: 22px;
 }
+
 .mf-live-slider-head {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 12px;
 }
+
 .mf-live-slider-label {
     font-size: 13px;
     color: var(--txt);
     font-weight: 500;
 }
+
 .mf-live-slider-val {
     font-family: var(--font-mono);
     font-size: 14px;
     font-weight: 700;
-    color: var(--accent-viz);
+    color: var(--txt);
     font-variant-numeric: tabular-nums;
-    background: var(--accent-viz-soft);
+    background: var(--bg-soft);
     padding: 5px 14px;
     border-radius: var(--r-pill);
 }
@@ -200,56 +194,60 @@
     height: 24px;
     cursor: pointer;
 }
+
 .mf-live-slider input[type="range"]::-webkit-slider-runnable-track {
     height: 6px;
     background: var(--line);
     border-radius: var(--r-pill);
 }
+
 .mf-live-slider input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 22px;
-    height: 22px;
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
-    background: var(--accent-viz);
-    margin-top: -8px;
+    background: var(--accent);
+    margin-top: -7px;
     cursor: pointer;
-    border: 3px solid #fff;
-    box-shadow: 0 2px 8px var(--accent-viz-glow);
+    border: 3px solid #ffffff;
+    box-shadow: var(--shadow-sm);
     transition: transform var(--t-fast);
 }
+
 .mf-live-slider input[type="range"]::-webkit-slider-thumb:hover {
     transform: scale(1.15);
 }
+
 .mf-live-slider input[type="range"]::-moz-range-track {
     height: 6px;
     background: var(--line);
     border-radius: var(--r-pill);
 }
+
 .mf-live-slider input[type="range"]::-moz-range-thumb {
-    width: 22px;
-    height: 22px;
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
-    background: var(--accent-viz);
-    border: 3px solid #fff;
+    background: var(--accent);
+    border: 3px solid #ffffff;
     cursor: pointer;
-    box-shadow: 0 2px 8px var(--accent-viz-glow);
+    box-shadow: var(--shadow-sm);
 }
 
-/* =========================================================
-   LIVE РЕЗУЛЬТАТ — 3 карточки
-   ========================================================= */
 .mf-live-result {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 12px;
     margin-bottom: 18px;
 }
-@media (max-width: 700px) {
+
+@media (max-width: 640px) {
     .mf-live-result {
         grid-template-columns: 1fr;
     }
 }
+
 .mf-live-term {
     padding: 16px 18px;
     border-radius: var(--r-lg);
@@ -258,13 +256,14 @@
     opacity: 0.45;
     transition: all var(--t-fast);
 }
+
 .mf-live-term.active {
     opacity: 1;
-    border-color: var(--accent-viz);
-    background: var(--accent-viz-soft);
+    border-color: var(--accent);
+    background: var(--accent-soft);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px var(--accent-viz-glow);
 }
+
 .mf-live-term-label {
     font-size: 11px;
     color: var(--txt-muted);
@@ -273,6 +272,7 @@
     font-weight: 700;
     margin-bottom: 8px;
 }
+
 .mf-live-term-mu {
     font-size: 24px;
     font-weight: 700;
@@ -281,12 +281,14 @@
     letter-spacing: -0.025em;
     margin-bottom: 10px;
 }
+
 .mf-live-term-bar {
     height: 6px;
     background: var(--bg-soft);
     border-radius: var(--r-pill);
     overflow: hidden;
 }
+
 .mf-live-term-bar > div {
     height: 100%;
     border-radius: var(--r-pill);
@@ -299,30 +301,31 @@
     gap: 12px;
     padding: 14px 18px;
     border-radius: var(--r-lg);
-    background: var(--accent-viz-soft);
+    background: var(--bg-soft);
+    border: 1px solid var(--line);
     font-size: 13px;
     color: var(--txt);
     line-height: 1.55;
 }
+
 .mf-live-verdict .icon {
-    color: var(--accent-viz);
+    color: var(--txt-muted);
     flex-shrink: 0;
 }
+
 .mf-live-verdict b {
-    color: var(--accent-viz);
+    color: var(--txt);
     font-weight: 700;
     text-transform: capitalize;
 }
 
-/* =========================================================
-   LAYOUT — график + контролы
-   ========================================================= */
 .mf-layout {
     display: grid;
     grid-template-columns: 1.3fr 1fr;
     gap: 20px;
     margin-bottom: 20px;
 }
+
 @media (max-width: 1000px) {
     .mf-layout {
         grid-template-columns: 1fr;
@@ -332,14 +335,14 @@
 .mf-chart-col {
     padding: 24px 26px;
     border-radius: var(--r-xl);
-    background: rgba(255, 255, 255, 0.65);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.5);
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
 }
+
 .mf-chart-head {
     margin-bottom: 14px;
 }
+
 .mf-chart-title {
     display: flex;
     align-items: center;
@@ -349,12 +352,14 @@
     color: var(--txt);
     letter-spacing: -0.005em;
 }
+
 .mf-chart-desc {
     font-size: 12px;
     color: var(--txt-muted);
     line-height: 1.55;
     margin-bottom: 18px;
 }
+
 .mf-canvas-wrap {
     position: relative;
     height: 340px;
@@ -362,26 +367,26 @@
     border-radius: var(--r-lg);
     padding: 12px;
 }
+
 .mf-canvas-wrap canvas {
-    width: 100% !important;
-    height: 100% !important;
+    width: 100%;
+    height: 100%;
     display: block;
 }
 
-/* =========================================================
-   HINTS — подсказки под графиком
-   ========================================================= */
 .mf-chart-hints {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 10px;
     margin-top: 14px;
 }
-@media (max-width: 600px) {
+
+@media (max-width: 640px) {
     .mf-chart-hints {
         grid-template-columns: 1fr;
     }
 }
+
 .mf-chart-hint {
     display: flex;
     align-items: center;
@@ -393,20 +398,24 @@
     font-size: 11px;
     transition: all var(--t-fast);
 }
+
 .mf-chart-hint:hover {
     border-color: var(--line-strong);
     transform: translateY(-1px);
 }
+
 .mf-hint-dot {
     width: 10px;
     height: 10px;
     border-radius: 50%;
     flex-shrink: 0;
 }
+
 .mf-hint-label {
     font-weight: 700;
     color: var(--txt);
 }
+
 .mf-hint-example {
     color: var(--txt-muted);
     margin-left: auto;
@@ -414,24 +423,21 @@
     font-size: 10px;
 }
 
-/* =========================================================
-   CONTROLS — контролы справа
-   ========================================================= */
 .mf-controls-col {
     padding: 24px 26px;
     border-radius: var(--r-xl);
-    background: rgba(255, 255, 255, 0.65);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.5);
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
 }
+
 .mf-var-info {
     padding: 16px 18px;
     border-radius: var(--r-lg);
-    background: var(--accent-viz-soft);
-    border-left: 4px solid var(--accent-viz);
+    background: var(--bg-soft);
+    border-left: 4px solid var(--accent);
     margin-bottom: 20px;
 }
+
 .mf-var-info-title {
     font-size: 14px;
     font-weight: 600;
@@ -439,15 +445,13 @@
     margin-bottom: 6px;
     letter-spacing: -0.005em;
 }
+
 .mf-var-info-desc {
     font-size: 12px;
     color: var(--txt-muted);
     line-height: 1.5;
 }
 
-/* =========================================================
-   TERM CARD
-   ========================================================= */
 .mf-term-card {
     padding: 18px 20px;
     border-radius: var(--r-lg);
@@ -456,16 +460,16 @@
     margin-bottom: 12px;
     transition: all var(--t-fast);
 }
+
 .mf-term-card:hover {
     border-color: var(--line-strong);
     transform: translateY(-1px);
     box-shadow: var(--shadow-sm);
 }
 
-/* Подсветка изменённого терма */
 .mf-term-card-changed {
-    border-color: var(--accent-viz);
-    background: var(--accent-viz-soft);
+    border-color: var(--accent);
+    background: var(--accent-soft);
 }
 
 .mf-term-head {
@@ -475,18 +479,21 @@
     margin-bottom: 10px;
     flex-wrap: wrap;
 }
+
 .mf-term-dot {
     width: 12px;
     height: 12px;
     border-radius: 50%;
     flex-shrink: 0;
 }
+
 .mf-term-name {
     font-size: 14px;
     font-weight: 600;
     color: var(--txt);
     letter-spacing: -0.005em;
 }
+
 .mf-term-changed {
     display: inline-block;
     padding: 2px 10px;
@@ -495,9 +502,10 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    background: var(--accent-viz);
-    color: #fff;
+    background: var(--accent);
+    color: #ffffff;
 }
+
 .mf-term-tri {
     margin-left: auto;
     font-family: var(--font-mono);
@@ -505,21 +513,25 @@
     color: var(--txt-muted);
     font-weight: 600;
 }
+
 .mf-term-hint {
     font-size: 11px;
     color: var(--txt-muted);
     margin-bottom: 14px;
     line-height: 1.5;
 }
+
 .mf-term-hint b {
     color: var(--txt);
     font-weight: 600;
 }
+
 .mf-term-inputs {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
     gap: 10px;
 }
+
 .mf-term-input label {
     display: block;
     font-size: 10px;
@@ -529,6 +541,7 @@
     font-weight: 700;
     margin-bottom: 6px;
 }
+
 .mf-term-input input {
     width: 100%;
     padding: 10px 12px;
@@ -542,38 +555,33 @@
     transition: all var(--t-fast);
     font-variant-numeric: tabular-nums;
 }
+
 .mf-term-input input:focus {
-    border-color: var(--accent-viz);
-    box-shadow: 0 0 0 4px var(--accent-viz-soft);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-soft);
 }
 
-/* =========================================================
-   ACTIONS — кнопки
-   ========================================================= */
 .mf-actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 10px;
     margin-top: 20px;
 }
+
 .mf-action {
     padding: 12px;
     font-size: 12px;
     justify-content: center;
 }
 
-/* =========================================================
-   VARS SELECTOR
-   ========================================================= */
 .mf-vars-section {
     padding: 22px 24px;
     border-radius: var(--r-xl);
-    background: rgba(255, 255, 255, 0.6);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.5);
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
     margin-bottom: 20px;
 }
+
 .mf-vars-title {
     display: flex;
     align-items: center;
@@ -585,11 +593,13 @@
     font-weight: 700;
     margin-bottom: 16px;
 }
+
 .mf-vars {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 12px;
 }
+
 .mf-var-card {
     padding: 16px 18px;
     border: 1.5px solid var(--line);
@@ -599,16 +609,19 @@
     transition: all var(--t-fast);
     text-align: left;
 }
+
 .mf-var-card:hover {
-    border-color: var(--accent-viz);
+    border-color: var(--accent);
     transform: translateY(-2px);
     box-shadow: var(--shadow-sm);
 }
+
 .mf-var-card.active {
-    border-color: var(--accent-viz);
-    background: var(--accent-viz-soft);
-    box-shadow: 0 0 0 4px var(--accent-viz-soft);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    box-shadow: 0 0 0 4px var(--accent-soft);
 }
+
 .mf-var-name {
     font-size: 13px;
     font-weight: 600;
@@ -616,6 +629,7 @@
     margin-bottom: 10px;
     letter-spacing: -0.005em;
 }
+
 .mf-var-terms {
     display: block;
 }
@@ -627,6 +641,7 @@
     border-radius: var(--r-pill);
     overflow: hidden;
 }
+
 .mf-mini-bar {
     position: absolute;
     top: 0;
@@ -635,15 +650,13 @@
     border-radius: var(--r-pill);
 }
 
-/* =========================================================
-   HELP
-   ========================================================= */
 .mf-help {
     padding: 22px 26px;
     border-radius: var(--r-xl);
-    background: var(--accent-viz-soft);
-    border-left: 4px solid var(--accent-viz);
+    background: var(--bg-soft);
+    border-left: 4px solid var(--accent);
 }
+
 .mf-help-title {
     display: flex;
     align-items: center;
@@ -654,27 +667,19 @@
     margin-bottom: 12px;
     letter-spacing: -0.005em;
 }
+
 .mf-help-text {
     font-size: 13px;
     color: var(--txt-muted);
     line-height: 1.75;
 }
+
 .mf-help-text b {
     color: var(--txt);
     font-weight: 600;
 }
 
-.mf-extra-actions {
-    display: flex;
-    gap: 10px;
-    margin-top: 16px;
-    flex-wrap: wrap;
-}
-
-/* =========================================================
-   АДАПТИВ
-   ========================================================= */
-@media (max-width: 700px) {
+@media (max-width: 640px) {
     .mf-hero {
         padding: 22px 24px;
         border-radius: var(--r-lg);

@@ -33,6 +33,7 @@
         <link rel="stylesheet" href="css/charts.css" />
         <link rel="stylesheet" href="css/profile.css" />
         <link rel="stylesheet" href="css/demo-live.css" />
+        <link rel="stylesheet" href="css/landing.css" />
         <link rel="stylesheet" href="css/overrides.css" />
     </head>
     <body>
@@ -105,12 +106,116 @@
                 <p>Для работы приложения требуется JavaScript.</p>
             </div>
         </noscript>
+        <section id="landingScreen" class="landing">
+            <header class="landing-header">
+                <div class="landing-brand">
+                    <span class="brand-mark">M</span>
+                    <span class="brand-name">Meridian</span>
+                </div>
+                <div class="landing-actions">
+                    <button
+                        class="btn-ghost btn-sm"
+                        onclick="Auth.showAuth('login')"
+                    >
+                        Войти
+                    </button>
+                    <button
+                        class="btn-primary btn-sm"
+                        onclick="Auth.showAuth('register')"
+                    >
+                        Регистрация
+                    </button>
+                </div>
+            </header>
 
+            <main class="landing-main">
+                <section class="landing-hero">
+                    <div class="landing-hero-content">
+                        <div class="landing-hero-badge">
+                            Нечёткая логика Мамдани
+                        </div>
+
+                        <h1>
+                            Управление учебными проектами —
+                            <em>прозрачно</em> и умно
+                        </h1>
+
+                        <p class="lead">
+                            Meridian — единая система для студентов,
+                            преподавателей и администраторов. Курсовые,
+                            дипломные и ВКР с нечёткой оценкой рисков,
+                            автоматической проверкой ГОСТ и умной аналитикой.
+                        </p>
+
+                        <div class="landing-hero-actions">
+                            <button
+                                class="btn-primary landing-cta-btn"
+                                onclick="Auth.showAuth('register')"
+                            >
+                                <span>Начать бесплатно</span>
+                                <svg
+                                    viewBox="0 0 24 24"
+                                    class="icon icon-sm"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                >
+                                    <line x1="5" y1="12" x2="19" y2="12" />
+                                    <polyline points="12 5 19 12 12 19" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div class="landing-hero-stats">
+                            <div class="landing-stat">
+                                <div class="landing-stat-val" data-count="46">
+                                    0
+                                </div>
+                                <div class="landing-stat-lbl">
+                                    правил Мамдани
+                                </div>
+                            </div>
+                            <div class="landing-stat">
+                                <div class="landing-stat-val" data-count="8">
+                                    0
+                                </div>
+                                <div class="landing-stat-lbl">пунктов ГОСТ</div>
+                            </div>
+                            <div class="landing-stat">
+                                <div class="landing-stat-val" data-count="3">
+                                    0
+                                </div>
+                                <div class="landing-stat-lbl">роли</div>
+                            </div>
+                            <div class="landing-stat">
+                                <div class="landing-stat-val">
+                                    100<span>%</span>
+                                </div>
+                                <div class="landing-stat-lbl">прозрачно</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+
+            <footer class="landing-footer">
+                Meridian © 2024 · ИС управления учебными проектами на основе
+                нечёткой логики Мамдани
+            </footer>
+        </section>
         <div id="authScreen" class="auth-screen">
             <div class="auth-card">
                 <div class="auth-brand">
                     <span class="brand-mark">M</span>
                     <span class="brand-name">Meridian</span>
+                    <div
+                        class="auth-brand"
+                        onclick="Auth.showLanding()"
+                        style="cursor: pointer"
+                        title="На главную"
+                    ></div>
                 </div>
                 <div class="auth-sub">
                     Управление курсовыми и дипломными работами
@@ -535,6 +640,7 @@
         <script src="js/icons-svg.js"></script>
         <script src="js/fuzzy.js"></script>
         <script src="js/auth.js"></script>
+        <script src="js/landing.js"></script>
         <script src="js/notifications.js"></script>
         <script src="js/announcements.js"></script>
         <script src="js/charts.js"></script>
